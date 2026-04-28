@@ -1,0 +1,3 @@
+-- Placeholder to align local migration history with the linked remote project.
+-- The remote project already contains a migration with version 20260428194000.
+-- No schema change is applied here.
