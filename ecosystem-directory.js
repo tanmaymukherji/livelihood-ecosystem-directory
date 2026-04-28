@@ -154,6 +154,10 @@ function getPrimaryLocationLabel(entity) {
   return entity.location_label || entity.primary_address || [entity.district, entity.state, entity.country].filter(Boolean).join(', ') || 'Location not listed';
 }
 
+function hasUsableCoordinate(lat, lng) {
+  return Number.isFinite(lat) && Number.isFinite(lng) && (Math.abs(lat) > 0.0001 || Math.abs(lng) > 0.0001);
+}
+
 function buildSearchIndex(entity) {
   return {
     type: normalizeText(entity.entity_type_label || entity.entity_type_slug),
@@ -339,26 +343,33 @@ async function geocodeEntity(entity) {
   if (directoryState.geocodeCache.has(cacheKey)) return directoryState.geocodeCache.get(cacheKey);
   const lat = Number(entity.latitude);
   const lng = Number(entity.longitude);
-  if (Number.isFinite(lat) && Number.isFinite(lng) && (Math.abs(lat) > 0.0001 || Math.abs(lng) > 0.0001)) {
+  if (hasUsableCoordinate(lat, lng)) {
     const point = { lat, lng };
     directoryState.geocodeCache.set(cacheKey, point);
     return point;
   }
-  const query = [entity.location_label, entity.primary_address, entity.district, entity.state, entity.country].filter(Boolean).join(', ');
-  if (!query) return null;
-  try {
-    const response = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=${encodeURIComponent(query)}`, {
-      headers: { Accept: 'application/json' },
-    });
-    const data = await response.json();
-    const match = Array.isArray(data) ? data[0] : null;
-    if (!match) return null;
-    const point = { lat: Number(match.lat), lng: Number(match.lon) };
-    directoryState.geocodeCache.set(cacheKey, point);
-    return point;
-  } catch {
-    return null;
+  const queryCandidates = [
+    [entity.primary_address, entity.district, entity.state, entity.country].filter(Boolean).join(', '),
+    [entity.location_label, entity.state, entity.country].filter(Boolean).join(', '),
+    [entity.district, entity.state, entity.country].filter(Boolean).join(', '),
+    [entity.state, entity.country].filter(Boolean).join(', '),
+  ].map((value) => String(value || '').trim()).filter(Boolean);
+  const uniqueQueries = [...new Set(queryCandidates)];
+  for (const query of uniqueQueries) {
+    try {
+      const response = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=${encodeURIComponent(query)}`, {
+        headers: { Accept: 'application/json' },
+      });
+      const data = await response.json();
+      const match = Array.isArray(data) ? data[0] : null;
+      const point = match ? { lat: Number(match.lat), lng: Number(match.lon) } : null;
+      if (point && hasUsableCoordinate(point.lat, point.lng)) {
+        directoryState.geocodeCache.set(cacheKey, point);
+        return point;
+      }
+    } catch {}
   }
+  return null;
 }
 
 function clearMapMarkers() {
@@ -374,6 +385,33 @@ function buildMarkerHtml(entity) {
 function buildPopupHtml(entity) {
   const typeMeta = getEntityTypeMeta(entity.entity_type_slug);
   return `<div class="vendor-map-popup"><div><strong>${esc(entity.entity_name)}</strong><br/>${esc(typeMeta.label)}<br/>${esc(getPrimaryLocationLabel(entity))}<br/><a href="./entity-detail.html?entity=${encodeURIComponent(entity.entity_uid)}">View Details</a></div></div>`;
+}
+
+function groupMapPoints(entries) {
+  const groups = new Map();
+  entries.forEach((entry) => {
+    const lat = Number(entry.point?.lat);
+    const lng = Number(entry.point?.lng);
+    const locationKey = normalizeText(getPrimaryLocationLabel(entry.entity));
+    const key = locationKey || `${lat.toFixed(4)}|${lng.toFixed(4)}`;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(entry);
+  });
+  return Array.from(groups.values());
+}
+
+function createRingPoints(point, count) {
+  if (count <= 1) return [point];
+  const radius = Math.min(0.14, 0.02 + (count * 0.004));
+  return Array.from({ length: count }, (_, index) => {
+    const angle = (Math.PI * 2 * index) / count;
+    const latOffset = Math.sin(angle) * radius;
+    const lngOffset = Math.cos(angle) * radius / Math.max(Math.cos((point.lat * Math.PI) / 180), 0.35);
+    return {
+      lat: point.lat + latOffset,
+      lng: point.lng + lngOffset,
+    };
+  });
 }
 
 async function renderMapMarkers(entities) {
@@ -394,22 +432,33 @@ async function renderMapMarkers(entities) {
     return;
   }
 
-  points.forEach(({ entity, point }) => {
-    const marker = new window.mappls.Marker({
-      map: directoryState.map,
-      position: point,
-      html: buildMarkerHtml(entity),
-      width: 20,
-      height: 20,
-      popupHtml: buildPopupHtml(entity),
-      fitbounds: false,
+  const groupedPoints = groupMapPoints(points);
+  groupedPoints.forEach((entries) => {
+    const basePoint = entries.length === 1
+      ? entries[0].point
+      : {
+          lat: entries.reduce((sum, entry) => sum + Number(entry.point.lat || 0), 0) / entries.length,
+          lng: entries.reduce((sum, entry) => sum + Number(entry.point.lng || 0), 0) / entries.length,
+        };
+    const ringPoints = createRingPoints(basePoint, entries.length);
+    entries.forEach((entry, index) => {
+      const marker = new window.mappls.Marker({
+        map: directoryState.map,
+        position: ringPoints[index],
+        html: buildMarkerHtml(entry.entity),
+        width: entries.length > 1 ? 18 : 20,
+        height: entries.length > 1 ? 18 : 20,
+        popupHtml: buildPopupHtml(entry.entity),
+        fitbounds: false,
+      });
+      marker.on?.('click', () => focusEntity(entry.entity.entity_uid));
+      marker.addListener?.('click', () => focusEntity(entry.entity.entity_uid));
+      directoryState.markers.push(marker);
     });
-    marker.on?.('click', () => focusEntity(entity.entity_uid));
-    marker.addListener?.('click', () => focusEntity(entity.entity_uid));
-    directoryState.markers.push(marker);
   });
 
-  const first = points[0]?.point;
+  const indiaPoints = points.filter(({ point }) => point.lat >= 6 && point.lat <= 38 && point.lng >= 68 && point.lng <= 98);
+  const first = indiaPoints[0]?.point || points[0]?.point;
   if (first) {
     directoryState.map?.setCenter?.(first);
     directoryState.map?.setZoom?.(5.5);

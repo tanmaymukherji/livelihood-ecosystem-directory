@@ -76,6 +76,10 @@ function requireString(value: unknown) {
   return typeof value === "string" ? value.trim() : "";
 }
 
+function normalizeText(value: unknown) {
+  return requireString(value).toLowerCase();
+}
+
 function slugify(value: string) {
   return value
     .normalize("NFKD")
@@ -88,6 +92,12 @@ function slugify(value: string) {
 function toNullableNumber(value: unknown) {
   const num = typeof value === "number" ? value : Number(value);
   return Number.isFinite(num) ? num : null;
+}
+
+function hasUsableCoordinate(latitude: unknown, longitude: unknown) {
+  const lat = toNullableNumber(latitude);
+  const lng = toNullableNumber(longitude);
+  return lat !== null && lng !== null && (Math.abs(lat) > 0.0001 || Math.abs(lng) > 0.0001);
 }
 
 function toTextArray(value: unknown) {
@@ -126,6 +136,91 @@ function buildSearchText(input: Record<string, unknown>) {
     toTextArray(input.keywords).join(" "),
     flattenTypeSpecificValues(input.type_specific_data).join(" "),
   ].filter(Boolean).join(" ");
+}
+
+function dedupeLocations(values: string[]) {
+  const seen = new Set<string>();
+  const deduped: string[] = [];
+  for (const value of values) {
+    const text = requireString(value);
+    const key = normalizeText(text);
+    if (!text || seen.has(key)) continue;
+    seen.add(key);
+    deduped.push(text);
+  }
+  return deduped;
+}
+
+function normalizeGeocodeQuery(value: string) {
+  return value
+    .replace(/\s+/g, " ")
+    .replace(/[|]+/g, ", ")
+    .replace(/[;]+/g, ", ")
+    .replace(/\bregistered office source also lists\b/gi, ", ")
+    .replace(/\bregistered office\b/gi, ", ")
+    .trim();
+}
+
+function buildGeocodeQueries(input: Record<string, unknown>) {
+  const address = normalizeGeocodeQuery(requireString(input.primary_address));
+  const locationLabel = normalizeGeocodeQuery(requireString(input.location_label));
+  const district = normalizeGeocodeQuery(requireString(input.district));
+  const state = normalizeGeocodeQuery(requireString(input.state));
+  const country = normalizeGeocodeQuery(requireString(input.country) || "India");
+  const officeLocations = toJsonArray(input.office_locations).map((item) => normalizeGeocodeQuery(String(item || ""))).filter(Boolean);
+  const baseQueries = [
+    [address, district, state, country].filter(Boolean).join(", "),
+    [address, state, country].filter(Boolean).join(", "),
+    [locationLabel, state, country].filter(Boolean).join(", "),
+    [district, state, country].filter(Boolean).join(", "),
+    ...officeLocations.map((office) => [office, state, country].filter(Boolean).join(", ")),
+    [state, country].filter(Boolean).join(", "),
+  ];
+  return dedupeLocations(baseQueries);
+}
+
+function buildGeocodeHints(input: Record<string, unknown>) {
+  const locationLabel = requireString(input.location_label).split(",")[0];
+  return dedupeLocations([
+    requireString(input.district),
+    requireString(input.state),
+    locationLabel,
+  ]).map((value) => normalizeText(value));
+}
+
+function geocodeMatchLooksRelevant(match: Record<string, unknown> | null, hints: string[]) {
+  if (!match) return false;
+  if (!hints.length) return true;
+  const displayName = normalizeText(match.display_name);
+  return hints.some((hint) => hint && displayName.includes(hint));
+}
+
+async function geocodeEntityFallback(input: Record<string, unknown>) {
+  const queries = buildGeocodeQueries(input);
+  const hints = buildGeocodeHints(input);
+  for (const query of queries) {
+    if (!query) continue;
+    try {
+      const response = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=${encodeURIComponent(query)}`, {
+        headers: {
+          Accept: "application/json",
+          "User-Agent": "Livelihood Ecosystem Directory/1.0",
+        },
+      });
+      if (!response.ok) continue;
+      const data = await response.json() as Array<Record<string, unknown>>;
+      const match = Array.isArray(data) ? data[0] : null;
+      if (!geocodeMatchLooksRelevant(match, hints)) continue;
+      const latitude = toNullableNumber(match?.lat);
+      const longitude = toNullableNumber(match?.lon);
+      if (hasUsableCoordinate(latitude, longitude)) {
+        return { latitude, longitude };
+      }
+    } catch {
+      continue;
+    }
+  }
+  return { latitude: null, longitude: null };
 }
 
 function getEntityTable(typeSlug: string) {
@@ -249,13 +344,12 @@ async function sendEmailNotification(subject: string, text: string) {
   return { status: "sent", response: rawText };
 }
 
-async function upsertEntity(typeSlug: string, input: EntityInput, adminUsername: string) {
-  const supabase = getSupabaseAdmin();
-  const table = getEntityTable(typeSlug);
+async function buildApprovedEntityPayload(typeSlug: string, input: EntityInput, adminUsername: string) {
   const entityName = requireString(input.entity_name);
   if (!entityName) throw new Error("Entity name is required.");
   const entityUid = requireString(input.entity_uid) || `${typeSlug}-${slugify(entityName)}-${crypto.randomUUID().slice(0, 8)}`;
-  const payload = {
+
+  const payload: Record<string, unknown> = {
     entity_uid: entityUid,
     entity_name: entityName,
     summary: requireString(input.summary) || null,
@@ -284,9 +378,23 @@ async function upsertEntity(typeSlug: string, input: EntityInput, adminUsername:
     approved_at: new Date().toISOString(),
     approved_by: adminUsername,
     is_deleted: false,
-    search_text: buildSearchText(input),
     updated_at: new Date().toISOString(),
   };
+
+  if (!hasUsableCoordinate(payload.latitude, payload.longitude)) {
+    const geocoded = await geocodeEntityFallback(payload);
+    payload.latitude = geocoded.latitude;
+    payload.longitude = geocoded.longitude;
+  }
+
+  payload.search_text = buildSearchText(payload);
+  return payload;
+}
+
+async function upsertEntity(typeSlug: string, input: EntityInput, adminUsername: string) {
+  const supabase = getSupabaseAdmin();
+  const table = getEntityTable(typeSlug);
+  const payload = await buildApprovedEntityPayload(typeSlug, input, adminUsername);
   const { data, error } = await supabase.from(table).upsert(payload, { onConflict: "entity_uid" }).select("*").single();
   if (error) throw new Error(`${table} upsert failed: ${error.message}`);
   return data;
@@ -391,18 +499,17 @@ async function handleUpdateEntity(token: string, entityUid: string, updates: Rec
     else if (field === "latitude" || field === "longitude") cleanUpdates[field] = toNullableNumber(updates[field]);
     else cleanUpdates[field] = requireString(updates[field]) || null;
   }
-  cleanUpdates.search_text = buildSearchText({ ...updates, ...cleanUpdates });
-  cleanUpdates.updated_at = new Date().toISOString();
+  const { data: existing, error: loadError } = await supabase.from(table).select("*").eq("entity_uid", entityUid).single();
+  if (loadError) return errorResponse(`Entity load failed: ${loadError.message}`, 500);
+  const nextPayload = await buildApprovedEntityPayload(nextTypeSlug, { ...existing, ...cleanUpdates, entity_uid: entityUid }, session.username);
 
   if (nextTypeSlug !== typeSlug) {
-    const { data: existing, error: loadError } = await supabase.from(table).select("*").eq("entity_uid", entityUid).single();
-    if (loadError) return errorResponse(`Entity load failed: ${loadError.message}`, 500);
-    await upsertEntity(nextTypeSlug, { ...existing, ...cleanUpdates, entity_uid: entityUid }, session.username);
+    await upsertEntity(nextTypeSlug, nextPayload, session.username);
     await supabase.from(table).update({ is_deleted: true, updated_at: new Date().toISOString() }).eq("entity_uid", entityUid);
     return jsonResponse({ ok: true });
   }
 
-  const { error } = await supabase.from(table).update(cleanUpdates).eq("entity_uid", entityUid);
+  const { error } = await supabase.from(table).update(nextPayload).eq("entity_uid", entityUid);
   if (error) return errorResponse(`Entity update failed: ${error.message}`, 500);
   return jsonResponse({ ok: true });
 }
