@@ -10,10 +10,24 @@ const contactRequestList = document.getElementById('contactRequestList');
 const adminSearchResults = document.getElementById('adminSearchResults');
 const adminEditorEmpty = document.getElementById('adminEditorEmpty');
 const adminEditorFields = document.getElementById('adminEditorFields');
+const editDynamicFieldsEl = document.getElementById('edit-dynamic-fields');
 const ADMIN_SESSION_KEY = 'livelihood-ecosystem-admin-session';
+
+const {
+  esc,
+  parseTagList,
+  parseOfficeLocations,
+  formatOfficeLocations,
+  parseSocialLinks,
+  formatSocialLinks,
+  renderDynamicFields,
+  collectDynamicFieldValues,
+} = window.EcosystemForms;
+
 const state = {
   entityTypes: [],
   entities: [],
+  fieldDefinitions: [],
   filteredEntities: [],
   submissions: [],
   contactRequests: [],
@@ -42,10 +56,6 @@ const editEls = {
   adminNotes: document.getElementById('editAdminNotes'),
 };
 
-function esc(value) {
-  return String(value || '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#39;');
-}
-
 function setStatus(element, message, isError = false) {
   if (!element) return;
   element.textContent = message || '';
@@ -59,20 +69,6 @@ function getStoredToken() {
 function setStoredToken(token) {
   if (token) window.sessionStorage.setItem(ADMIN_SESSION_KEY, token);
   else window.sessionStorage.removeItem(ADMIN_SESSION_KEY);
-}
-
-function parseJsonField(value, fallback) {
-  const raw = String(value || '').trim();
-  if (!raw) return fallback;
-  try {
-    return JSON.parse(raw);
-  } catch {
-    throw new Error('One of the JSON fields is invalid.');
-  }
-}
-
-function parseListField(value) {
-  return String(value || '').split(',').map((item) => item.trim()).filter(Boolean);
 }
 
 function togglePanels(isSignedIn) {
@@ -98,6 +94,9 @@ function populateTypeOptions() {
 }
 
 function buildSearchText(entity) {
+  const typeSpecificText = entity.type_specific_data && typeof entity.type_specific_data === 'object'
+    ? Object.values(entity.type_specific_data).flatMap((value) => Array.isArray(value) ? value : [value]).join(' ')
+    : '';
   return [
     entity.entity_name,
     entity.entity_type_label,
@@ -112,6 +111,7 @@ function buildSearchText(entity) {
     entity.website_url,
     (entity.tags || []).join(' '),
     (entity.keywords || []).join(' '),
+    typeSpecificText,
   ].map((value) => String(value || '').toLowerCase()).join(' ');
 }
 
@@ -133,7 +133,7 @@ function renderSubmissions() {
   }
   submissionQueueMeta.textContent = `${state.submissions.length} pending submission${state.submissions.length === 1 ? '' : 's'}`;
   state.submissions.forEach((item) => {
-    const typeLabel = item.entity_type_label || item.entity_type_slug || 'Unknown type';
+    const typeLabel = state.entityTypes.find((type) => type.type_slug === item.entity_type_slug)?.label || item.entity_type_slug || 'Unknown type';
     const card = document.createElement('article');
     card.className = 'admin-card';
     card.innerHTML = `<div class="admin-card-header"><h4>${esc(item.entity_name || 'Unnamed submission')}</h4><span class="admin-badge">${esc(typeLabel)}</span></div><p><strong>Location:</strong> ${esc(item.location_label || item.primary_address || 'Not listed')}</p><p><strong>Contact:</strong> ${esc(item.contact_email || 'No email')} | ${esc(item.contact_phone || 'No phone')}</p><p><strong>Submitted By:</strong> ${esc(item.submitted_by_name || 'Unknown')} | ${esc(item.submitted_by_email || 'No email')}</p><p>${esc(item.summary || 'No summary supplied')}</p><div class="btn-group"><button class="btn btn-success btn-small" type="button" data-approve-submission="${esc(item.id)}">Approve</button><button class="btn btn-danger btn-small" type="button" data-reject-submission="${esc(item.id)}">Reject</button></div>`;
@@ -179,6 +179,10 @@ function setEditorVisibility(visible) {
   adminEditorFields.classList.toggle('active', Boolean(visible));
 }
 
+function renderEditDynamicFields(entityTypeSlug, values) {
+  renderDynamicFields(editDynamicFieldsEl, state.fieldDefinitions, entityTypeSlug, values || {}, 'edit-dynamic');
+}
+
 function fillEditor(entity) {
   editEls.entityUid.value = entity.entity_uid || '';
   editEls.entityType.value = entity.entity_type_slug || '';
@@ -192,13 +196,14 @@ function fillEditor(entity) {
   editEls.email.value = entity.contact_email || '';
   editEls.phone.value = entity.contact_phone || '';
   editEls.website.value = entity.website_url || '';
-  editEls.socialMedia.value = JSON.stringify(entity.social_media || {}, null, 2);
-  editEls.officeLocations.value = JSON.stringify(entity.office_locations || [], null, 2);
+  editEls.socialMedia.value = formatSocialLinks(entity.social_media || {});
+  editEls.officeLocations.value = formatOfficeLocations(entity.office_locations || []);
   editEls.tags.value = (entity.tags || []).join(', ');
   editEls.keywords.value = (entity.keywords || []).join(', ');
   editEls.latitude.value = entity.latitude ?? '';
   editEls.longitude.value = entity.longitude ?? '';
   editEls.adminNotes.value = entity.admin_notes || '';
+  renderEditDynamicFields(entity.entity_type_slug, entity.type_specific_data || {});
   setEditorVisibility(true);
 }
 
@@ -212,6 +217,12 @@ function selectEntity(entityUid) {
   fillEditor(entity);
   renderEntityResults();
   setStatus(adminEditStatus, '');
+}
+
+function rerenderDynamicFieldsForSelectedType() {
+  const selectedType = editEls.entityType.value;
+  const existingValues = collectDynamicFieldValues(editDynamicFieldsEl);
+  renderEditDynamicFields(selectedType, existingValues);
 }
 
 async function verifySession() {
@@ -241,6 +252,7 @@ async function loadAdminData() {
   const data = await EcosystemStore.adminRequest('loadAdminData', { token });
   state.entityTypes = Array.isArray(data.entityTypes) ? data.entityTypes : [];
   state.entities = Array.isArray(data.entities) ? data.entities : [];
+  state.fieldDefinitions = Array.isArray(data.fieldDefinitions) ? data.fieldDefinitions : [];
   state.submissions = Array.isArray(data.submissions) ? data.submissions : [];
   state.contactRequests = Array.isArray(data.contactRequests) ? data.contactRequests : [];
   populateTypeOptions();
@@ -330,6 +342,12 @@ function parseCsv(text) {
   return rows.slice(1).map((cells) => Object.fromEntries(headers.map((header, index) => [header, cells[index] ?? ''])));
 }
 
+function parseJsonSafe(value, fallback) {
+  const raw = String(value || '').trim();
+  if (!raw) return fallback;
+  return JSON.parse(raw);
+}
+
 async function runBulkUpload() {
   const token = getStoredToken();
   const file = document.getElementById('bulkUploadFile').files?.[0];
@@ -353,16 +371,17 @@ async function runBulkUpload() {
       contact_email: String(row.contact_email || '').trim(),
       contact_phone: String(row.contact_phone || '').trim(),
       website_url: String(row.website_url || '').trim(),
-      social_media: parseJsonField(row.social_media_json, {}),
-      office_locations: parseJsonField(row.office_locations_json, []),
-      tags: parseListField(row.tags),
-      keywords: parseListField(row.keywords),
+      social_media: parseJsonSafe(row.social_media_json, {}),
+      office_locations: parseJsonSafe(row.office_locations_json, []),
+      tags: parseTagList(row.tags),
+      keywords: parseTagList(row.keywords),
       latitude: row.latitude ? Number(row.latitude) : null,
       longitude: row.longitude ? Number(row.longitude) : null,
       source_label: String(row.source_label || 'Bulk upload').trim(),
       source_url: String(row.source_url || '').trim(),
       created_by_name: String(row.created_by_name || 'Admin bulk upload').trim(),
       created_by_email: String(row.created_by_email || '').trim(),
+      type_specific_data: parseJsonSafe(row.type_specific_data_json, {}),
     }));
     const data = await EcosystemStore.adminRequest('bulkUploadEntities', { token, rows });
     setStatus(bulkUploadStatus, `Bulk upload completed: ${data.upsertedCount || 0} record(s).`);
@@ -418,12 +437,13 @@ async function saveEntity(event) {
         contact_email: editEls.email.value,
         contact_phone: editEls.phone.value,
         website_url: editEls.website.value,
-        social_media: parseJsonField(editEls.socialMedia.value, {}),
-        office_locations: parseJsonField(editEls.officeLocations.value, []),
-        tags: parseListField(editEls.tags.value),
-        keywords: parseListField(editEls.keywords.value),
+        social_media: parseSocialLinks(editEls.socialMedia.value),
+        office_locations: parseOfficeLocations(editEls.officeLocations.value),
+        tags: parseTagList(editEls.tags.value),
+        keywords: parseTagList(editEls.keywords.value),
         latitude: editEls.latitude.value ? Number(editEls.latitude.value) : null,
         longitude: editEls.longitude.value ? Number(editEls.longitude.value) : null,
+        type_specific_data: collectDynamicFieldValues(editDynamicFieldsEl),
         admin_notes: editEls.adminNotes.value,
       },
     });
@@ -464,6 +484,7 @@ document.getElementById('adminEntityTypeFilter').addEventListener('change', () =
   filterEntities();
   renderEntityResults();
 });
+editEls.entityType.addEventListener('change', rerenderDynamicFieldsForSelectedType);
 document.getElementById('adminEditForm').addEventListener('submit', saveEntity);
 document.getElementById('deleteEntityButton').addEventListener('click', deleteEntity);
 submissionQueue.addEventListener('click', (event) => {

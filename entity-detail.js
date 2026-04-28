@@ -1,15 +1,22 @@
-function esc(value) {
-  return String(value || '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#39;');
-}
-
-function renderKeyValueRows(title, rows) {
-  const validRows = rows.filter((row) => row.value);
-  if (!validRows.length) return `<p><strong>${esc(title)}:</strong> Not listed</p>`;
-  return `<div class="vendor-inline-list"><strong>${esc(title)}</strong>${validRows.map((row) => `<div>${esc(row.label)}: ${row.isLink ? `<a href="${esc(row.value)}" target="_blank" rel="noreferrer">${esc(row.value)}</a>` : esc(row.value)}</div>`).join('')}</div>`;
-}
+const {
+  esc,
+  formatDynamicValue,
+} = window.EcosystemForms;
 
 function asArray(value) {
   return Array.isArray(value) ? value.filter(Boolean) : [];
+}
+
+function renderTypeSpecificDetails(entity, fieldDefinitions) {
+  const definitions = asArray(fieldDefinitions)
+    .filter((item) => item.type_slug === entity.entity_type_slug)
+    .sort((left, right) => Number(left.sort_order || 0) - Number(right.sort_order || 0));
+  const values = entity.type_specific_data && typeof entity.type_specific_data === 'object' ? entity.type_specific_data : {};
+  const rows = definitions
+    .map((field) => ({ field, value: formatDynamicValue(field, values[field.field_key]) }))
+    .filter((item) => item.value);
+  if (!rows.length) return '';
+  return `<div class="vendor-inline-list"><strong>Type-Specific Details</strong>${rows.map((item) => `<div><strong>${esc(item.field.label)}:</strong> ${esc(item.value)}</div>`).join('')}</div>`;
 }
 
 async function submitContactRequest(event) {
@@ -49,7 +56,7 @@ async function initEntityDetail() {
   }
 
   try {
-    const { entityTypes, entities } = await EcosystemStore.loadDirectory();
+    const { entityTypes, entities, fieldDefinitions } = await EcosystemStore.loadDirectory();
     const entity = entities.find((item) => item.entity_uid === entityUid);
     if (!entity) {
       root.innerHTML = '<section class="section"><p>Entity not found in the approved directory.</p></section>';
@@ -95,6 +102,7 @@ async function initEntityDetail() {
         </div>
         ${officeLocations.length ? `<div class="vendor-inline-list"><strong>Office Locations</strong>${officeLocations.map((item) => `<div>${esc(item)}</div>`).join('')}</div>` : ''}
         ${socialMedia.length ? `<div class="vendor-inline-list"><strong>Social Media</strong>${socialMedia.map(([label, value]) => `<div>${esc(label)}: <a href="${esc(value)}" target="_blank" rel="noreferrer">${esc(value)}</a></div>`).join('')}</div>` : ''}
+        ${renderTypeSpecificDetails(entity, fieldDefinitions)}
       </section>
       <section class="section">
         <h3>Request an Edit or Deletion</h3>

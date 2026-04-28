@@ -75,6 +75,9 @@ a{text-decoration:none}
 .checkbox-card-meta{display:flex;align-items:center;gap:.65rem}
 .checkbox-card small{display:block;color:#6a7785}
 .type-swatch{display:inline-flex;width:14px;height:14px;border-radius:999px;box-shadow:0 0 0 3px rgba(31,75,110,.08)}
+.dynamic-fields-block{display:grid;gap:.35rem;margin-top:.4rem}
+.dynamic-fields-block h4{margin:.25rem 0 .2rem;color:#1f4b6e}
+.dynamic-checkbox-grid{grid-template-columns:repeat(auto-fit,minmax(180px,1fr))}
 .session-panel,.queue-panel{display:none}
 .session-panel.active,.queue-panel.active{display:block}
 .admin-editor-layout{display:grid;grid-template-columns:minmax(320px,.95fr) minmax(0,1.25fr);gap:1rem;align-items:start}

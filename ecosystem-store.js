@@ -1,6 +1,7 @@
 window.EcosystemStore = (() => {
   const ENTITY_TYPES_TABLE = () => (window.APP_CONFIG && window.APP_CONFIG.ENTITY_TYPES_TABLE) || 'ecosystem_entity_types';
   const PUBLIC_ENTITIES_VIEW = () => (window.APP_CONFIG && window.APP_CONFIG.PUBLIC_ENTITIES_VIEW) || 'ecosystem_directory_entities';
+  const FIELD_DEFINITIONS_TABLE = () => 'ecosystem_entity_field_definitions';
   const ADMIN_API_URL = () => `${String(window.APP_CONFIG?.SUPABASE_URL || '').replace(/\/$/, '')}/functions/v1/livelihood-ecosystem-admin`;
   let client = null;
 
@@ -37,11 +38,12 @@ window.EcosystemStore = (() => {
   }
 
   async function loadDirectory() {
-    const [entityTypes, entities] = await Promise.all([
+    const [entityTypes, entities, fieldDefinitions] = await Promise.all([
       fetchAllRows(ENTITY_TYPES_TABLE(), 'sort_order'),
       fetchAllRows(PUBLIC_ENTITIES_VIEW(), 'entity_name'),
+      fetchAllRows(FIELD_DEFINITIONS_TABLE(), 'sort_order'),
     ]);
-    return { entityTypes, entities };
+    return { entityTypes, entities, fieldDefinitions };
   }
 
   async function adminRequest(action, payload = {}) {

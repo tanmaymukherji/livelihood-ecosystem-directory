@@ -69,9 +69,22 @@
               <input id="submission-phone" type="text" />
             </div>
             <div class="form-group">
+              <label for="submission-website">Website</label>
+              <input id="submission-website" type="url" placeholder="https://..." />
+            </div>
+            <div class="form-group">
               <label for="submission-summary">Summary</label>
               <textarea id="submission-summary" rows="4" placeholder="What does this person or organisation do?"></textarea>
             </div>
+            <div class="form-group">
+              <label for="submission-social-links">Social Media</label>
+              <textarea id="submission-social-links" rows="3" placeholder="linkedin|https://...\ninstagram|https://..."></textarea>
+            </div>
+            <div class="form-group">
+              <label for="submission-office-locations">Additional Office Locations</label>
+              <textarea id="submission-office-locations" rows="3" placeholder="One location per line"></textarea>
+            </div>
+            <div id="submission-dynamic-fields"></div>
             <div class="form-group">
               <label for="submission-contact-name">Submitted By</label>
               <input id="submission-contact-name" type="text" required />
@@ -125,6 +138,7 @@
     </main>
   </div>
 
+  <script src="./ecosystem-form-fields.js"></script>
   <script src="./ecosystem-store.js"></script>
   <script src="./ecosystem-directory.js"></script>
 </body>

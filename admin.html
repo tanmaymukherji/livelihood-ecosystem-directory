@@ -93,12 +93,13 @@
               <div class="form-group"><label for="editEmail">Email</label><input id="editEmail" type="email" /></div>
               <div class="form-group"><label for="editPhone">Phone</label><input id="editPhone" type="text" /></div>
               <div class="form-group"><label for="editWebsite">Website</label><input id="editWebsite" type="url" /></div>
-              <div class="form-group"><label for="editSocialMedia">Social Media JSON</label><textarea id="editSocialMedia" rows="4" placeholder='{"linkedin":"...","x":"...","instagram":"..."}'></textarea></div>
-              <div class="form-group"><label for="editOfficeLocations">Office Locations JSON</label><textarea id="editOfficeLocations" rows="4" placeholder='["Office 1","Office 2"]'></textarea></div>
+              <div class="form-group"><label for="editSocialMedia">Social Media</label><textarea id="editSocialMedia" rows="4" placeholder="linkedin|https://...\nfacebook|https://..."></textarea></div>
+              <div class="form-group"><label for="editOfficeLocations">Office Locations</label><textarea id="editOfficeLocations" rows="4" placeholder="One location per line"></textarea></div>
               <div class="form-group"><label for="editTags">Tags (comma separated)</label><input id="editTags" type="text" /></div>
               <div class="form-group"><label for="editKeywords">Keywords (comma separated)</label><input id="editKeywords" type="text" /></div>
               <div class="form-group"><label for="editLatitude">Latitude</label><input id="editLatitude" type="number" step="any" /></div>
               <div class="form-group"><label for="editLongitude">Longitude</label><input id="editLongitude" type="number" step="any" /></div>
+              <div id="edit-dynamic-fields"></div>
               <div class="form-group"><label for="editAdminNotes">Admin Notes</label><textarea id="editAdminNotes" rows="4"></textarea></div>
               <div class="btn-group">
                 <button class="btn btn-success" type="submit">Save Changes</button>
@@ -117,6 +118,7 @@
       </section>
     </main>
   </div>
+  <script src="./ecosystem-form-fields.js"></script>
   <script src="./ecosystem-store.js"></script>
   <script src="./admin.js"></script>
 </body>

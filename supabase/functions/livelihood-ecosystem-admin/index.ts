@@ -46,6 +46,7 @@ const EDITABLE_FIELDS = [
   "longitude",
   "source_label",
   "source_url",
+  "type_specific_data",
   "admin_notes",
 ] as const;
 
@@ -102,6 +103,12 @@ function toJsonArray(value: unknown) {
   return Array.isArray(value) ? value.filter(Boolean) : [];
 }
 
+function flattenTypeSpecificValues(value: unknown): string[] {
+  if (Array.isArray(value)) return value.flatMap((item) => flattenTypeSpecificValues(item));
+  if (value && typeof value === "object") return Object.values(value as Record<string, unknown>).flatMap((item) => flattenTypeSpecificValues(item));
+  return value ? [String(value)] : [];
+}
+
 function buildSearchText(input: Record<string, unknown>) {
   return [
     requireString(input.entity_name),
@@ -117,6 +124,7 @@ function buildSearchText(input: Record<string, unknown>) {
     requireString(input.website_url),
     toTextArray(input.tags).join(" "),
     toTextArray(input.keywords).join(" "),
+    flattenTypeSpecificValues(input.type_specific_data).join(" "),
   ].filter(Boolean).join(" ");
 }
 
@@ -161,7 +169,7 @@ async function handleLogin(password: string) {
   const supabase = getSupabaseAdmin();
   const { data, error } = await supabase.from("ecosystem_admin_accounts").select("username").eq("username", "admin").maybeSingle();
   if (error) return errorResponse(`Admin account lookup failed: ${error.message}`, 500);
-  if (!data?.username) return errorResponse("Admin account does not exist yet. Run ecosystem_set_admin_password first.", 401);
+  if (!data?.username) return errorResponse("Admin account does not exist yet. Set it once with: select public.ecosystem_set_admin_password('your-strong-password');", 401);
   const validPassword = await verifyAdminPassword("admin", password).catch(() => false);
   if (!validPassword) return errorResponse("Invalid admin password.", 401);
   const token = generateToken();
@@ -205,15 +213,17 @@ async function fetchAllRows(table: string, orderColumn: string) {
 async function handleLoadAdminData(token: string) {
   const session = await validateSession(token);
   if (!session) return errorResponse("Invalid admin session.", 401);
-  const [entityTypes, entities, submissions, contactRequests] = await Promise.all([
+  const [entityTypes, entities, fieldDefinitions, submissions, contactRequests] = await Promise.all([
     fetchAllRows("ecosystem_entity_types", "sort_order"),
     fetchAllRows("ecosystem_directory_entities_all", "entity_name"),
+    fetchAllRows("ecosystem_entity_field_definitions", "sort_order"),
     fetchAllRows("ecosystem_entity_submissions", "created_at"),
     fetchAllRows("ecosystem_contact_requests", "created_at"),
   ]);
   return jsonResponse({
     entityTypes,
     entities: entities.filter((item) => !item.is_deleted),
+    fieldDefinitions,
     submissions: submissions.filter((item) => item.status === "pending"),
     contactRequests,
   });
@@ -266,6 +276,7 @@ async function upsertEntity(typeSlug: string, input: EntityInput, adminUsername:
     longitude: toNullableNumber(input.longitude),
     source_label: requireString(input.source_label) || null,
     source_url: requireString(input.source_url) || null,
+    type_specific_data: toJsonObject(input.type_specific_data),
     created_by_name: requireString(input.created_by_name) || adminUsername || null,
     created_by_email: requireString(input.created_by_email) || null,
     admin_notes: requireString(input.admin_notes) || null,
@@ -309,6 +320,7 @@ async function handleSubmitEntity(submission: Record<string, unknown>) {
     longitude: toNullableNumber(submission.longitude),
     source_label: requireString(submission.source_label) || "Public submission",
     source_url: requireString(submission.source_url) || null,
+    type_specific_data: toJsonObject(submission.type_specific_data),
     submitted_by_name: requireString(submission.submitted_by_name) || null,
     submitted_by_email: submittedByEmail,
     submitted_by_phone: requireString(submission.submitted_by_phone) || null,
@@ -375,6 +387,7 @@ async function handleUpdateEntity(token: string, entityUid: string, updates: Rec
     if (field === "tags" || field === "keywords") cleanUpdates[field] = toTextArray(updates[field]);
     else if (field === "social_media") cleanUpdates[field] = toJsonObject(updates[field]);
     else if (field === "office_locations") cleanUpdates[field] = toJsonArray(updates[field]);
+    else if (field === "type_specific_data") cleanUpdates[field] = toJsonObject(updates[field]);
     else if (field === "latitude" || field === "longitude") cleanUpdates[field] = toNullableNumber(updates[field]);
     else cleanUpdates[field] = requireString(updates[field]) || null;
   }

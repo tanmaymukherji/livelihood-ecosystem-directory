@@ -1,6 +1,7 @@
 const directoryState = {
   entityTypes: [],
   entities: [],
+  fieldDefinitions: [],
   filteredEntities: [],
   currentPage: 1,
   pageSize: 12,
@@ -14,7 +15,7 @@ const directoryState = {
 };
 
 const INDIA_CENTER = { lat: 22.9734, lng: 78.6569 };
-const SEARCH_STATE_KEY = 'livelihood_ecosystem_search_state_v1';
+const SEARCH_STATE_KEY = 'livelihood_ecosystem_search_state_v2';
 const searchEls = {
   keyword: document.getElementById('search-keyword'),
   location: document.getElementById('search-location'),
@@ -24,14 +25,20 @@ const mapListEl = document.getElementById('map-results-list');
 const statusEl = document.getElementById('directory-status');
 const resultsSummaryEl = document.getElementById('results-summary');
 const submissionStatusEl = document.getElementById('submission-status');
+const submissionDynamicFieldsEl = document.getElementById('submission-dynamic-fields');
+const submissionTypeEl = document.getElementById('submission-entity-type');
 const paginationEls = [
   document.getElementById('results-pagination-top'),
   document.getElementById('results-pagination-bottom'),
 ];
 
-function esc(value) {
-  return String(value || '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#39;');
-}
+const {
+  esc,
+  parseSocialLinks,
+  parseOfficeLocations,
+  renderDynamicFields,
+  collectDynamicFieldValues,
+} = window.EcosystemForms;
 
 function normalizeText(value) {
   return String(value || '').trim().toLowerCase();
@@ -41,15 +48,16 @@ function tokenize(value) {
   return normalizeText(value).split(/[^a-z0-9]+/).filter(Boolean);
 }
 
+function flattenTypeSpecificValues(value) {
+  if (Array.isArray(value)) return value.flatMap((item) => flattenTypeSpecificValues(item));
+  if (value && typeof value === 'object') return Object.values(value).flatMap((item) => flattenTypeSpecificValues(item));
+  return value ? [String(value)] : [];
+}
+
 function setStatus(element, message, isError = false) {
   if (!element) return;
   element.textContent = message || '';
   element.classList.toggle('error', Boolean(isError));
-}
-
-function uniqueSortedValues(values) {
-  return [...new Set((values || []).map((value) => String(value || '').trim()).filter(Boolean))]
-    .sort((left, right) => left.localeCompare(right, undefined, { sensitivity: 'base' }));
 }
 
 function getEntityTypeMap() {
@@ -67,10 +75,9 @@ function getEntityTypeMeta(typeSlug) {
 
 function buildTypeCheckboxes() {
   const container = document.getElementById('entity-type-filters');
-  const submissionTypeSelect = document.getElementById('submission-entity-type');
-  if (!container || !submissionTypeSelect) return;
+  if (!container || !submissionTypeEl) return;
   container.innerHTML = '';
-  submissionTypeSelect.innerHTML = '';
+  submissionTypeEl.innerHTML = '';
   directoryState.entityTypes.forEach((type) => {
     const checkbox = document.createElement('label');
     checkbox.className = 'checkbox-card';
@@ -86,8 +93,18 @@ function buildTypeCheckboxes() {
     const option = document.createElement('option');
     option.value = type.type_slug;
     option.textContent = type.label;
-    submissionTypeSelect.appendChild(option);
+    submissionTypeEl.appendChild(option);
   });
+}
+
+function renderSubmissionDynamicFields() {
+  renderDynamicFields(
+    submissionDynamicFieldsEl,
+    directoryState.fieldDefinitions,
+    submissionTypeEl.value,
+    {},
+    'submission-dynamic'
+  );
 }
 
 function getSelectedTypeSlugs() {
@@ -138,8 +155,6 @@ function getPrimaryLocationLabel(entity) {
 }
 
 function buildSearchIndex(entity) {
-  const officeLocations = Array.isArray(entity.office_locations) ? entity.office_locations.join(' ') : '';
-  const socialValues = entity.social_media && typeof entity.social_media === 'object' ? Object.values(entity.social_media).join(' ') : '';
   return {
     type: normalizeText(entity.entity_type_label || entity.entity_type_slug),
     keyword: [
@@ -154,10 +169,9 @@ function buildSearchIndex(entity) {
       entity.contact_email,
       entity.contact_phone,
       entity.website_url,
-      officeLocations,
-      socialValues,
       (entity.tags || []).join(' '),
       (entity.keywords || []).join(' '),
+      flattenTypeSpecificValues(entity.type_specific_data || {}).join(' '),
       entity.search_text,
     ].map(normalizeText).join(' '),
     location: [
@@ -166,7 +180,8 @@ function buildSearchIndex(entity) {
       entity.district,
       entity.state,
       entity.country,
-      officeLocations,
+      ...(entity.office_locations || []),
+      ...flattenTypeSpecificValues((entity.type_specific_data || {}).geography_served || []),
     ].map(normalizeText).join(' '),
   };
 }
@@ -261,7 +276,7 @@ function ensureMapCss() {
 
 async function loadMapSdk() {
   const key = String(window.APP_CONFIG?.MAPMYINDIA_MAP_KEY || '').trim();
-  if (!key || key.includes('YOUR_MAPMYINDIA')) {
+  if (!key) {
     document.getElementById('results-map').innerHTML = '<div class="vendor-map-placeholder">Update `MAPMYINDIA_MAP_KEY` in `config.js` to enable the map.</div>';
     return false;
   }
@@ -502,18 +517,23 @@ async function handleSubmission(event) {
   try {
     await EcosystemStore.adminRequest('submitEntity', {
       submission: {
-        entity_type_slug: document.getElementById('submission-entity-type').value,
+        entity_type_slug: submissionTypeEl.value,
         entity_name: document.getElementById('submission-name').value,
         location_label: document.getElementById('submission-location').value,
         primary_address: document.getElementById('submission-location').value,
         contact_email: document.getElementById('submission-email').value,
         contact_phone: document.getElementById('submission-phone').value,
+        website_url: document.getElementById('submission-website').value,
         summary: document.getElementById('submission-summary').value,
+        social_media: parseSocialLinks(document.getElementById('submission-social-links').value),
+        office_locations: parseOfficeLocations(document.getElementById('submission-office-locations').value),
+        type_specific_data: collectDynamicFieldValues(submissionDynamicFieldsEl),
         submitted_by_name: document.getElementById('submission-contact-name').value,
         submitted_by_email: document.getElementById('submission-contact-email').value,
       },
     });
     event.target.reset();
+    renderSubmissionDynamicFields();
     setStatus(submissionStatusEl, 'Submission received. It will appear after admin approval.');
   } catch (error) {
     setStatus(submissionStatusEl, error.message || 'Submission failed.', true);
@@ -523,10 +543,12 @@ async function handleSubmission(event) {
 async function initializeDirectory() {
   statusEl.textContent = 'Loading approved directory records from Supabase...';
   try {
-    const { entityTypes, entities } = await EcosystemStore.loadDirectory();
+    const { entityTypes, entities, fieldDefinitions } = await EcosystemStore.loadDirectory();
     directoryState.entityTypes = entityTypes;
     directoryState.entities = entities;
+    directoryState.fieldDefinitions = fieldDefinitions;
     buildTypeCheckboxes();
+    renderSubmissionDynamicFields();
     statusEl.textContent = `Loaded ${entities.length} approved entities across ${entityTypes.length} types.`;
     const snapshot = restoreSearchState();
     if (snapshot?.hasSearched) {
@@ -550,6 +572,7 @@ async function initializeDirectory() {
 document.getElementById('run-search').addEventListener('click', applyFilters);
 document.getElementById('clear-search').addEventListener('click', clearFilters);
 document.getElementById('submission-form').addEventListener('submit', handleSubmission);
+submissionTypeEl.addEventListener('change', renderSubmissionDynamicFields);
 Object.values(searchEls).forEach((input) => {
   input.addEventListener('keypress', (event) => { if (event.key === 'Enter') applyFilters(); });
   input.addEventListener('input', persistSearchState);
