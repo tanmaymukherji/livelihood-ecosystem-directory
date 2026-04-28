@@ -148,35 +148,35 @@ function generateToken() {
 async function validateSession(token: string) {
   const supabase = getSupabaseAdmin();
   const tokenHash = await hashToken(token);
-  const { data, error } = await supabase.from("ecosystem_admin_sessions").select("id, username, expires_at").eq("token_hash", tokenHash).maybeSingle();
+  const { data, error } = await supabase.from("grameee_admin_sessions").select("id, username, expires_at").eq("token_hash", tokenHash).maybeSingle();
   if (error || !data) return null;
   if (new Date(data.expires_at).getTime() <= Date.now()) {
-    await supabase.from("ecosystem_admin_sessions").delete().eq("id", data.id);
+    await supabase.from("grameee_admin_sessions").delete().eq("id", data.id);
     return null;
   }
-  await supabase.from("ecosystem_admin_sessions").update({ last_used_at: new Date().toISOString() }).eq("id", data.id);
+  await supabase.from("grameee_admin_sessions").update({ last_used_at: new Date().toISOString() }).eq("id", data.id);
   return data;
 }
 
 async function verifyAdminPassword(username: string, password: string) {
   const supabase = getSupabaseAdmin();
-  const { data, error } = await supabase.rpc("ecosystem_admin_password_matches", { p_username: username, p_password: password });
+  const { data, error } = await supabase.rpc("grameee_admin_password_matches", { p_username: username, p_password: password });
   if (error) throw new Error(`Admin password verification failed: ${error.message}`);
   return Boolean(data);
 }
 
 async function handleLogin(password: string) {
   const supabase = getSupabaseAdmin();
-  const { data, error } = await supabase.from("ecosystem_admin_accounts").select("username").eq("username", "admin").maybeSingle();
+  const { data, error } = await supabase.from("grameee_admin_accounts").select("username, password_hash").eq("username", "admin").maybeSingle();
   if (error) return errorResponse(`Admin account lookup failed: ${error.message}`, 500);
-  if (!data?.username) return errorResponse("Admin account does not exist yet. Set it once with: select public.ecosystem_set_admin_password('your-strong-password');", 401);
+  if (!data?.username) return errorResponse("Common admin account does not exist yet.", 401);
   const validPassword = await verifyAdminPassword("admin", password).catch(() => false);
   if (!validPassword) return errorResponse("Invalid admin password.", 401);
   const token = generateToken();
   const tokenHash = await hashToken(token);
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
-  await supabase.from("ecosystem_admin_sessions").delete().eq("username", "admin");
-  const { error: sessionError } = await supabase.from("ecosystem_admin_sessions").insert({ username: "admin", token_hash: tokenHash, expires_at: expiresAt });
+  await supabase.from("grameee_admin_sessions").delete().eq("username", "admin");
+  const { error: sessionError } = await supabase.from("grameee_admin_sessions").insert({ username: "admin", token_hash: tokenHash, expires_at: expiresAt });
   if (sessionError) return errorResponse("Admin session could not be created.", 500);
   return jsonResponse({ token, username: "admin", expires_at: expiresAt });
 }
@@ -189,7 +189,7 @@ async function handleVerify(token: string) {
 async function handleLogout(token: string) {
   const supabase = getSupabaseAdmin();
   const tokenHash = await hashToken(token);
-  await supabase.from("ecosystem_admin_sessions").delete().eq("token_hash", tokenHash);
+  await supabase.from("grameee_admin_sessions").delete().eq("token_hash", tokenHash);
   return jsonResponse({ ok: true });
 }
 
