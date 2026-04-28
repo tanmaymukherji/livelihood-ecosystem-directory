@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" href="data:," />
+  <title>Livelihood Ecosystem Directory</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="./config.js"></script>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div class="vendor-shell">
+    <header class="vendor-hero">
+      <div>
+        <p class="vendor-kicker">Livelihood Ecosystem Directory</p>
+        <h1>Mentors, Support Organisations, and Local Ecosystem Search</h1>
+        <p class="vendor-subtitle">Search by keyword, place, or entity type. Results appear both on the map and in the directory below, with a detail page for every entity.</p>
+      </div>
+      <div class="vendor-hero-actions">
+        <a class="btn btn-small" href="./admin.html">Admin</a>
+      </div>
+    </header>
+
+    <main class="vendor-layout">
+      <aside class="vendor-sidebar">
+        <section class="section">
+          <h3>Search Filters</h3>
+          <div class="form-group">
+            <label for="search-keyword">Keyword</label>
+            <input id="search-keyword" type="search" placeholder="Mentor, accelerator, livelihoods, incubation, market access..." />
+          </div>
+          <div class="form-group">
+            <label for="search-location">Place</label>
+            <input id="search-location" type="search" placeholder="Village, district, city, state, or address" />
+          </div>
+          <div class="form-group">
+            <label>Entity Types</label>
+            <div id="entity-type-filters" class="checkbox-grid"></div>
+          </div>
+          <div class="btn-group">
+            <button class="btn" id="run-search" type="button">Search</button>
+            <button class="btn btn-danger btn-small" id="clear-search" type="button">Clear</button>
+          </div>
+        </section>
+
+        <section class="section">
+          <h3>Submit a New Entry</h3>
+          <p class="section-note">New submissions go into an admin approval queue before they appear publicly.</p>
+          <form class="admin-form" id="submission-form">
+            <div class="form-group">
+              <label for="submission-entity-type">Entity Type</label>
+              <select id="submission-entity-type" required></select>
+            </div>
+            <div class="form-group">
+              <label for="submission-name">Name</label>
+              <input id="submission-name" type="text" required />
+            </div>
+            <div class="form-group">
+              <label for="submission-location">Place / Address</label>
+              <input id="submission-location" type="text" required />
+            </div>
+            <div class="form-group">
+              <label for="submission-email">Email</label>
+              <input id="submission-email" type="email" />
+            </div>
+            <div class="form-group">
+              <label for="submission-phone">Phone</label>
+              <input id="submission-phone" type="text" />
+            </div>
+            <div class="form-group">
+              <label for="submission-summary">Summary</label>
+              <textarea id="submission-summary" rows="4" placeholder="What does this person or organisation do?"></textarea>
+            </div>
+            <div class="form-group">
+              <label for="submission-contact-name">Submitted By</label>
+              <input id="submission-contact-name" type="text" required />
+            </div>
+            <div class="form-group">
+              <label for="submission-contact-email">Submitter Email</label>
+              <input id="submission-contact-email" type="email" required />
+            </div>
+            <button class="btn btn-success" type="submit">Send for Approval</button>
+            <p class="admin-status" id="submission-status"></p>
+          </form>
+        </section>
+
+        <section class="section">
+          <h3>Directory Summary</h3>
+          <div class="stats-grid">
+            <div class="stat-card"><div class="stat-number" id="entity-total-count">0</div><div>Approved Entities</div></div>
+            <div class="stat-card"><div class="stat-number" id="type-total-count">0</div><div>Entity Types</div></div>
+            <div class="stat-card"><div class="stat-number" id="filtered-entity-count">0</div><div>Matches</div></div>
+          </div>
+          <p class="section-note" id="directory-status">Loading directory...</p>
+        </section>
+      </aside>
+
+      <section class="vendor-results-shell">
+        <div class="section">
+          <div class="vendor-results-header">
+            <div>
+              <h3>Map Results</h3>
+              <p class="section-note">Each entity type has its own color. Click a marker or result card to focus it.</p>
+            </div>
+          </div>
+          <div class="vendor-map-grid">
+            <div id="results-map" class="vendor-map-canvas"></div>
+            <div id="map-results-list" class="vendor-map-list"></div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="vendor-results-header">
+            <div>
+              <h3>Directory Results</h3>
+              <p class="section-note" id="results-summary">No results loaded yet.</p>
+            </div>
+          </div>
+          <div id="results-pagination-top" class="vendor-pagination"></div>
+          <div id="entity-results" class="vendor-results-list"></div>
+          <div id="results-pagination-bottom" class="vendor-pagination"></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="./ecosystem-store.js"></script>
+  <script src="./ecosystem-directory.js"></script>
+</body>
+</html>
