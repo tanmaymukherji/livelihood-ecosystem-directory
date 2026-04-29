@@ -366,17 +366,19 @@ function buildPopupHtml(entity) {
   return `<div class="vendor-map-popup"><div><strong>${esc(entity.entity_name)}</strong><br/>${esc(typeMeta.label)}<br/>${esc(getPrimaryLocationLabel(entity))}<br/><a href="./entity-detail.html?entity=${encodeURIComponent(entity.entity_uid)}">View Details</a></div></div>`;
 }
 
-function createMarkerElement(entity, compact = false) {
-  const wrapper = document.createElement('div');
-  wrapper.innerHTML = buildMarkerHtml(entity);
-  const element = wrapper.firstElementChild;
-  if (!element) return null;
-  if (compact) {
-    element.style.width = '18px';
-    element.style.height = '18px';
-    element.style.boxShadow = '0 0 0 5px rgba(31,75,110,.14),0 8px 18px rgba(31,75,110,.24)';
-  }
-  return element;
+function buildMarkerIcon(entity, compact = false) {
+  const typeMeta = getEntityTypeMeta(entity.entity_type_slug);
+  const fill = String(typeMeta.color_hex || '#1f4b6e');
+  const size = compact ? 18 : 20;
+  const center = size / 2;
+  const radius = compact ? 6 : 7;
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+      <circle cx="${center}" cy="${center}" r="${radius + 1}" fill="rgba(31,75,110,0.16)"/>
+      <circle cx="${center}" cy="${center}" r="${radius}" fill="${fill}" stroke="#ffffff" stroke-width="2.5"/>
+    </svg>
+  `.trim();
+  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
 }
 
 function attachMarkerInteractions(marker, entity) {
@@ -387,28 +389,10 @@ function attachMarkerInteractions(marker, entity) {
 function createMapMarker(entity, point, compact = false) {
   const popupHtml = buildPopupHtml(entity);
   const markerSize = compact ? 18 : 20;
-  const element = createMarkerElement(entity, compact);
-
-  try {
-    if (element && typeof window.mappls?.Marker === 'function') {
-      const marker = new window.mappls.Marker({
-        map: directoryState.map,
-        position: point,
-        element,
-        width: markerSize,
-        height: markerSize,
-        popupHtml,
-        fitbounds: false,
-      });
-      attachMarkerInteractions(marker, entity);
-      return marker;
-    }
-  } catch {}
-
   const marker = new window.mappls.Marker({
     map: directoryState.map,
     position: point,
-    html: buildMarkerHtml(entity),
+    icon: buildMarkerIcon(entity, compact),
     width: markerSize,
     height: markerSize,
     popupHtml,
