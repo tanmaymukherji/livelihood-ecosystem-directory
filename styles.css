@@ -42,6 +42,8 @@ a{text-decoration:none}
 .admin-badge.approved{background:#d9f4df;color:#1f5f3a}
 .vendor-map-grid{display:grid;grid-template-columns:1.35fr .9fr;gap:1rem;align-items:stretch}
 .vendor-map-canvas{min-height:480px;border-radius:16px;overflow:hidden;background:#d5e7ea;border:1px solid #d4dde6;position:relative}
+.vendor-map-canvas.is-map-interactive{cursor:grab}
+.vendor-map-canvas.is-map-interactive:active,.vendor-map-canvas.is-map-dragging{cursor:grabbing}
 .vendor-map-placeholder{display:flex;align-items:center;justify-content:center;height:100%;padding:1rem;text-align:center;color:#425466;background:linear-gradient(135deg,#edf4f8,#d7e7ef)}
 .vendor-map-list{max-height:480px;overflow:auto;display:grid;gap:.65rem;padding-right:.2rem}
 .vendor-map-list-item{display:flex;gap:.8rem;align-items:flex-start;border:1px solid #dfe4ea;background:#f8f9fa;border-radius:12px;padding:.8rem;cursor:pointer;text-align:left}

@@ -328,6 +328,7 @@ async function ensureMap() {
       geolocation: false,
       location: false,
     });
+    enableMapInteractions(directoryState.map);
     directoryState.mapReady = true;
     return true;
   });
@@ -354,6 +355,26 @@ async function geocodeEntity(entity) {
 function clearMapMarkers() {
   directoryState.markers.forEach((marker) => marker?.remove?.());
   directoryState.markers = [];
+}
+
+function enableMapInteractions(mapInstance) {
+  if (!mapInstance) return;
+  mapInstance.dragPan?.enable?.();
+  mapInstance.scrollZoom?.enable?.();
+  mapInstance.doubleClickZoom?.enable?.();
+  mapInstance.keyboard?.enable?.();
+  mapInstance.touchZoomRotate?.enable?.();
+
+  const mapElement = document.getElementById('results-map');
+  if (!mapElement || mapElement.dataset.interactionsBound === 'true') return;
+  mapElement.dataset.interactionsBound = 'true';
+  mapElement.classList.add('is-map-interactive');
+  mapElement.addEventListener('mousedown', () => {
+    mapElement.classList.add('is-map-dragging');
+  });
+  window.addEventListener('mouseup', () => {
+    mapElement.classList.remove('is-map-dragging');
+  });
 }
 
 function buildMarkerHtml(entity) {
