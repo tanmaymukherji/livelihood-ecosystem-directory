@@ -312,11 +312,15 @@ async function loadMapSdk() {
 }
 
 async function ensureMap() {
-  if (directoryState.mapReady) return true;
+  if (directoryState.mapReady && directoryState.map) return true;
+  if (directoryState.map) {
+    directoryState.mapReady = true;
+    return true;
+  }
   if (directoryState.mapLoadPromise) return directoryState.mapLoadPromise;
   const loaded = await loadMapSdk();
   if (!loaded || !window.mappls?.Map) return false;
-  directoryState.mapLoadPromise = new Promise((resolve) => {
+  directoryState.mapLoadPromise = Promise.resolve().then(() => {
     directoryState.map = new window.mappls.Map('results-map', {
       center: INDIA_CENTER,
       zoom: 4.8,
@@ -324,16 +328,8 @@ async function ensureMap() {
       geolocation: false,
       location: false,
     });
-    let settled = false;
-    const markReady = () => {
-      if (settled) return;
-      settled = true;
-      directoryState.mapReady = true;
-      resolve(true);
-    };
-    directoryState.map?.on?.('load', markReady);
-    directoryState.map?.addListener?.('load', markReady);
-    window.setTimeout(markReady, 1500);
+    directoryState.mapReady = true;
+    return true;
   });
   return directoryState.mapLoadPromise;
 }
