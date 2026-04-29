@@ -366,19 +366,28 @@ function buildPopupHtml(entity) {
   return `<div class="vendor-map-popup"><div><strong>${esc(entity.entity_name)}</strong><br/>${esc(typeMeta.label)}<br/>${esc(getPrimaryLocationLabel(entity))}<br/><a href="./entity-detail.html?entity=${encodeURIComponent(entity.entity_uid)}">View Details</a></div></div>`;
 }
 
-function buildMarkerIcon(entity, compact = false) {
+function buildMarkerStyle(entity, compact = false) {
   const typeMeta = getEntityTypeMeta(entity.entity_type_slug);
   const fill = String(typeMeta.color_hex || '#1f4b6e');
-  const size = compact ? 18 : 20;
-  const center = size / 2;
-  const radius = compact ? 6 : 7;
-  const svg = `
-    <svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
-      <circle cx="${center}" cy="${center}" r="${radius + 1}" fill="rgba(31,75,110,0.16)"/>
-      <circle cx="${center}" cy="${center}" r="${radius}" fill="${fill}" stroke="#ffffff" stroke-width="2.5"/>
-    </svg>
-  `.trim();
-  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+  return {
+    background: fill,
+    boxShadow: compact
+      ? '0 0 0 5px rgba(31,75,110,.14),0 8px 18px rgba(31,75,110,.24)'
+      : '0 0 0 6px rgba(31,75,110,.14),0 8px 18px rgba(31,75,110,.24)',
+  };
+}
+
+function applyMarkerVisualStyle(marker, entity, compact = false) {
+  const markerElement = marker?.getElement?.() || marker?._element || null;
+  if (!markerElement) return;
+  const markerStyle = buildMarkerStyle(entity, compact);
+  markerElement.style.backgroundImage = 'none';
+  markerElement.style.backgroundColor = markerStyle.background;
+  markerElement.style.background = markerStyle.background;
+  markerElement.style.border = '3px solid #ffffff';
+  markerElement.style.borderRadius = '999px';
+  markerElement.style.boxShadow = markerStyle.boxShadow;
+  markerElement.style.display = 'block';
 }
 
 function attachMarkerInteractions(marker, entity) {
@@ -392,12 +401,12 @@ function createMapMarker(entity, point, compact = false) {
   const marker = new window.mappls.Marker({
     map: directoryState.map,
     position: point,
-    icon: buildMarkerIcon(entity, compact),
     width: markerSize,
     height: markerSize,
     popupHtml,
     fitbounds: false,
   });
+  applyMarkerVisualStyle(marker, entity, compact);
   attachMarkerInteractions(marker, entity);
   return marker;
 }
