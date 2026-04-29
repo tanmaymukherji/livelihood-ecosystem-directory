@@ -387,6 +387,58 @@ function buildPopupHtml(entity) {
   return `<div class="vendor-map-popup"><div><strong>${esc(entity.entity_name)}</strong><br/>${esc(typeMeta.label)}<br/>${esc(getPrimaryLocationLabel(entity))}<br/><a href="./entity-detail.html?entity=${encodeURIComponent(entity.entity_uid)}">View Details</a></div></div>`;
 }
 
+function createMarkerElement(entity, compact = false) {
+  const wrapper = document.createElement('div');
+  wrapper.innerHTML = buildMarkerHtml(entity);
+  const element = wrapper.firstElementChild;
+  if (!element) return null;
+  if (compact) {
+    element.style.width = '18px';
+    element.style.height = '18px';
+    element.style.boxShadow = '0 0 0 5px rgba(31,75,110,.14),0 8px 18px rgba(31,75,110,.24)';
+  }
+  return element;
+}
+
+function attachMarkerInteractions(marker, entity) {
+  marker.on?.('click', () => focusEntity(entity.entity_uid));
+  marker.addListener?.('click', () => focusEntity(entity.entity_uid));
+}
+
+function createMapMarker(entity, point, compact = false) {
+  const popupHtml = buildPopupHtml(entity);
+  const markerSize = compact ? 18 : 20;
+  const element = createMarkerElement(entity, compact);
+
+  try {
+    if (element && typeof window.mappls?.Marker === 'function') {
+      const marker = new window.mappls.Marker({
+        map: directoryState.map,
+        position: point,
+        element,
+        width: markerSize,
+        height: markerSize,
+        popupHtml,
+        fitbounds: false,
+      });
+      attachMarkerInteractions(marker, entity);
+      return marker;
+    }
+  } catch {}
+
+  const marker = new window.mappls.Marker({
+    map: directoryState.map,
+    position: point,
+    html: buildMarkerHtml(entity),
+    width: markerSize,
+    height: markerSize,
+    popupHtml,
+    fitbounds: false,
+  });
+  attachMarkerInteractions(marker, entity);
+  return marker;
+}
+
 function groupMapPoints(entries) {
   const groups = new Map();
   entries.forEach((entry) => {
@@ -442,17 +494,7 @@ async function renderMapMarkers(entities) {
         };
     const ringPoints = createRingPoints(basePoint, entries.length);
     entries.forEach((entry, index) => {
-      const marker = new window.mappls.Marker({
-        map: directoryState.map,
-        position: ringPoints[index],
-        html: buildMarkerHtml(entry.entity),
-        width: entries.length > 1 ? 18 : 20,
-        height: entries.length > 1 ? 18 : 20,
-        popupHtml: buildPopupHtml(entry.entity),
-        fitbounds: false,
-      });
-      marker.on?.('click', () => focusEntity(entry.entity.entity_uid));
-      marker.addListener?.('click', () => focusEntity(entry.entity.entity_uid));
+      const marker = createMapMarker(entry.entity, ringPoints[index], entries.length > 1);
       directoryState.markers.push(marker);
     });
   });
