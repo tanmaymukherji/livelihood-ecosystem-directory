@@ -344,27 +344,10 @@ async function geocodeEntity(entity) {
     directoryState.geocodeCache.set(cacheKey, point);
     return point;
   }
-  const queryCandidates = [
-    [entity.primary_address, entity.district, entity.state, entity.country].filter(Boolean).join(', '),
-    [entity.location_label, entity.state, entity.country].filter(Boolean).join(', '),
-    [entity.district, entity.state, entity.country].filter(Boolean).join(', '),
-    [entity.state, entity.country].filter(Boolean).join(', '),
-  ].map((value) => String(value || '').trim()).filter(Boolean);
-  const uniqueQueries = [...new Set(queryCandidates)];
-  for (const query of uniqueQueries) {
-    try {
-      const response = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=${encodeURIComponent(query)}`, {
-        headers: { Accept: 'application/json' },
-      });
-      const data = await response.json();
-      const match = Array.isArray(data) ? data[0] : null;
-      const point = match ? { lat: Number(match.lat), lng: Number(match.lon) } : null;
-      if (point && hasUsableCoordinate(point.lat, point.lng)) {
-        directoryState.geocodeCache.set(cacheKey, point);
-        return point;
-      }
-    } catch {}
-  }
+  // Public browser geocoding is intentionally disabled because third-party
+  // geocoders are blocked by CORS in production. Coordinates should be
+  // backfilled and persisted via admin/import workflows instead.
+  directoryState.geocodeCache.set(cacheKey, null);
   return null;
 }
 
