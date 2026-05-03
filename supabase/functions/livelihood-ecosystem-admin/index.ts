@@ -52,6 +52,13 @@ const EDITABLE_FIELDS = [
 
 const SOTH_STAGE_NAMES = ["Initiate", "Engage", "Action", "Auto Pilot"] as const;
 const GRAMEEE_STAGE_NAMES = ["Triggering", "Incubating", "Sustaining"] as const;
+const PLACE_ROLE_TO_ENTITY_TYPE: Record<string, string> = {
+  cso: "cso",
+  mentor: "mentor",
+  incubator: "incubation_centre",
+  institutes: "institute",
+  trader_association: "trader_association",
+};
 
 type EntityInput = Record<string, unknown>;
 
@@ -128,6 +135,28 @@ function flattenTypeSpecificValues(value: unknown): string[] {
   return value ? [String(value)] : [];
 }
 
+function parseLooseTagList(value: unknown) {
+  return String(value || "")
+    .split(/\r?\n|,|;|\|/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function mergeUniqueTextArrays(...arrays: string[][]) {
+  const seen = new Set<string>();
+  const output: string[] = [];
+  for (const array of arrays) {
+    for (const item of array) {
+      const text = requireString(item);
+      const key = normalizeText(text);
+      if (!text || seen.has(key)) continue;
+      seen.add(key);
+      output.push(text);
+    }
+  }
+  return output;
+}
+
 function buildSearchText(input: Record<string, unknown>) {
   return [
     requireString(input.entity_name),
@@ -154,6 +183,47 @@ function normalizeStatusObject(input: unknown, stages: readonly string[]) {
     const value = raw === "mature" || raw === "in_progress" ? raw : "not_started";
     return [stage, value];
   }));
+}
+
+function getThematicFieldKey(typeSlug: string) {
+  switch (typeSlug) {
+    case "mentor":
+      return "domain_expertise";
+    case "community_steward":
+      return "support_areas";
+    case "volunteer":
+      return "cause_areas";
+    case "intern":
+      return "preferred_domains";
+    case "incubation_centre":
+    case "accelerator":
+    case "institute":
+      return "thematic_areas";
+    case "trader_association":
+      return "key_services";
+    case "cso":
+      return "areas_of_work";
+    default:
+      return "";
+  }
+}
+
+function getGeographyFieldKey(typeSlug: string) {
+  switch (typeSlug) {
+    case "volunteer":
+    case "intern":
+      return "preferred_geography";
+    case "mentor":
+    case "community_steward":
+    case "incubation_centre":
+    case "accelerator":
+    case "institute":
+    case "trader_association":
+    case "cso":
+      return "geography_served";
+    default:
+      return "";
+  }
 }
 
 function dedupeLocations(values: string[]) {
@@ -641,6 +711,125 @@ async function handleSubmitContactRequest(request: Record<string, unknown>) {
   return jsonResponse({ ok: true, item: data });
 }
 
+function buildPlaceLocationTags(locations: Record<string, unknown>[]) {
+  return mergeUniqueTextArrays(
+    locations.map((item) => requireString(item.village_name)).filter(Boolean),
+    locations.map((item) => requireString(item.block_name)).filter(Boolean),
+    locations.map((item) => requireString(item.district_name)).filter(Boolean),
+    locations.map((item) => requireString(item.state_name)).filter(Boolean),
+  );
+}
+
+function buildPlaceLocationLabel(locations: Record<string, unknown>[]) {
+  const labels = mergeUniqueTextArrays(locations.map((item) => requireString(item.display_label)).filter(Boolean));
+  return labels.slice(0, 3).join(" | ");
+}
+
+function buildParticipantTypeSpecificData(
+  typeSlug: string,
+  existing: Record<string, unknown>,
+  thematicTags: string[],
+  locationTags: string[]
+) {
+  const next = {
+    ...toJsonObject(existing.type_specific_data),
+  } as Record<string, unknown>;
+  const thematicFieldKey = getThematicFieldKey(typeSlug);
+  if (thematicFieldKey) {
+    next[thematicFieldKey] = mergeUniqueTextArrays(
+      toTextArray(next[thematicFieldKey]),
+      thematicTags,
+    );
+  }
+  const geographyFieldKey = getGeographyFieldKey(typeSlug);
+  if (geographyFieldKey) {
+    next[geographyFieldKey] = mergeUniqueTextArrays(
+      toTextArray(next[geographyFieldKey]),
+      locationTags,
+    );
+  }
+  return next;
+}
+
+async function syncPlaceParticipantToDirectory(
+  participant: Record<string, unknown>,
+  roleSlug: string,
+  normalizedLocations: Record<string, unknown>[],
+  sessionUsername: string
+) {
+  const participantName = requireString(participant.partner_name) || requireString(participant.name);
+  if (!participantName) {
+    return {
+      entity_uid: requireString(participant.entity_uid) || null,
+      entity_type_slug: requireString(participant.entity_type_slug) || null,
+    };
+  }
+
+  let entityUid = requireString(participant.entity_uid);
+  let entityTypeSlug = requireString(participant.entity_type_slug);
+  let existing: Record<string, unknown> | null = null;
+  let table = "";
+
+  if (entityUid) {
+    try {
+      const found = await findEntityRow(entityUid);
+      entityTypeSlug = found.typeSlug;
+      table = found.table;
+      const supabase = getSupabaseAdmin();
+      const { data } = await supabase.from(table).select("*").eq("entity_uid", entityUid).maybeSingle();
+      existing = data ?? null;
+    } catch {
+      existing = null;
+    }
+  }
+
+  if (!entityTypeSlug) {
+    entityTypeSlug = PLACE_ROLE_TO_ENTITY_TYPE[roleSlug] || "";
+  }
+
+  if (!entityTypeSlug || !ENTITY_TABLES[entityTypeSlug]) {
+    return {
+      entity_uid: entityUid || null,
+      entity_type_slug: entityTypeSlug || null,
+    };
+  }
+
+  const thematicTags = parseLooseTagList(participant.thematic_area);
+  const locationTags = buildPlaceLocationTags(normalizedLocations);
+  const firstState = requireString(normalizedLocations[0]?.state_name) || "India";
+  const locationLabel = buildPlaceLocationLabel(normalizedLocations) || firstState;
+
+  const baseRecord = existing || {};
+  const nextPayload = {
+    ...baseRecord,
+    entity_uid: entityUid || requireString(baseRecord.entity_uid) || undefined,
+    entity_name: participantName,
+    location_label: requireString(baseRecord.location_label) || locationLabel || null,
+    state: requireString(baseRecord.state) || (firstState !== "India" ? firstState : null),
+    country: requireString(baseRecord.country) || "India",
+    website_url: requireString(participant.website_url) || requireString(baseRecord.website_url) || null,
+    tags: mergeUniqueTextArrays(
+      toTextArray(baseRecord.tags),
+      thematicTags,
+      locationTags,
+    ),
+    keywords: mergeUniqueTextArrays(
+      toTextArray(baseRecord.keywords),
+      thematicTags,
+      locationTags,
+    ),
+    type_specific_data: buildParticipantTypeSpecificData(entityTypeSlug, baseRecord, thematicTags, locationTags),
+  };
+
+  const synced = await upsertEntity(entityTypeSlug, nextPayload, sessionUsername);
+  return {
+    entity_uid: requireString(synced?.entity_uid) || null,
+    entity_type_slug: entityTypeSlug,
+    entity_name: requireString(synced?.entity_name) || participantName,
+    website_url: requireString(synced?.website_url) || requireString(participant.website_url) || null,
+  };
+}
+
 async function ensurePlaceRoleType(roleSlug: string, roleLabel: string) {
   const normalizedLabel = requireString(roleLabel);
   const normalizedSlug = requireString(roleSlug) || slugify(normalizedLabel);
@@ -733,16 +922,18 @@ async function handleUpsertPlaceInitiative(token: string, placeInput: Record<str
   }));
 
   const partnerInputs = toRecordArray(placeInput.partners);
+  const syncedLeadEntity = await syncPlaceParticipantToDirectory(leadInput, customLeadRole.roleSlug || "", normalizedLocations, session.username);
   const normalizedPartners = await Promise.all(partnerInputs.map(async (partner, index) => {
     const customRole = await ensurePlaceRoleType(requireString(partner.role_slug), requireString(partner.role_label));
+    const syncedEntity = await syncPlaceParticipantToDirectory(partner, customRole.roleSlug || "", normalizedLocations, session.username);
     return {
       partner_kind: "partner",
-      entity_uid: requireString(partner.entity_uid) || null,
-      entity_type_slug: requireString(partner.entity_type_slug) || null,
+      entity_uid: syncedEntity.entity_uid || requireString(partner.entity_uid) || null,
+      entity_type_slug: syncedEntity.entity_type_slug || requireString(partner.entity_type_slug) || null,
       partner_name: requireString(partner.partner_name),
       role_slug: customRole.roleSlug || null,
       role_label: customRole.roleLabel || null,
-      website_url: requireString(partner.website_url) || null,
+      website_url: syncedEntity.website_url || requireString(partner.website_url) || null,
       thematic_area: requireString(partner.thematic_area) || null,
       sort_order: Number(partner.sort_order || index + 1),
       updated_at: new Date().toISOString(),
@@ -755,12 +946,12 @@ async function handleUpsertPlaceInitiative(token: string, placeInput: Record<str
     place_uid: placeUid,
     slug: slugify(initiativeName) || placeUid,
     initiative_name: initiativeName,
-    lead_entity_uid: requireString(leadInput.entity_uid) || null,
-    lead_entity_type_slug: requireString(leadInput.entity_type_slug) || null,
+    lead_entity_uid: syncedLeadEntity.entity_uid || requireString(leadInput.entity_uid) || null,
+    lead_entity_type_slug: syncedLeadEntity.entity_type_slug || requireString(leadInput.entity_type_slug) || null,
     lead_name: leadName,
     lead_role_slug: customLeadRole.roleSlug || null,
     lead_role_label: customLeadRole.roleLabel || null,
-    lead_website_url: requireString(leadInput.website_url) || null,
+    lead_website_url: syncedLeadEntity.website_url || requireString(leadInput.website_url) || null,
     lead_thematic_area: requireString(leadInput.thematic_area) || null,
     states_covered: statesCovered,
     soth_status: normalizeStatusObject(placeInput.soth_status, SOTH_STAGE_NAMES),
@@ -789,12 +980,12 @@ async function handleUpsertPlaceInitiative(token: string, placeInput: Record<str
   const leadRow = {
     place_uid: placeUid,
     partner_kind: "lead",
-    entity_uid: requireString(leadInput.entity_uid) || null,
-    entity_type_slug: requireString(leadInput.entity_type_slug) || null,
+    entity_uid: syncedLeadEntity.entity_uid || requireString(leadInput.entity_uid) || null,
+    entity_type_slug: syncedLeadEntity.entity_type_slug || requireString(leadInput.entity_type_slug) || null,
     partner_name: leadName,
     role_slug: customLeadRole.roleSlug || null,
     role_label: customLeadRole.roleLabel || null,
-    website_url: requireString(leadInput.website_url) || null,
+    website_url: syncedLeadEntity.website_url || requireString(leadInput.website_url) || null,
     thematic_area: requireString(leadInput.thematic_area) || null,
     sort_order: 0,
     updated_at: new Date().toISOString(),
