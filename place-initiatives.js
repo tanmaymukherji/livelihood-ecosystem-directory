@@ -158,6 +158,15 @@ function forceMapRepaint(options = {}) {
   });
 }
 
+async function preparePrintView() {
+  document.body.classList.add('is-print-prep');
+  forceMapRepaint({ preserveIndiaView: false });
+  renderRoleCallouts();
+  await new Promise((resolve) => setTimeout(resolve, 500));
+  forceMapRepaint({ preserveIndiaView: false });
+  await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+}
+
 function buildStatusEditor(container, stages, prefix) {
   container.innerHTML = stages.map((stage) => {
     return `<div class="place-status-card"><label for="${esc(prefix + '-' + slugify(stage))}">${esc(stage)}</label><select id="${esc(prefix + '-' + slugify(stage))}" data-status-group="${esc(prefix)}" data-status-stage="${esc(stage)}">${STATUS_OPTIONS.map((option) => `<option value="${esc(option.value)}">${esc(option.label)}</option>`).join('')}</select></div>`;
@@ -1284,7 +1293,10 @@ function bindEvents() {
     fillEditor(placeUid);
     document.querySelector('.place-editor-shell')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
-  document.getElementById('print-place-view').addEventListener('click', () => window.print());
+  document.getElementById('print-place-view').addEventListener('click', async () => {
+    await preparePrintView();
+    window.print();
+  });
   els.form.addEventListener('submit', handleSavePlace);
 
   els.leadOrgRole.addEventListener('change', () => syncCustomRoleVisibility(els.leadOrgRole, els.leadRoleCustomGroup));
@@ -1405,6 +1417,14 @@ function bindEvents() {
   });
 
   window.addEventListener('resize', () => renderRoleCallouts());
+  window.addEventListener('beforeprint', () => {
+    preparePrintView();
+  });
+  window.addEventListener('afterprint', () => {
+    document.body.classList.remove('is-print-prep');
+    forceMapRepaint({ preserveIndiaView: false });
+    renderRoleCallouts();
+  });
 }
 
 async function init() {
