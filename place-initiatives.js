@@ -362,16 +362,50 @@ function renderLeadSuggestions(matches) {
   });
 }
 
-function addPartnerRow(values = {}) {
+function getPartnerSummaryLabel(values = {}) {
+  const name = String(values.partner_name || '').trim() || 'New Partner';
+  const roleLabel = getRoleLabel(values.role_slug || '', values.role_label || '') || 'Role not set';
+  return { name, roleLabel };
+}
+
+function updatePartnerCardSummary(row) {
+  if (!row) return;
+  const name = row.querySelector('[data-partner-name]')?.value.trim() || 'New Partner';
+  const roleSelect = row.querySelector('[data-partner-role]');
+  const roleCustom = row.querySelector('[data-partner-role-custom]')?.value.trim() || '';
+  const roleLabel = getRoleLabel(roleSelect?.value || '', roleCustom) || 'Role not set';
+  const nameEl = row.querySelector('[data-partner-summary-name]');
+  const roleEl = row.querySelector('[data-partner-summary-role]');
+  if (nameEl) nameEl.textContent = name;
+  if (roleEl) roleEl.textContent = roleLabel;
+}
+
+function setPartnerCardExpanded(row, expanded) {
+  if (!row) return;
+  row.classList.toggle('is-expanded', expanded);
+  const button = row.querySelector('[data-toggle-partner]');
+  if (button) button.textContent = expanded ? 'Collapse' : 'Expand';
+}
+
+function addPartnerRow(values = {}, options = {}) {
   const rowId = `partner-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+  const expanded = options.expanded ?? !values.partner_name;
+  const summary = getPartnerSummaryLabel(values);
   const html = `
-    <article class="place-partner-card" data-partner-row="${esc(rowId)}">
+    <article class="place-partner-card ${expanded ? 'is-expanded' : ''}" data-partner-row="${esc(rowId)}">
       <div class="place-partner-head">
-        <h4>Partner</h4>
-        <button class="btn btn-small btn-danger" type="button" data-remove-partner="${esc(rowId)}">Remove</button>
+        <div class="place-partner-summary">
+          <strong data-partner-summary-name>${esc(summary.name)}</strong>
+          <small data-partner-summary-role>${esc(summary.roleLabel)}</small>
+        </div>
+        <div class="btn-group">
+          <button class="btn btn-small" type="button" data-toggle-partner="${esc(rowId)}">${expanded ? 'Collapse' : 'Expand'}</button>
+          <button class="btn btn-small btn-danger" type="button" data-remove-partner="${esc(rowId)}">Remove</button>
+        </div>
       </div>
       <input type="hidden" data-partner-entity-uid value="${esc(values.entity_uid || '')}" />
       <input type="hidden" data-partner-entity-type value="${esc(values.entity_type_slug || '')}" />
+      <div class="place-partner-fields">
       <div class="form-group">
         <label>Search Existing Entity</label>
         <input type="search" data-partner-search="${esc(rowId)}" placeholder="Search master directory" autocomplete="off" value="" />
@@ -397,6 +431,7 @@ function addPartnerRow(values = {}) {
         <label>Thematic Area</label>
         <textarea rows="2" data-partner-theme placeholder="Theme or support area">${esc(values.thematic_area || '')}</textarea>
       </div>
+      </div>
     </article>
   `;
   els.partnerList.insertAdjacentHTML('beforeend', html);
@@ -404,6 +439,8 @@ function addPartnerRow(values = {}) {
   const roleSelect = row.querySelector('[data-partner-role]');
   if (!roleSelect.value) roleSelect.value = placeState.placeRoleTypes[0]?.slug || 'cso';
   syncCustomRoleVisibility(roleSelect, row.querySelector('[data-partner-custom-group]'));
+  updatePartnerCardSummary(row);
+  setPartnerCardExpanded(row, expanded);
 }
 
 function syncCustomRoleVisibility(selectEl, groupEl) {
@@ -570,6 +607,7 @@ function fillPartnerFromEntity(rowId, entity) {
     suggestionBox.innerHTML = '';
   }
   placeState.pendingPartnerSuggestions.delete(rowId);
+  updatePartnerCardSummary(row);
 }
 
 function setEditorEnabled(enabled) {
@@ -1014,8 +1052,8 @@ function fillEditor(placeUid) {
   els.leadOrgTheme.value = lead?.thematic_area || place.lead_thematic_area || '';
 
   els.partnerList.innerHTML = '';
-  partnerRows.forEach((partner) => addPartnerRow(partner));
-  if (!partnerRows.length) addPartnerRow();
+  partnerRows.forEach((partner) => addPartnerRow(partner, { expanded: false }));
+  if (!partnerRows.length) addPartnerRow({}, { expanded: true });
 
   fillStatusGroup('soth', SOTH_STAGES, place.soth_status || getDefaultStatus(SOTH_STAGES));
   fillStatusGroup('grameee', GRAMEEE_STAGES, place.grameee_status || getDefaultStatus(GRAMEEE_STAGES));
@@ -1028,7 +1066,7 @@ function resetEditor() {
   clearLeadSelection();
   renderLocationList([]);
   els.partnerList.innerHTML = '';
-  addPartnerRow();
+  addPartnerRow({}, { expanded: true });
   fillStatusGroup('soth', SOTH_STAGES, getDefaultStatus(SOTH_STAGES));
   fillStatusGroup('grameee', GRAMEEE_STAGES, getDefaultStatus(GRAMEEE_STAGES));
   syncCustomRoleVisibility(els.leadOrgRole, els.leadRoleCustomGroup);
@@ -1227,7 +1265,7 @@ function bindEvents() {
   });
   document.getElementById('place-admin-login-form').addEventListener('submit', handleAdminLogin);
   document.getElementById('place-admin-logout').addEventListener('click', handleAdminLogout);
-  document.getElementById('add-partner-row').addEventListener('click', () => addPartnerRow());
+  document.getElementById('add-partner-row').addEventListener('click', () => addPartnerRow({}, { expanded: true }));
   document.getElementById('new-place').addEventListener('click', () => {
     placeState.selectedPlaceUid = '';
     resetEditor();
@@ -1295,10 +1333,16 @@ function bindEvents() {
   });
 
   els.partnerList.addEventListener('click', (event) => {
+    const toggleButton = event.target.closest('[data-toggle-partner]');
+    if (toggleButton) {
+      const row = els.partnerList.querySelector(`[data-partner-row="${CSS.escape(toggleButton.dataset.togglePartner)}"]`);
+      if (row) setPartnerCardExpanded(row, !row.classList.contains('is-expanded'));
+      return;
+    }
     const removeButton = event.target.closest('[data-remove-partner]');
     if (removeButton) {
       els.partnerList.querySelector(`[data-partner-row="${CSS.escape(removeButton.dataset.removePartner)}"]`)?.remove();
-      if (!els.partnerList.querySelector('[data-partner-row]')) addPartnerRow();
+      if (!els.partnerList.querySelector('[data-partner-row]')) addPartnerRow({}, { expanded: true });
       return;
     }
     const suggestionButton = event.target.closest('[data-partner-entity]');
@@ -1310,6 +1354,8 @@ function bindEvents() {
   });
 
   els.partnerList.addEventListener('input', (event) => {
+    const row = event.target.closest('[data-partner-row]');
+    if (row) updatePartnerCardSummary(row);
     const searchInput = event.target.closest('[data-partner-search]');
     if (searchInput) {
       const rowId = searchInput.dataset.partnerSearch;
@@ -1322,6 +1368,7 @@ function bindEvents() {
     const roleSelect = event.target.closest('[data-partner-role]');
     if (roleSelect) {
       syncCustomRoleVisibility(roleSelect, roleSelect.closest('[data-partner-row]')?.querySelector('[data-partner-custom-group]'));
+      updatePartnerCardSummary(roleSelect.closest('[data-partner-row]'));
     }
   });
 

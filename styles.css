@@ -121,6 +121,11 @@ a{text-decoration:none}
 .place-location-chip,.place-partner-card{display:flex;justify-content:space-between;align-items:flex-start;gap:.75rem;padding:.8rem .9rem;border-radius:12px;border:1px solid #dfe4ea;background:#f8f9fa}
 .place-location-chip small{display:block;color:#647585;text-transform:capitalize}
 .place-partner-card{display:grid}
+.place-partner-head{align-items:center}
+.place-partner-summary{display:grid;gap:.12rem}
+.place-partner-summary small{color:#6a7785;line-height:1.35}
+.place-partner-fields{display:none;gap:.1rem}
+.place-partner-card.is-expanded .place-partner-fields{display:grid}
 .place-status-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.7rem}
 .place-status-card{display:grid;gap:.35rem;padding:.75rem;border:1px solid #dfe4ea;border-radius:12px;background:#fff}
 .place-bottom-scroll{overflow-x:auto;padding-bottom:.2rem}
