@@ -24,6 +24,7 @@ const placeState = {
   calloutPositions: {},
   roleBoxesVisible: false,
   calloutPlaceUid: '',
+  isRebalancingCallouts: false,
 };
 
 const INDIA_CENTER = { lat: 22.9734, lng: 78.6569 };
@@ -129,6 +130,14 @@ function updateRoleBoxToggleLabel() {
   const hasPlace = Boolean(placeState.selectedPlaceUid);
   els.toggleRoleBoxes.textContent = placeState.roleBoxesVisible ? 'Hide Role Boxes' : 'Show Role Boxes';
   els.toggleRoleBoxes.disabled = !hasPlace;
+}
+
+function clearAutoCalloutPositions(placeUid) {
+  Object.keys(placeState.calloutPositions).forEach((key) => {
+    if (!key.startsWith(`${placeUid}:`)) return;
+    if (placeState.calloutPositions[key]?.manual) return;
+    delete placeState.calloutPositions[key];
+  });
 }
 
 function forceMapRepaint(options = {}) {
@@ -893,6 +902,79 @@ function renderRoleCallouts() {
   }).join('');
   els.callouts.innerHTML = cards;
   updateRoleBoxToggleLabel();
+  rebalanceCallouts(placeUid);
+}
+
+function rebalanceCallouts(placeUid) {
+  if (placeState.isRebalancingCallouts || !placeUid) return;
+  placeState.isRebalancingCallouts = true;
+  requestAnimationFrame(() => {
+    try {
+      const container = els.callouts;
+      const cards = Array.from(container.querySelectorAll('[data-callout-key]'));
+      if (!cards.length) return;
+      const containerRect = container.getBoundingClientRect();
+      const gap = 14;
+      const margin = 18;
+      const scale = getCalloutScale();
+      const fallbackWidth = 220 * scale;
+      const leftCards = [];
+      const rightCards = [];
+
+      cards.forEach((card, index) => {
+        const key = card.dataset.calloutKey;
+        const existing = placeState.calloutPositions[key];
+        if (existing?.manual) return;
+        const roleIndex = cards.findIndex((item) => item.dataset.calloutKey === key);
+        if (roleIndex % 2 === 0) leftCards.push(card);
+        else rightCards.push(card);
+      });
+
+      let leftY = 24;
+      let rightY = 24;
+      const nextPositions = {};
+
+      leftCards.forEach((card) => {
+        const key = card.dataset.calloutKey;
+        const rect = card.getBoundingClientRect();
+        const width = rect.width || fallbackWidth;
+        nextPositions[key] = { x: margin, y: leftY, manual: false };
+        leftY += (rect.height || 72) + gap;
+        if (width > fallbackWidth) {
+          nextPositions[key].x = margin;
+        }
+      });
+
+      rightCards.forEach((card) => {
+        const key = card.dataset.calloutKey;
+        const rect = card.getBoundingClientRect();
+        const width = rect.width || fallbackWidth;
+        nextPositions[key] = {
+          x: Math.max(margin, containerRect.width - width - margin),
+          y: rightY,
+          manual: false,
+        };
+        rightY += (rect.height || 72) + gap;
+      });
+
+      let changed = false;
+      Object.entries(nextPositions).forEach(([key, value]) => {
+        const current = placeState.calloutPositions[key];
+        if (!current || current.manual || Math.abs((current.x || 0) - value.x) > 1 || Math.abs((current.y || 0) - value.y) > 1) {
+          placeState.calloutPositions[key] = value;
+          changed = true;
+        }
+      });
+
+      if (changed) {
+        placeState.isRebalancingCallouts = false;
+        renderRoleCallouts();
+        return;
+      }
+    } finally {
+      placeState.isRebalancingCallouts = false;
+    }
+  });
 }
 
 function fitToPlace(placeUid) {
@@ -954,6 +1036,7 @@ function resetEditor() {
 
 function selectPlace(placeUid, options = {}) {
   placeState.selectedPlaceUid = placeUid;
+  if (options.resetCalloutLayout) clearAutoCalloutPositions(placeUid);
   renderDetail(placeUid);
   fillEditor(placeUid);
   renderMap();
@@ -1088,7 +1171,7 @@ async function handleSavePlace(event) {
     });
     await initializePageData();
     const selected = payload.place_uid || placeState.placeInitiatives.find((item) => item.initiative_name === payload.initiative_name)?.place_uid || placeState.selectedPlaceUid;
-    if (selected) selectPlace(selected, { fit: true });
+    if (selected) selectPlace(selected, { fit: true, resetCalloutLayout: true });
     setStatus(els.saveStatus, 'Place initiative saved.');
   } catch (error) {
     setStatus(els.saveStatus, error.message || 'Save failed.', true);
@@ -1266,6 +1349,7 @@ function bindEvents() {
     placeState.calloutPositions[key] = {
       x: Math.max(0, left + (event.clientX - startX)),
       y: Math.max(0, top + (event.clientY - startY)),
+      manual: true,
     };
     renderRoleCallouts();
   });
