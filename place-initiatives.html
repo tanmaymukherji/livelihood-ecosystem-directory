@@ -70,32 +70,41 @@
 
             <div id="place-location-list" class="place-location-list"></div>
 
-            <section class="place-form-block">
+            <section class="place-form-block place-lead-card" id="place-lead-card">
               <div class="place-form-block-header">
+                <div class="place-partner-summary">
+                  <strong id="lead-summary-name">Lead Organisation</strong>
+                  <small id="lead-summary-role">Role not set</small>
+                </div>
+                <div class="btn-group">
+                  <button class="btn btn-small" id="toggle-lead-card" type="button">Expand</button>
+                </div>
+              </div>
+              <div class="place-lead-fields">
                 <h4>Lead Organisation</h4>
               </div>
-              <div class="form-group">
+              <div class="form-group place-lead-fields">
                 <label for="lead-org-search">Lead Organisation / Individual</label>
                 <input id="lead-org-search" type="search" placeholder="Search the directory master database" autocomplete="off" />
                 <div id="lead-org-suggestions" class="place-suggestions" hidden></div>
               </div>
-              <div class="form-group">
+              <div class="form-group place-lead-fields">
                 <label for="lead-org-name">Name</label>
                 <input id="lead-org-name" type="text" placeholder="Organisation or individual name" />
               </div>
-              <div class="form-group">
+              <div class="form-group place-lead-fields">
                 <label for="lead-org-role">Role</label>
                 <select id="lead-org-role"></select>
               </div>
-              <div class="form-group" id="lead-role-custom-group" hidden>
+              <div class="form-group place-lead-fields" id="lead-role-custom-group" hidden>
                 <label for="lead-org-role-custom">Add New Role Label</label>
                 <input id="lead-org-role-custom" type="text" placeholder="Describe the new role to add for later use" />
               </div>
-              <div class="form-group">
+              <div class="form-group place-lead-fields">
                 <label for="lead-org-website">Website</label>
                 <input id="lead-org-website" type="url" placeholder="https://..." />
               </div>
-              <div class="form-group">
+              <div class="form-group place-lead-fields">
                 <label for="lead-org-theme">Thematic Area of Work</label>
                 <textarea id="lead-org-theme" rows="3" placeholder="Livelihoods, skilling, market access, climate resilience..."></textarea>
               </div>

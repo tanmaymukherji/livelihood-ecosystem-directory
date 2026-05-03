@@ -126,6 +126,8 @@ a{text-decoration:none}
 .place-partner-summary small{color:#6a7785;line-height:1.35}
 .place-partner-fields{display:none;gap:.1rem}
 .place-partner-card.is-expanded .place-partner-fields{display:grid}
+.place-lead-card .place-lead-fields{display:none}
+.place-lead-card.is-expanded .place-lead-fields{display:grid}
 .place-status-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.7rem}
 .place-status-card{display:grid;gap:.35rem;padding:.75rem;border:1px solid #dfe4ea;border-radius:12px;background:#fff}
 .place-bottom-scroll{overflow-x:auto;padding-bottom:.2rem}

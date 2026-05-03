@@ -60,6 +60,10 @@ const els = {
   leadRoleCustom: document.getElementById('lead-org-role-custom'),
   leadOrgWebsite: document.getElementById('lead-org-website'),
   leadOrgTheme: document.getElementById('lead-org-theme'),
+  leadCard: document.getElementById('place-lead-card'),
+  leadSummaryName: document.getElementById('lead-summary-name'),
+  leadSummaryRole: document.getElementById('lead-summary-role'),
+  toggleLeadCard: document.getElementById('toggle-lead-card'),
   partnerList: document.getElementById('partner-list'),
   sothGrid: document.getElementById('soth-status-grid'),
   grameeeGrid: document.getElementById('grameee-status-grid'),
@@ -567,6 +571,18 @@ function getSelectedLeadPayload() {
   };
 }
 
+function updateLeadCardSummary() {
+  const name = els.leadOrgName.value.trim() || 'Lead Organisation';
+  const roleLabel = getRoleLabel(els.leadOrgRole.value || '', els.leadRoleCustom.value.trim() || '') || 'Role not set';
+  if (els.leadSummaryName) els.leadSummaryName.textContent = name;
+  if (els.leadSummaryRole) els.leadSummaryRole.textContent = roleLabel;
+}
+
+function setLeadCardExpanded(expanded) {
+  els.leadCard?.classList.toggle('is-expanded', expanded);
+  if (els.toggleLeadCard) els.toggleLeadCard.textContent = expanded ? 'Collapse' : 'Expand';
+}
+
 function getPartnerPayloads() {
   return Array.from(els.partnerList.querySelectorAll('[data-partner-row]')).map((row, index) => {
     const roleSelect = row.querySelector('[data-partner-role]');
@@ -586,6 +602,7 @@ function getPartnerPayloads() {
 function clearLeadSelection() {
   delete els.leadOrgName.dataset.entityUid;
   delete els.leadOrgName.dataset.entityTypeSlug;
+  updateLeadCardSummary();
 }
 
 function fillLeadFromEntity(entity) {
@@ -598,6 +615,7 @@ function fillLeadFromEntity(entity) {
   els.leadOrgSuggestions.hidden = true;
   els.leadOrgSuggestions.innerHTML = '';
   placeState.pendingLeadSuggestion = null;
+  updateLeadCardSummary();
 }
 
 function fillPartnerFromEntity(rowId, entity) {
@@ -1064,6 +1082,8 @@ function fillEditor(placeUid) {
   syncCustomRoleVisibility(els.leadOrgRole, els.leadRoleCustomGroup);
   els.leadOrgWebsite.value = lead?.website_url || place.lead_website_url || '';
   els.leadOrgTheme.value = lead?.thematic_area || place.lead_thematic_area || '';
+  updateLeadCardSummary();
+  setLeadCardExpanded(false);
 
   els.partnerList.innerHTML = '';
   partnerRows.forEach((partner) => addPartnerRow(partner, { expanded: false }));
@@ -1084,6 +1104,8 @@ function resetEditor() {
   fillStatusGroup('soth', SOTH_STAGES, getDefaultStatus(SOTH_STAGES));
   fillStatusGroup('grameee', GRAMEEE_STAGES, getDefaultStatus(GRAMEEE_STAGES));
   syncCustomRoleVisibility(els.leadOrgRole, els.leadRoleCustomGroup);
+  updateLeadCardSummary();
+  setLeadCardExpanded(false);
 }
 
 function selectPlace(placeUid, options = {}) {
@@ -1286,6 +1308,10 @@ function bindEvents() {
     setStatus(els.saveStatus, '');
   });
   document.getElementById('delete-place').addEventListener('click', handleDeletePlace);
+  els.toggleLeadCard.addEventListener('click', () => {
+    if (!els.leadCard) return;
+    setLeadCardExpanded(!els.leadCard.classList.contains('is-expanded'));
+  });
   els.toggleRoleBoxes.addEventListener('click', () => {
     if (!placeState.selectedPlaceUid) return;
     placeState.roleBoxesVisible = !placeState.roleBoxesVisible;
@@ -1306,6 +1332,11 @@ function bindEvents() {
 
   els.leadOrgRole.addEventListener('change', () => syncCustomRoleVisibility(els.leadOrgRole, els.leadRoleCustomGroup));
   els.leadOrgName.addEventListener('input', clearLeadSelection);
+  ['input', 'change'].forEach((eventName) => {
+    els.leadOrgName.addEventListener(eventName, updateLeadCardSummary);
+    els.leadOrgRole.addEventListener(eventName, updateLeadCardSummary);
+    els.leadRoleCustom.addEventListener(eventName, updateLeadCardSummary);
+  });
 
   els.locationSearch.addEventListener('input', () => {
     const matches = getLocationSuggestionMatches(els.locationSearch.value);
