@@ -876,38 +876,43 @@ function renderDetail(placeUid) {
 
   els.detailStatus.textContent = `${place.initiative_name} covers ${locations.length} location${locations.length === 1 ? '' : 's'} across ${states.length || 1} state context${states.length === 1 ? '' : 's'}.`;
   els.detailContent.innerHTML = `
-    <article class="place-detail-card">
-      <h4>${esc(place.initiative_name)}</h4>
-      <p>${esc(states.join(', ') || place.states_covered?.join(', ') || 'India')}</p>
-      <div class="place-progress-block">
-        <div><strong>SoTH</strong>${buildStatusBar(place.soth_status || getDefaultStatus(SOTH_STAGES), SOTH_STAGES)}</div>
-        <div><strong>GramEEE</strong>${buildStatusBar(place.grameee_status || getDefaultStatus(GRAMEEE_STAGES), GRAMEEE_STAGES)}</div>
-      </div>
-      <div class="btn-group">
-        <button class="btn btn-small" type="button" data-open-place="${esc(place.place_uid)}">Update Status</button>
-      </div>
-    </article>
-    <article class="place-detail-card">
-      <h4>Locations Covered</h4>
-      <div class="place-inline-list">${locations.map((location) => `<span class="innovation-chip">${esc(locationDisplayLabel(location))}</span>`).join('') || '<span class="section-note">No locations added.</span>'}</div>
-    </article>
-    <article class="place-detail-card">
-      <h4>Lead Organisation</h4>
-      <p><strong>${esc(lead?.partner_name || place.lead_name || 'Not listed')}</strong></p>
-      <p>${esc(getRoleLabel(lead?.role_slug || place.lead_role_slug, lead?.role_label || place.lead_role_label))}</p>
-      <p>${esc(lead?.thematic_area || place.lead_thematic_area || 'No thematic area listed')}</p>
-      <p>${lead?.website_url || place.lead_website_url ? `<a href="${esc(lead?.website_url || place.lead_website_url)}" target="_blank" rel="noreferrer">${esc(lead?.website_url || place.lead_website_url)}</a>` : 'No website listed'}</p>
-    </article>
-    <article class="place-detail-card">
-      <h4>Partner Organisations</h4>
-      ${partnerRows.length ? partnerRows.map((partner) => `<div class="place-partner-detail"><strong>${esc(partner.partner_name)}</strong><small>${esc(getRoleLabel(partner.role_slug, partner.role_label))}</small><p>${esc(partner.thematic_area || 'No thematic area listed')}</p></div>`).join('') : '<p class="section-note">No partner organisations have been linked yet.</p>'}
-    </article>
-    <article class="place-detail-card place-potential-card">
-      <h4>Potential Partners By State</h4>
-      <div class="place-potential-groups">
-        ${Object.entries(potentialPartners).map(([group, entities]) => `<div class="place-potential-group"><strong>${esc(group)}</strong><div>${entities.slice(0, 8).map((entity) => `<span class="innovation-chip innovation-chip-muted">${esc(entity.entity_name)}</span>`).join('') || '<span class="section-note">No entities listed.</span>'}</div></div>`).join('') || '<p class="section-note">No potential partners were found for the selected state set.</p>'}
-      </div>
-    </article>
+    <section class="place-detail-row place-detail-row-top">
+      <article class="place-detail-card">
+        <h4>Locations Covered</h4>
+        <p><strong>${esc(place.initiative_name)}</strong></p>
+        <p>${esc(states.join(', ') || place.states_covered?.join(', ') || 'India')}</p>
+        <div class="place-inline-list">${locations.map((location) => `<span class="innovation-chip">${esc(locationDisplayLabel(location))}</span>`).join('') || '<span class="section-note">No locations added.</span>'}</div>
+      </article>
+      <article class="place-detail-card">
+        <h4>Lead Organisation</h4>
+        <p><strong>${esc(lead?.partner_name || place.lead_name || 'Not listed')}</strong></p>
+        <p>${esc(getRoleLabel(lead?.role_slug || place.lead_role_slug, lead?.role_label || place.lead_role_label))}</p>
+        <p>${esc(lead?.thematic_area || place.lead_thematic_area || 'No thematic area listed')}</p>
+        <p>${lead?.website_url || place.lead_website_url ? `<a href="${esc(lead?.website_url || place.lead_website_url)}" target="_blank" rel="noreferrer">${esc(lead?.website_url || place.lead_website_url)}</a>` : 'No website listed'}</p>
+      </article>
+      <article class="place-detail-card">
+        <h4>Status</h4>
+        <div class="place-progress-block">
+          <div><strong>SoTH</strong>${buildStatusBar(place.soth_status || getDefaultStatus(SOTH_STAGES), SOTH_STAGES)}</div>
+          <div><strong>GramEEE</strong>${buildStatusBar(place.grameee_status || getDefaultStatus(GRAMEEE_STAGES), GRAMEEE_STAGES)}</div>
+        </div>
+        <div class="btn-group">
+          <button class="btn btn-small" type="button" data-open-place="${esc(place.place_uid)}">Update Status</button>
+        </div>
+      </article>
+    </section>
+    <section class="place-detail-row place-detail-row-partners">
+      <article class="place-detail-row-header">
+        <h4>Partner Organisations</h4>
+      </article>
+      ${partnerRows.length ? partnerRows.map((partner) => `<article class="place-detail-card place-detail-card-compact"><strong>${esc(partner.partner_name)}</strong><small>${esc(getRoleLabel(partner.role_slug, partner.role_label))}</small><p>${esc(partner.thematic_area || 'No thematic area listed')}</p></article>`).join('') : '<article class="place-detail-card place-detail-card-compact"><p class="section-note">No partner organisations have been linked yet.</p></article>'}
+    </section>
+    <section class="place-detail-row place-detail-row-potential">
+      <article class="place-detail-row-header">
+        <h4>Potential Partners By State</h4>
+      </article>
+      ${Object.entries(potentialPartners).map(([group, entities]) => `<article class="place-detail-card place-detail-card-compact"><h4>${esc(group)}</h4><div class="place-inline-list">${entities.slice(0, 8).map((entity) => `<span class="innovation-chip innovation-chip-muted">${esc(entity.entity_name)}</span>`).join('') || '<span class="section-note">No entities listed.</span>'}</div></article>`).join('') || '<article class="place-detail-card place-detail-card-compact"><p class="section-note">No potential partners were found for the selected state set.</p></article>'}
+    </section>
   `;
 }
 
