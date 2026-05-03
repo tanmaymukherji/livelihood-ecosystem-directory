@@ -217,13 +217,30 @@ function ensureRoleOptions() {
   });
 }
 
-function ensureMapCss() {
-  if (document.getElementById('mappls-web-sdk-css')) return;
-  const link = document.createElement('link');
-  link.id = 'mappls-web-sdk-css';
-  link.rel = 'stylesheet';
-  link.href = 'https://apis.mappls.com/vector_map/assets/v3.5/mappls-glob.css';
-  document.head.appendChild(link);
+async function ensureMapCss() {
+  const existing = document.getElementById('mappls-web-sdk-css');
+  if (existing) {
+    if (existing.dataset.loaded === 'true') return;
+    await new Promise((resolve) => {
+      existing.addEventListener('load', resolve, { once: true });
+      existing.addEventListener('error', resolve, { once: true });
+      setTimeout(resolve, 1200);
+    });
+    return;
+  }
+  await new Promise((resolve) => {
+    const link = document.createElement('link');
+    link.id = 'mappls-web-sdk-css';
+    link.rel = 'stylesheet';
+    link.href = 'https://apis.mappls.com/vector_map/assets/v3.5/mappls-glob.css';
+    link.addEventListener('load', () => {
+      link.dataset.loaded = 'true';
+      resolve();
+    }, { once: true });
+    link.addEventListener('error', resolve, { once: true });
+    document.head.appendChild(link);
+    setTimeout(resolve, 1200);
+  });
 }
 
 async function loadMapSdk() {
@@ -233,7 +250,7 @@ async function loadMapSdk() {
     return false;
   }
   if (window.mappls?.Map) return true;
-  ensureMapCss();
+  await ensureMapCss();
   const urls = [
     `https://sdk.mappls.com/map/sdk/web?v=3.0&access_token=${encodeURIComponent(key)}`,
     `https://sdk.mappls.com/map/sdk/web?v=3.0&layer=vector&access_token=${encodeURIComponent(key)}`,
@@ -276,6 +293,10 @@ async function ensureMap() {
       placeState.map.on?.('load', resolve);
       setTimeout(resolve, 1800);
     });
+    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    placeState.map?.resize?.();
+    setTimeout(() => placeState.map?.resize?.(), 120);
+    setTimeout(() => placeState.map?.resize?.(), 420);
     placeState.mapReady = true;
     bindMapInteractionClasses();
     return true;
@@ -732,10 +753,6 @@ async function renderMap() {
   } else if (!hadSelection) {
     map.setCenter?.(INDIA_CENTER);
     map.setZoom?.(4.7);
-  }
-
-  if (!placeState.selectedPlaceUid && placeState.placeInitiatives[0]?.place_uid) {
-    placeState.selectedPlaceUid = placeState.placeInitiatives[0].place_uid;
   }
 
   updateRoleBoxToggleLabel();
@@ -1242,8 +1259,8 @@ async function init() {
   try {
     await initializePageData();
     await renderMap();
-    if (placeState.placeInitiatives[0]?.place_uid) selectPlace(placeState.placeInitiatives[0].place_uid, { fit: false });
-    else renderDetail('');
+    renderDetail('');
+    updateRoleBoxToggleLabel();
   } catch (error) {
     setStatus(els.mapStatus, error.message || 'This page could not be loaded.', true);
     els.detailContent.innerHTML = `<article class="admin-card"><p>${esc(els.mapStatus.textContent)}</p></article>`;
