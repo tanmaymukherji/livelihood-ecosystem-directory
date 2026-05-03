@@ -412,12 +412,12 @@ function addPartnerRow(values = {}, options = {}) {
   const summary = getPartnerSummaryLabel(values);
   const html = `
     <article class="place-partner-card ${expanded ? 'is-expanded' : ''}" data-partner-row="${esc(rowId)}">
-      <div class="place-partner-head">
-        <div class="place-partner-summary">
+      <div class="place-partner-head" style="position:relative;display:block;width:100%;min-height:38px;padding-right:148px;">
+        <div class="place-partner-summary" style="display:grid;gap:.12rem;min-width:0;">
           <strong data-partner-summary-name>${esc(summary.name)}</strong>
           <small data-partner-summary-role>${esc(summary.roleLabel)}</small>
         </div>
-        <div class="btn-group place-partner-actions">
+        <div class="btn-group place-partner-actions" style="position:absolute;top:0;right:0;display:flex;flex-wrap:nowrap;justify-content:flex-end;align-items:flex-start;">
           <button class="btn btn-small" type="button" data-toggle-partner="${esc(rowId)}">${expanded ? 'Collapse' : 'Expand'}</button>
           <button class="btn btn-small btn-danger" type="button" data-remove-partner="${esc(rowId)}"${placeState.adminEnabled ? '' : ' hidden'}>Remove</button>
         </div>
