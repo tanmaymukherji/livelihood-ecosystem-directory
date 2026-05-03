@@ -791,8 +791,25 @@ function renderDetail(placeUid) {
   const lead = partners.find((item) => item.partner_kind === 'lead') || null;
   const partnerRows = partners.filter((item) => item.partner_kind !== 'lead');
   const states = getPlaceStates(locations);
+  const linkedEntityIds = new Set(
+    partners
+      .map((item) => String(item.entity_uid || '').trim())
+      .filter(Boolean)
+  );
+  const linkedEntityNames = new Set(
+    partners
+      .map((item) => normalizeText(item.partner_name))
+      .filter(Boolean)
+  );
   const potentialPartners = placeState.entities
     .filter((entity) => !states.length || states.includes(entity.state))
+    .filter((entity) => {
+      const entityUid = String(entity.entity_uid || '').trim();
+      const entityName = normalizeText(entity.entity_name);
+      if (entityUid && linkedEntityIds.has(entityUid)) return false;
+      if (entityName && linkedEntityNames.has(entityName)) return false;
+      return true;
+    })
     .slice(0, 150)
     .reduce((acc, entity) => {
       const key = entity.entity_type_label || entity.entity_type_slug || 'Other';
