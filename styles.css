@@ -123,8 +123,10 @@ a{text-decoration:none}
 .place-location-chip,.place-partner-card{display:flex;justify-content:space-between;align-items:flex-start;gap:.75rem;padding:.8rem .9rem;border-radius:12px;border:1px solid #dfe4ea;background:#f8f9fa}
 .place-location-chip small{display:block;color:#647585;text-transform:capitalize}
 .place-partner-card{display:grid}
-.place-partner-head{align-items:center}
-.place-partner-summary{display:grid;gap:.12rem}
+.place-partner-head{align-items:flex-start;flex-wrap:nowrap}
+.place-partner-head .btn-group{flex:0 0 auto;flex-wrap:nowrap;align-self:flex-start}
+.place-partner-summary{display:grid;gap:.12rem;min-width:0;flex:1}
+.place-partner-summary strong,.place-partner-summary small{overflow-wrap:anywhere}
 .place-partner-summary small{color:#6a7785;line-height:1.35}
 .place-partner-fields{display:none;gap:.1rem}
 .place-partner-card.is-expanded .place-partner-fields{display:grid}
