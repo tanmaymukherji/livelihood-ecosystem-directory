@@ -764,8 +764,9 @@ function buildStatusBar(values, stages) {
     const meta = getStatusMeta(values?.[stage] || 'not_started');
     return `
       <div class="place-progress-item" title="${esc(stage)}: ${esc(meta.label)}">
-        <span class="place-progress-label">${esc(stage)}</span>
-        <div class="place-progress-segment" style="background:${esc(meta.color)}"></div>
+        <div class="place-progress-segment" style="background:${esc(meta.color)}">
+          <span class="place-progress-label">${esc(stage)}</span>
+        </div>
         <span class="place-progress-state">${esc(meta.label)}</span>
       </div>
     `;
