@@ -145,7 +145,7 @@ a{text-decoration:none}
 .place-progress-block{display:grid;gap:.8rem}
 .place-progress-bar{display:grid;grid-template-columns:repeat(auto-fit,minmax(74px,1fr));gap:.55rem;margin-top:.4rem}
 .place-progress-item{display:grid;gap:.28rem;align-items:start}
-.place-progress-segment{min-height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;padding:.45rem .4rem;text-align:center}
+.place-progress-segment{min-height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;padding:.45rem .4rem;text-align:center;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .place-progress-label{font-size:.83rem;font-weight:700;color:#fff;line-height:1.15}
 .place-progress-state{font-size:.76rem;color:#607384;text-align:center}
 .place-inline-list{display:flex;flex-wrap:wrap;gap:.45rem}
@@ -165,7 +165,7 @@ a{text-decoration:none}
 .place-callout-scroll span{display:block}
 .place-callout-hidden .place-callout-body,.place-callout-hidden .place-callout-line{display:none}
 @media print{
-  body{background:#fff;padding:0}
+  body{background:#fff;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
   .vendor-hero-actions,.place-admin-footer,.place-editor-shell,.btn,.admin-sync-end{display:none!important}
   .place-top-layout{grid-template-columns:1fr}
   .place-map-shell,.place-bottom-shell,.place-map-stage,.place-role-callouts,.vendor-map-canvas,.place-bottom-scroll{overflow:visible!important}
@@ -174,6 +174,7 @@ a{text-decoration:none}
   .place-callout-scroll{max-height:none;overflow:visible}
   .place-callout-body{box-shadow:none}
   .place-map-shell,.place-bottom-shell{break-inside:avoid-page}
+  .place-progress-segment,.place-progress-label{color-adjust:exact;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 }
 body.is-print-prep .place-map-shell,
 body.is-print-prep .place-bottom-shell,
