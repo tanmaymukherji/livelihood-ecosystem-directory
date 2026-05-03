@@ -745,7 +745,13 @@ async function renderMap() {
 function buildStatusBar(values, stages) {
   const items = stages.map((stage) => {
     const meta = getStatusMeta(values?.[stage] || 'not_started');
-    return `<div class="place-progress-segment" style="background:${esc(meta.color)}" title="${esc(stage)}: ${esc(meta.label)}"></div>`;
+    return `
+      <div class="place-progress-item" title="${esc(stage)}: ${esc(meta.label)}">
+        <span class="place-progress-label">${esc(stage)}</span>
+        <div class="place-progress-segment" style="background:${esc(meta.color)}"></div>
+        <span class="place-progress-state">${esc(meta.label)}</span>
+      </div>
+    `;
   }).join('');
   return `<div class="place-progress-bar">${items}</div>`;
 }
