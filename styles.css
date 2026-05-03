@@ -175,6 +175,10 @@ a{text-decoration:none}
   .place-callout-body{box-shadow:none}
   .place-map-shell,.place-bottom-shell{break-inside:avoid-page}
   .place-progress-segment,.place-progress-label{color-adjust:exact;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .place-progress-bar{grid-template-columns:repeat(var(--progress-columns,1),minmax(0,1fr));gap:.35rem}
+  .place-progress-label{font-size:.76rem}
+  .place-progress-state{font-size:.7rem}
+  .place-progress-segment{min-height:36px;padding:.35rem .25rem}
 }
 body.is-print-prep .place-map-shell,
 body.is-print-prep .place-bottom-shell,

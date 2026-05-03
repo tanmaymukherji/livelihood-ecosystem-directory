@@ -850,7 +850,7 @@ function buildStatusBar(values, stages) {
       </div>
     `;
   }).join('');
-  return `<div class="place-progress-bar">${items}</div>`;
+  return `<div class="place-progress-bar" style="--progress-columns:${esc(String(stages.length))}">${items}</div>`;
 }
 
 function renderDetail(placeUid) {
