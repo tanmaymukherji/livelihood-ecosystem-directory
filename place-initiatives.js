@@ -646,6 +646,8 @@ function fillPartnerFromEntity(rowId, entity) {
 
 function setEditorEnabled(enabled) {
   placeState.adminEnabled = enabled;
+  document.body.classList.toggle('place-read-only', !enabled);
+  document.body.classList.toggle('place-admin-enabled', enabled);
   els.adminBadge.textContent = enabled ? 'Edit enabled' : 'Read only';
   els.adminBadge.classList.toggle('approved', enabled);
   els.editorMode.textContent = enabled
