@@ -400,6 +400,12 @@ function setPartnerCardExpanded(row, expanded) {
   if (button) button.textContent = expanded ? 'Collapse' : 'Expand';
 }
 
+function syncPartnerActionVisibility() {
+  els.partnerList.querySelectorAll('[data-remove-partner]').forEach((button) => {
+    button.hidden = !placeState.adminEnabled;
+  });
+}
+
 function addPartnerRow(values = {}, options = {}) {
   const rowId = `partner-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   const expanded = options.expanded ?? !values.partner_name;
@@ -411,9 +417,9 @@ function addPartnerRow(values = {}, options = {}) {
           <strong data-partner-summary-name>${esc(summary.name)}</strong>
           <small data-partner-summary-role>${esc(summary.roleLabel)}</small>
         </div>
-        <div class="btn-group">
+        <div class="btn-group place-partner-actions">
           <button class="btn btn-small" type="button" data-toggle-partner="${esc(rowId)}">${expanded ? 'Collapse' : 'Expand'}</button>
-          <button class="btn btn-small btn-danger" type="button" data-remove-partner="${esc(rowId)}">Remove</button>
+          <button class="btn btn-small btn-danger" type="button" data-remove-partner="${esc(rowId)}"${placeState.adminEnabled ? '' : ' hidden'}>Remove</button>
         </div>
       </div>
       <input type="hidden" data-partner-entity-uid value="${esc(values.entity_uid || '')}" />
@@ -454,6 +460,7 @@ function addPartnerRow(values = {}, options = {}) {
   syncCustomRoleVisibility(roleSelect, row.querySelector('[data-partner-custom-group]'));
   updatePartnerCardSummary(row);
   setPartnerCardExpanded(row, expanded);
+  syncPartnerActionVisibility();
 }
 
 function syncCustomRoleVisibility(selectEl, groupEl) {
@@ -650,6 +657,7 @@ function setEditorEnabled(enabled) {
     if (element.closest('#admin-sync-panel')) return;
     element.disabled = !enabled && (element.id === 'save-place' || element.id === 'delete-place' || element.id === 'new-place' || element.id === 'add-partner-row' || element.id === 'add-place-location' || element.dataset.removePartner || element.dataset.removeLocation || element.dataset.partnerSearch || element.id === 'place-location-search' || element.id === 'lead-org-search' || element.dataset.partnerRole !== undefined || element.dataset.partnerName !== undefined || element.dataset.partnerWebsite !== undefined || element.dataset.partnerTheme !== undefined || element.id === 'place-name' || element.id === 'lead-org-name' || element.id === 'lead-org-role' || element.id === 'lead-org-role-custom' || element.id === 'lead-org-website' || element.id === 'lead-org-theme' || element.dataset.statusGroup);
   });
+  syncPartnerActionVisibility();
 }
 
 function getPlaceColor(placeUid) {

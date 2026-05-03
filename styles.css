@@ -106,7 +106,7 @@ a{text-decoration:none}
 .place-page{display:grid;gap:1rem}
 .place-top-layout{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(360px,.85fr);gap:1rem;align-items:stretch}
 .place-map-shell,.place-editor-shell,.place-bottom-shell,.place-admin-footer{overflow:hidden}
-.place-map-toolbar,.place-bottom-header,.place-editor-header,.place-form-block-header,.place-partner-head,.place-admin-panel-grid{display:flex;justify-content:space-between;align-items:flex-start;gap:.8rem;flex-wrap:wrap}
+.place-map-toolbar,.place-bottom-header,.place-editor-header,.place-form-block-header,.place-admin-panel-grid{display:flex;justify-content:space-between;align-items:flex-start;gap:.8rem;flex-wrap:wrap}
 .place-map-shell,.place-editor-shell{height:72vh;max-height:72vh}
 .place-map-shell{display:flex;flex-direction:column}
 .place-map-stage{position:relative;flex:1;min-height:0}
@@ -124,7 +124,7 @@ a{text-decoration:none}
 .place-location-chip small{display:block;color:#647585;text-transform:capitalize}
 .place-partner-card{display:grid}
 .place-partner-head{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:flex-start;gap:.8rem;width:100%}
-.place-partner-head .btn-group{flex:0 0 auto;flex-wrap:nowrap;align-self:flex-start;justify-self:end;justify-content:flex-end;margin-left:auto}
+.place-partner-actions{display:flex;flex-wrap:nowrap;align-self:flex-start;justify-self:end;justify-content:flex-end;margin-left:auto;text-align:right}
 .place-partner-summary{display:grid;gap:.12rem;min-width:0}
 .place-partner-summary strong,.place-partner-summary small{overflow-wrap:anywhere}
 .place-partner-summary small{color:#6a7785;line-height:1.35}
