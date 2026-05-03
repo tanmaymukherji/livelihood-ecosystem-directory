@@ -475,7 +475,7 @@ function getEditorLocations() {
 function renderLocationList(locations) {
   const items = Array.isArray(locations) ? locations : [];
   els.locationList.innerHTML = items.length
-    ? items.map((item, index) => `<article class="place-location-chip" data-location-item="${esc(JSON.stringify(item))}"><div><strong>${esc(locationDisplayLabel(item))}</strong><small>${esc(guessLocationKind(item))}</small></div><button class="btn btn-small btn-danger" type="button" data-remove-location="${index}">Delete</button></article>`).join('')
+    ? items.map((item, index) => `<article class="place-location-chip" data-location-item="${esc(JSON.stringify(item))}"><div><strong>${esc(locationDisplayLabel(item))}</strong><small>${esc(guessLocationKind(item))}</small></div>${placeState.adminEnabled ? `<button class="btn btn-small btn-danger" type="button" data-remove-location="${index}">Delete</button>` : ''}</article>`).join('')
     : '<div class="vendor-map-status">No covered locations have been added yet.</div>';
 }
 
@@ -659,6 +659,7 @@ function setEditorEnabled(enabled) {
     if (element.closest('#admin-sync-panel')) return;
     element.disabled = !enabled && (element.id === 'save-place' || element.id === 'delete-place' || element.id === 'new-place' || element.id === 'add-partner-row' || element.id === 'add-place-location' || element.dataset.removePartner || element.dataset.removeLocation || element.dataset.partnerSearch || element.id === 'place-location-search' || element.id === 'lead-org-search' || element.dataset.partnerRole !== undefined || element.dataset.partnerName !== undefined || element.dataset.partnerWebsite !== undefined || element.dataset.partnerTheme !== undefined || element.id === 'place-name' || element.id === 'lead-org-name' || element.id === 'lead-org-role' || element.id === 'lead-org-role-custom' || element.id === 'lead-org-website' || element.id === 'lead-org-theme' || element.dataset.statusGroup);
   });
+  renderLocationList(getEditorLocations());
   syncPartnerActionVisibility();
 }
 

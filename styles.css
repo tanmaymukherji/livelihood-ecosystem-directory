@@ -122,9 +122,9 @@ a{text-decoration:none}
 .place-location-list,.partner-list{display:grid;gap:.75rem}
 .place-location-chip,.place-partner-card{display:flex;justify-content:space-between;align-items:flex-start;gap:.75rem;padding:.8rem .9rem;border-radius:12px;border:1px solid #dfe4ea;background:#f8f9fa}
 .place-location-chip small{display:block;color:#647585;text-transform:capitalize}
-.place-partner-card{display:grid}
-.place-partner-head{display:grid!important;grid-template-columns:minmax(0,1fr) max-content!important;align-items:flex-start;gap:.8rem;width:100%}
-.place-partner-actions{display:flex!important;flex-wrap:nowrap!important;align-self:flex-start;justify-self:end!important;justify-content:flex-end!important;align-items:flex-start;margin-left:auto!important;text-align:right;width:max-content}
+.place-partner-card{display:grid;position:relative}
+.place-partner-head{display:block!important;position:relative;width:100%;padding-right:132px;min-height:38px}
+.place-partner-actions{display:flex!important;flex-wrap:nowrap!important;position:absolute;top:0;right:0;justify-content:flex-end!important;align-items:flex-start;text-align:right;width:max-content}
 .place-partner-actions .btn{white-space:nowrap}
 .place-partner-summary{display:grid;gap:.12rem;min-width:0}
 .place-partner-summary strong,.place-partner-summary small{overflow-wrap:anywhere}
