@@ -22,6 +22,8 @@ const placeState = {
   pendingLeadSuggestion: null,
   pendingPartnerSuggestions: new Map(),
   calloutPositions: {},
+  roleBoxesVisible: false,
+  calloutPlaceUid: '',
 };
 
 const INDIA_CENTER = { lat: 22.9734, lng: 78.6569 };
@@ -65,6 +67,7 @@ const els = {
   adminStatus: document.getElementById('place-admin-status'),
   adminPassword: document.getElementById('place-admin-password'),
   callouts: document.getElementById('place-role-callouts'),
+  toggleRoleBoxes: document.getElementById('toggle-role-boxes'),
 };
 
 function normalizeText(value) {
@@ -110,6 +113,22 @@ function getRoleLabel(roleSlug, roleLabel) {
 
 function getStatusMeta(value) {
   return STATUS_OPTIONS.find((item) => item.value === value) || STATUS_OPTIONS[0];
+}
+
+function getCurrentMapZoom() {
+  return Number(placeState.map?.getZoom?.() || 4.7);
+}
+
+function getCalloutScale() {
+  const zoom = getCurrentMapZoom();
+  return Math.max(0.58, Math.min(1.08, 0.58 + ((zoom - 4.5) * 0.11)));
+}
+
+function updateRoleBoxToggleLabel() {
+  if (!els.toggleRoleBoxes) return;
+  const hasPlace = Boolean(placeState.selectedPlaceUid);
+  els.toggleRoleBoxes.textContent = placeState.roleBoxesVisible ? 'Hide Role Boxes' : 'Show Role Boxes';
+  els.toggleRoleBoxes.disabled = !hasPlace;
 }
 
 function buildStatusEditor(container, stages, prefix) {
@@ -622,16 +641,32 @@ function bindLayerEvents() {
     if (map.getCanvas?.()) map.getCanvas().style.cursor = '';
     placeState.mapPopup?.remove?.();
   };
-  const onClick = (event) => {
+  const onFillClick = (event) => {
     const feature = event?.features?.[0];
     const placeUid = feature?.properties?.place_uid;
-    if (placeUid) selectPlace(placeUid, { fit: true, scroll: false });
+    if (placeUid) {
+      placeState.roleBoxesVisible = false;
+      placeState.calloutPlaceUid = '';
+      selectPlace(placeUid, { fit: true, scroll: false });
+    }
+  };
+  const onCentroidClick = (event) => {
+    const feature = event?.features?.[0];
+    const placeUid = feature?.properties?.place_uid;
+    if (placeUid) {
+      placeState.roleBoxesVisible = true;
+      placeState.calloutPlaceUid = placeUid;
+      selectPlace(placeUid, { fit: true, scroll: false });
+    }
   };
   ['place-fill-layer', 'place-centroid-layer'].forEach((layerId) => {
     map.on?.('mousemove', layerId, onHover);
     map.on?.('mouseleave', layerId, onLeave);
-    map.on?.('click', layerId, onClick);
   });
+  map.on?.('click', 'place-fill-layer', onFillClick);
+  map.on?.('click', 'place-centroid-layer', onCentroidClick);
+  map.on?.('zoom', () => renderRoleCallouts());
+  map.on?.('move', () => renderRoleCallouts());
   map.__placeEventsBound = true;
 }
 
@@ -703,6 +738,7 @@ async function renderMap() {
     placeState.selectedPlaceUid = placeState.placeInitiatives[0].place_uid;
   }
 
+  updateRoleBoxToggleLabel();
   renderRoleCallouts();
 }
 
@@ -776,12 +812,15 @@ function renderDetail(placeUid) {
 function renderRoleCallouts() {
   const placeUid = placeState.selectedPlaceUid;
   const place = getPlaceByUid(placeUid);
-  if (!place || !placeState.mapReady || !placeState.map?.project) {
+  const shouldShow = Boolean(place && placeState.roleBoxesVisible && placeState.calloutPlaceUid === placeUid);
+  if (!place || !placeState.mapReady || !placeState.map?.project || !shouldShow) {
     els.callouts.innerHTML = '';
+    updateRoleBoxToggleLabel();
     return;
   }
   const centroid = getPlaceCentroid(getPlaceLocations(placeUid));
   const anchor = placeState.map.project([centroid.lng, centroid.lat]);
+  const scale = getCalloutScale();
   const roles = placeState.placeRoleTypes.filter((role) => role.slug !== 'others');
   const partners = getPlacePartners(placeUid);
   const cards = roles.map((role, index) => {
@@ -790,12 +829,14 @@ function renderRoleCallouts() {
     const key = `${placeUid}:${role.slug}`;
     const fallback = { x: 18 + ((index % 2) * 240), y: 24 + (Math.floor(index / 2) * 86) };
     const pos = placeState.calloutPositions[key] || fallback;
-    const dx = anchor.x - (pos.x + 130);
-    const dy = anchor.y - (pos.y + 32);
+    const boxWidth = 220 * scale;
+    const boxHeight = 64 * scale;
+    const dx = anchor.x - (pos.x + (boxWidth / 2));
+    const dy = anchor.y - (pos.y + (boxHeight / 2));
     const length = Math.max(Math.sqrt((dx * dx) + (dy * dy)), 20);
     const angle = Math.atan2(dy, dx) * (180 / Math.PI);
     return `
-      <div class="place-callout ${hasData ? 'is-filled' : 'is-empty'}" data-callout-key="${esc(key)}" style="left:${pos.x}px;top:${pos.y}px">
+      <div class="place-callout ${hasData ? 'is-filled' : 'is-empty'}" data-callout-key="${esc(key)}" style="left:${pos.x}px;top:${pos.y}px;transform:scale(${scale})">
         <div class="place-callout-line" style="width:${length}px;transform:rotate(${angle}deg)"></div>
         <div class="place-callout-body">
           <strong>${esc(role.label)}</strong>
@@ -805,6 +846,7 @@ function renderRoleCallouts() {
     `;
   }).join('');
   els.callouts.innerHTML = cards;
+  updateRoleBoxToggleLabel();
 }
 
 function fitToPlace(placeUid) {
@@ -870,6 +912,7 @@ function selectPlace(placeUid, options = {}) {
   fillEditor(placeUid);
   renderMap();
   renderRoleCallouts();
+  updateRoleBoxToggleLabel();
   if (options.fit) fitToPlace(placeUid);
 }
 
@@ -1062,6 +1105,12 @@ function bindEvents() {
     setStatus(els.saveStatus, '');
   });
   document.getElementById('delete-place').addEventListener('click', handleDeletePlace);
+  els.toggleRoleBoxes.addEventListener('click', () => {
+    if (!placeState.selectedPlaceUid) return;
+    placeState.roleBoxesVisible = !placeState.roleBoxesVisible;
+    placeState.calloutPlaceUid = placeState.roleBoxesVisible ? placeState.selectedPlaceUid : '';
+    renderRoleCallouts();
+  });
   document.getElementById('edit-selected-place').addEventListener('click', () => {
     const placeUid = placeState.selectedPlaceUid;
     if (!placeUid) return;
