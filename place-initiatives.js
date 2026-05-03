@@ -131,6 +131,24 @@ function updateRoleBoxToggleLabel() {
   els.toggleRoleBoxes.disabled = !hasPlace;
 }
 
+function forceMapRepaint(options = {}) {
+  const map = placeState.map;
+  if (!map) return;
+  const preserveIndiaView = options.preserveIndiaView !== false;
+  const refresh = () => {
+    map.resize?.();
+    if (preserveIndiaView && !placeState.selectedPlaceUid) {
+      map.setCenter?.(INDIA_CENTER);
+      map.setZoom?.(4.7);
+    }
+    map.triggerRepaint?.();
+  };
+  refresh();
+  [120, 350, 700, 1200].forEach((delay) => {
+    setTimeout(refresh, delay);
+  });
+}
+
 function buildStatusEditor(container, stages, prefix) {
   container.innerHTML = stages.map((stage) => {
     return `<div class="place-status-card"><label for="${esc(prefix + '-' + slugify(stage))}">${esc(stage)}</label><select id="${esc(prefix + '-' + slugify(stage))}" data-status-group="${esc(prefix)}" data-status-stage="${esc(stage)}">${STATUS_OPTIONS.map((option) => `<option value="${esc(option.value)}">${esc(option.label)}</option>`).join('')}</select></div>`;
@@ -294,9 +312,7 @@ async function ensureMap() {
       setTimeout(resolve, 1800);
     });
     await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-    placeState.map?.resize?.();
-    setTimeout(() => placeState.map?.resize?.(), 120);
-    setTimeout(() => placeState.map?.resize?.(), 420);
+    forceMapRepaint({ preserveIndiaView: true });
     placeState.mapReady = true;
     bindMapInteractionClasses();
     return true;
@@ -738,21 +754,10 @@ async function renderMap() {
     bindLayerEvents();
   }
 
-  if (!hadSelection && map.fitBounds && geo.centroids.features.length) {
-    const coords = geo.centroids.features.map((feature) => feature.geometry.coordinates);
-    const bounds = coords.reduce((acc, [lng, lat]) => {
-      acc.minLng = Math.min(acc.minLng, lng);
-      acc.maxLng = Math.max(acc.maxLng, lng);
-      acc.minLat = Math.min(acc.minLat, lat);
-      acc.maxLat = Math.max(acc.maxLat, lat);
-      return acc;
-    }, { minLng: 180, maxLng: -180, minLat: 90, maxLat: -90 });
-    if (Number.isFinite(bounds.minLng)) {
-      map.fitBounds([[bounds.minLng, bounds.minLat], [bounds.maxLng, bounds.maxLat]], { padding: 72, duration: 0 });
-    }
-  } else if (!hadSelection) {
+  if (!hadSelection) {
     map.setCenter?.(INDIA_CENTER);
     map.setZoom?.(4.7);
+    forceMapRepaint({ preserveIndiaView: true });
   }
 
   updateRoleBoxToggleLabel();
