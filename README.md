@@ -7,6 +7,7 @@ Project folder:
 
 Included app surfaces:
 - Public search page: `index.html`
+- Public place initiative page: `place-initiatives.html`
 - Entity detail page: `entity-detail.html`
 - Admin review and editing page: `admin.html`
 - Shared Supabase loader: `ecosystem-store.js`
@@ -17,6 +18,7 @@ Included app surfaces:
 What this app supports:
 - Public keyword and place search across approved entities
 - Multi-select entity-type filtering with color-coded MapmyIndia markers
+- Public place initiative map with a large India map, a scrollable place editor, bottom detail strip, role callouts, print view, and admin-gated editing
 - Public submission form for new entries, routed to admin approval
 - Detail page for every approved entity
 - Admin search, edit, approve, reject, and delete workflows
@@ -29,6 +31,7 @@ Deployment:
 
 Backend setup notes:
 - Run the migration in `supabase/migrations`
+- The place initiative page also needs `supabase/migrations/20260503120000_create_place_initiatives.sql`
 - Deploy the `livelihood-ecosystem-admin` edge function
 - Set function secrets for:
   - `SUPABASE_URL`

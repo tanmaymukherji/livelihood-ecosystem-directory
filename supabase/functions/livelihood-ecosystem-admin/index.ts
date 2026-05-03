@@ -50,6 +50,9 @@ const EDITABLE_FIELDS = [
   "admin_notes",
 ] as const;
 
+const SOTH_STAGE_NAMES = ["Initiate", "Engage", "Action", "Auto Pilot"] as const;
+const GRAMEEE_STAGE_NAMES = ["Triggering", "Incubating", "Sustaining"] as const;
+
 type EntityInput = Record<string, unknown>;
 
 function getSupabaseAdmin() {
@@ -113,6 +116,12 @@ function toJsonArray(value: unknown) {
   return Array.isArray(value) ? value.filter(Boolean) : [];
 }
 
+function toRecordArray(value: unknown) {
+  return Array.isArray(value)
+    ? value.filter((item) => item && typeof item === "object" && !Array.isArray(item)) as Record<string, unknown>[]
+    : [];
+}
+
 function flattenTypeSpecificValues(value: unknown): string[] {
   if (Array.isArray(value)) return value.flatMap((item) => flattenTypeSpecificValues(item));
   if (value && typeof value === "object") return Object.values(value as Record<string, unknown>).flatMap((item) => flattenTypeSpecificValues(item));
@@ -136,6 +145,15 @@ function buildSearchText(input: Record<string, unknown>) {
     toTextArray(input.keywords).join(" "),
     flattenTypeSpecificValues(input.type_specific_data).join(" "),
   ].filter(Boolean).join(" ");
+}
+
+function normalizeStatusObject(input: unknown, stages: readonly string[]) {
+  const source = input && typeof input === "object" && !Array.isArray(input) ? input as Record<string, unknown> : {};
+  return Object.fromEntries(stages.map((stage) => {
+    const raw = requireString(source[stage]);
+    const value = raw === "mature" || raw === "in_progress" ? raw : "not_started";
+    return [stage, value];
+  }));
 }
 
 function dedupeLocations(values: string[]) {
@@ -221,6 +239,44 @@ async function geocodeEntityFallback(input: Record<string, unknown>) {
     }
   }
   return { latitude: null, longitude: null };
+}
+
+function buildPlaceLocationQuery(location: Record<string, unknown>) {
+  return [
+    requireString(location.village_name),
+    requireString(location.block_name),
+    requireString(location.district_name),
+    requireString(location.state_name),
+    "India",
+  ].filter(Boolean).join(", ");
+}
+
+async function geocodePlaceLocation(location: Record<string, unknown>) {
+  if (hasUsableCoordinate(location.latitude, location.longitude)) {
+    return {
+      latitude: toNullableNumber(location.latitude),
+      longitude: toNullableNumber(location.longitude),
+    };
+  }
+  const query = buildPlaceLocationQuery(location) || requireString(location.display_label) || requireString(location.location_name);
+  if (!query) return { latitude: null, longitude: null };
+  try {
+    const response = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=${encodeURIComponent(query)}`, {
+      headers: {
+        Accept: "application/json",
+        "User-Agent": "Livelihood Ecosystem Directory/1.0",
+      },
+    });
+    if (!response.ok) return { latitude: null, longitude: null };
+    const data = await response.json() as Array<Record<string, unknown>>;
+    const match = Array.isArray(data) ? data[0] : null;
+    return {
+      latitude: toNullableNumber(match?.lat),
+      longitude: toNullableNumber(match?.lon),
+    };
+  } catch {
+    return { latitude: null, longitude: null };
+  }
 }
 
 function getEntityTable(typeSlug: string) {
@@ -585,6 +641,185 @@ async function handleSubmitContactRequest(request: Record<string, unknown>) {
   return jsonResponse({ ok: true, item: data });
 }
 
+async function ensurePlaceRoleType(roleSlug: string, roleLabel: string) {
+  const normalizedLabel = requireString(roleLabel);
+  const normalizedSlug = requireString(roleSlug) || slugify(normalizedLabel);
+  if (!normalizedSlug || !normalizedLabel || normalizedSlug === "others") {
+    return { roleSlug: roleSlug || "others", roleLabel: normalizedLabel || null };
+  }
+  const supabase = getSupabaseAdmin();
+  await supabase.from("place_role_types").upsert({
+    slug: normalizedSlug,
+    label: normalizedLabel,
+    is_system: false,
+    updated_at: new Date().toISOString(),
+  }, { onConflict: "slug" });
+  return { roleSlug: normalizedSlug, roleLabel: normalizedLabel };
+}
+
+function buildPlaceSearchText(
+  initiativeName: string,
+  statesCovered: string[],
+  locations: Record<string, unknown>[],
+  lead: Record<string, unknown>,
+  partners: Record<string, unknown>[]
+) {
+  return [
+    initiativeName,
+    statesCovered.join(" "),
+    locations.flatMap((item) => [
+      requireString(item.location_name),
+      requireString(item.display_label),
+      requireString(item.state_name),
+      requireString(item.district_name),
+      requireString(item.block_name),
+      requireString(item.village_name),
+    ]).join(" "),
+    requireString(lead.name),
+    requireString(lead.role_slug),
+    requireString(lead.role_label),
+    requireString(lead.website_url),
+    requireString(lead.thematic_area),
+    partners.flatMap((item) => [
+      requireString(item.partner_name),
+      requireString(item.role_slug),
+      requireString(item.role_label),
+      requireString(item.website_url),
+      requireString(item.thematic_area),
+    ]).join(" "),
+  ].filter(Boolean).join(" ");
+}
+
+async function handleUpsertPlaceInitiative(token: string, placeInput: Record<string, unknown>) {
+  const supabase = getSupabaseAdmin();
+  const session = await validateSession(token);
+  if (!session) return errorResponse("Invalid admin session.", 401);
+
+  const initiativeName = requireString(placeInput.initiative_name);
+  if (!initiativeName) return errorResponse("Place initiative name is required.", 400);
+
+  const inputLocations = toRecordArray(placeInput.locations);
+  if (!inputLocations.length) return errorResponse("At least one place location is required.", 400);
+
+  const leadInput = placeInput.lead && typeof placeInput.lead === "object" && !Array.isArray(placeInput.lead)
+    ? placeInput.lead as Record<string, unknown>
+    : {};
+  const leadName = requireString(leadInput.name);
+  if (!leadName) return errorResponse("Lead organisation or individual is required.", 400);
+
+  const customLeadRole = await ensurePlaceRoleType(requireString(leadInput.role_slug), requireString(leadInput.role_label));
+  const normalizedLocations = await Promise.all(inputLocations.map(async (location, index) => {
+    const geocoded = await geocodePlaceLocation(location);
+    const stateName = requireString(location.state_name);
+    const districtName = requireString(location.district_name);
+    const blockName = requireString(location.block_name);
+    const villageName = requireString(location.village_name);
+    const locationName = requireString(location.location_name) || villageName || blockName || districtName || stateName;
+    const displayLabel = requireString(location.display_label) || [villageName, blockName, districtName, stateName].filter(Boolean).join(", ") || locationName;
+    const locationKind = requireString(location.location_kind) || (villageName ? "village" : blockName ? "block" : districtName ? "district" : "state");
+    return {
+      location_kind: locationKind,
+      location_name: locationName,
+      display_label: displayLabel,
+      state_name: stateName || null,
+      district_name: districtName || null,
+      block_name: blockName || null,
+      village_name: villageName || null,
+      latitude: geocoded.latitude,
+      longitude: geocoded.longitude,
+      sort_order: Number(location.sort_order || index + 1),
+      updated_at: new Date().toISOString(),
+    };
+  }));
+
+  const partnerInputs = toRecordArray(placeInput.partners);
+  const normalizedPartners = await Promise.all(partnerInputs.map(async (partner, index) => {
+    const customRole = await ensurePlaceRoleType(requireString(partner.role_slug), requireString(partner.role_label));
+    return {
+      partner_kind: "partner",
+      entity_uid: requireString(partner.entity_uid) || null,
+      entity_type_slug: requireString(partner.entity_type_slug) || null,
+      partner_name: requireString(partner.partner_name),
+      role_slug: customRole.roleSlug || null,
+      role_label: customRole.roleLabel || null,
+      website_url: requireString(partner.website_url) || null,
+      thematic_area: requireString(partner.thematic_area) || null,
+      sort_order: Number(partner.sort_order || index + 1),
+      updated_at: new Date().toISOString(),
+    };
+  })).then((rows) => rows.filter((row) => row.partner_name));
+
+  const statesCovered = Array.from(new Set(normalizedLocations.map((item) => requireString(item.state_name)).filter(Boolean)));
+  const placeUid = requireString(placeInput.place_uid) || `place-${slugify(initiativeName)}-${crypto.randomUUID().slice(0, 8)}`;
+  const payload = {
+    place_uid: placeUid,
+    slug: slugify(initiativeName) || placeUid,
+    initiative_name: initiativeName,
+    lead_entity_uid: requireString(leadInput.entity_uid) || null,
+    lead_entity_type_slug: requireString(leadInput.entity_type_slug) || null,
+    lead_name: leadName,
+    lead_role_slug: customLeadRole.roleSlug || null,
+    lead_role_label: customLeadRole.roleLabel || null,
+    lead_website_url: requireString(leadInput.website_url) || null,
+    lead_thematic_area: requireString(leadInput.thematic_area) || null,
+    states_covered: statesCovered,
+    soth_status: normalizeStatusObject(placeInput.soth_status, SOTH_STAGE_NAMES),
+    grameee_status: normalizeStatusObject(placeInput.grameee_status, GRAMEEE_STAGE_NAMES),
+    search_text: buildPlaceSearchText(initiativeName, statesCovered, normalizedLocations, leadInput, normalizedPartners),
+    created_by_name: session.username,
+    approval_status: "approved",
+    approved_at: new Date().toISOString(),
+    approved_by: session.username,
+    is_deleted: false,
+    updated_at: new Date().toISOString(),
+  };
+
+  const { error: placeError } = await supabase.from("place_initiatives").upsert(payload, { onConflict: "place_uid" });
+  if (placeError) return errorResponse(`Place initiative save failed: ${placeError.message}`, 500);
+
+  await supabase.from("place_initiative_locations").delete().eq("place_uid", placeUid);
+  if (normalizedLocations.length) {
+    const { error: locationError } = await supabase.from("place_initiative_locations").insert(
+      normalizedLocations.map((item) => ({ ...item, place_uid: placeUid }))
+    );
+    if (locationError) return errorResponse(`Place locations save failed: ${locationError.message}`, 500);
+  }
+
+  await supabase.from("place_initiative_partners").delete().eq("place_uid", placeUid);
+  const leadRow = {
+    place_uid: placeUid,
+    partner_kind: "lead",
+    entity_uid: requireString(leadInput.entity_uid) || null,
+    entity_type_slug: requireString(leadInput.entity_type_slug) || null,
+    partner_name: leadName,
+    role_slug: customLeadRole.roleSlug || null,
+    role_label: customLeadRole.roleLabel || null,
+    website_url: requireString(leadInput.website_url) || null,
+    thematic_area: requireString(leadInput.thematic_area) || null,
+    sort_order: 0,
+    updated_at: new Date().toISOString(),
+  };
+  const partnerRows = [leadRow, ...normalizedPartners.map((item) => ({ ...item, place_uid: placeUid }))];
+  const { error: partnerError } = await supabase.from("place_initiative_partners").insert(partnerRows);
+  if (partnerError) return errorResponse(`Place partner save failed: ${partnerError.message}`, 500);
+
+  return jsonResponse({ ok: true, place_uid: placeUid });
+}
+
+async function handleDeletePlaceInitiative(token: string, placeUid: string) {
+  const supabase = getSupabaseAdmin();
+  const session = await validateSession(token);
+  if (!session) return errorResponse("Invalid admin session.", 401);
+  if (!placeUid) return errorResponse("Missing place id.", 400);
+  const { error } = await supabase.from("place_initiatives").update({
+    is_deleted: true,
+    admin_notes: `Deleted by ${session.username} on ${new Date().toISOString()}`,
+    updated_at: new Date().toISOString(),
+  }).eq("place_uid", placeUid);
+  if (error) return errorResponse(`Place delete failed: ${error.message}`, 500);
+  return jsonResponse({ ok: true });
+}
+
 Deno.serve(async (request) => {
   if (request.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (request.method !== "POST") return errorResponse("Method not allowed.", 405);
@@ -602,6 +837,7 @@ Deno.serve(async (request) => {
   const password = requireString(body.password);
   const submissionId = requireString(body.submissionId);
   const entityUid = requireString(body.entityUid);
+  const placeUid = requireString(body.placeUid);
   const submission = body.submission && typeof body.submission === "object" && !Array.isArray(body.submission)
     ? body.submission as Record<string, unknown>
     : {};
@@ -610,6 +846,9 @@ Deno.serve(async (request) => {
     : {};
   const updates = body.updates && typeof body.updates === "object" && !Array.isArray(body.updates)
     ? body.updates as Record<string, unknown>
+    : {};
+  const place = body.place && typeof body.place === "object" && !Array.isArray(body.place)
+    ? body.place as Record<string, unknown>
     : {};
   const rows = Array.isArray(body.rows) ? body.rows as EntityInput[] : [];
 
@@ -637,6 +876,10 @@ Deno.serve(async (request) => {
         return await handleBulkUploadEntities(token, rows);
       case "submitContactRequest":
         return await handleSubmitContactRequest(contactRequest);
+      case "upsertPlaceInitiative":
+        return await handleUpsertPlaceInitiative(token, place);
+      case "deletePlaceInitiative":
+        return await handleDeletePlaceInitiative(token, placeUid);
       default:
         return errorResponse("Unknown admin action.", 400);
     }

@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" href="data:," />
+  <title>Place Initiatives | Livelihood Ecosystem Directory</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="./config.js?v=20260503a"></script>
+  <link rel="stylesheet" href="./styles.css?v=20260503a" />
+</head>
+<body>
+  <div class="vendor-shell place-shell">
+    <header class="vendor-hero place-hero">
+      <div>
+        <p class="vendor-kicker">Livelihood Ecosystem Directory</p>
+        <h1>Place Initiative Map</h1>
+        <p class="vendor-subtitle">Browse place-based initiatives across India, inspect who is leading each place, review partner gaps, and update records when an admin session is active.</p>
+      </div>
+      <div class="vendor-hero-actions">
+        <a class="btn btn-small" href="./index.html">Directory Home</a>
+        <button class="btn btn-small" id="print-place-view" type="button">Print View</button>
+      </div>
+    </header>
+
+    <main class="place-page">
+      <section class="place-top-layout">
+        <div class="section place-map-shell">
+          <div class="place-map-toolbar">
+            <div>
+              <h3>India Place Map</h3>
+              <p class="section-note" id="place-map-status">Loading place initiatives and map layers...</p>
+            </div>
+          </div>
+          <div class="place-map-stage">
+            <div id="place-map" class="vendor-map-canvas place-map-canvas"></div>
+            <div id="place-role-callouts" class="place-role-callouts" aria-hidden="true"></div>
+          </div>
+        </div>
+
+        <aside class="section place-editor-shell">
+          <div class="place-editor-header">
+            <div>
+              <h3>Place Editor</h3>
+              <p class="section-note" id="place-editor-mode">View mode is active. Sign in at the bottom of the page to add or edit records.</p>
+            </div>
+            <span class="admin-badge" id="place-admin-badge">Read only</span>
+          </div>
+
+          <form class="admin-form place-editor-form" id="place-editor-form">
+            <input id="place-id" type="hidden" />
+            <input id="place-uid" type="hidden" />
+
+            <div class="form-group">
+              <label for="place-name">Place Initiative Name</label>
+              <input id="place-name" type="text" placeholder="Example: Bastar Forest Livelihood Network" />
+            </div>
+
+            <div class="form-group">
+              <label for="place-location-search">Add Covered Location</label>
+              <div class="place-search-row">
+                <input id="place-location-search" type="search" placeholder="Type village, block, district, or state name" autocomplete="off" />
+                <button class="btn btn-small" id="add-place-location" type="button">Add</button>
+              </div>
+              <div id="place-location-suggestions" class="place-suggestions" hidden></div>
+              <small>Location suggestions use public India place-name datasets and are narrowed as you type.</small>
+            </div>
+
+            <div id="place-location-list" class="place-location-list"></div>
+
+            <section class="place-form-block">
+              <div class="place-form-block-header">
+                <h4>Lead Organisation</h4>
+              </div>
+              <div class="form-group">
+                <label for="lead-org-search">Lead Organisation / Individual</label>
+                <input id="lead-org-search" type="search" placeholder="Search the directory master database" autocomplete="off" />
+                <div id="lead-org-suggestions" class="place-suggestions" hidden></div>
+              </div>
+              <div class="form-group">
+                <label for="lead-org-name">Name</label>
+                <input id="lead-org-name" type="text" placeholder="Organisation or individual name" />
+              </div>
+              <div class="form-group">
+                <label for="lead-org-role">Role</label>
+                <select id="lead-org-role"></select>
+              </div>
+              <div class="form-group" id="lead-role-custom-group" hidden>
+                <label for="lead-org-role-custom">Add New Role Label</label>
+                <input id="lead-org-role-custom" type="text" placeholder="Describe the new role to add for later use" />
+              </div>
+              <div class="form-group">
+                <label for="lead-org-website">Website</label>
+                <input id="lead-org-website" type="url" placeholder="https://..." />
+              </div>
+              <div class="form-group">
+                <label for="lead-org-theme">Thematic Area of Work</label>
+                <textarea id="lead-org-theme" rows="3" placeholder="Livelihoods, skilling, market access, climate resilience..."></textarea>
+              </div>
+            </section>
+
+            <section class="place-form-block">
+              <div class="place-form-block-header">
+                <h4>Partner Organisations</h4>
+                <button class="btn btn-small" id="add-partner-row" type="button">Add Partner</button>
+              </div>
+              <div id="partner-list" class="partner-list"></div>
+            </section>
+
+            <section class="place-form-block">
+              <div class="place-form-block-header">
+                <h4>SoTH Status</h4>
+              </div>
+              <div id="soth-status-grid" class="place-status-grid"></div>
+            </section>
+
+            <section class="place-form-block">
+              <div class="place-form-block-header">
+                <h4>GramEEE Status</h4>
+              </div>
+              <div id="grameee-status-grid" class="place-status-grid"></div>
+            </section>
+
+            <div class="btn-group">
+              <button class="btn btn-success" id="save-place" type="submit">Save Place</button>
+              <button class="btn btn-danger" id="delete-place" type="button">Delete Place</button>
+              <button class="btn btn-small" id="new-place" type="button">New Place</button>
+            </div>
+            <p class="admin-status" id="place-save-status"></p>
+          </form>
+        </aside>
+      </section>
+
+      <section class="section place-bottom-shell">
+        <div class="place-bottom-header">
+          <div>
+            <h3>Selected Place Detail</h3>
+            <p class="section-note" id="place-detail-status">Click a shaded place on the map to inspect its locations, organisations, and potential partners.</p>
+          </div>
+          <div class="btn-group">
+            <button class="btn btn-small" id="edit-selected-place" type="button">Open In Editor</button>
+          </div>
+        </div>
+        <div class="place-bottom-scroll">
+          <div id="place-detail-content" class="place-detail-content"></div>
+        </div>
+      </section>
+
+      <section class="section place-admin-footer">
+        <div class="page-end-actions">
+          <button class="admin-sync-end" id="toggle-admin-sync" type="button">Admin Sync</button>
+        </div>
+        <div id="admin-sync-panel" class="place-admin-panel" hidden>
+          <div class="place-admin-panel-grid">
+            <div>
+              <h3>Admin Session</h3>
+              <p class="section-note">This page stays in view mode until the shared admin session is verified.</p>
+            </div>
+            <form class="admin-form place-admin-login" id="place-admin-login-form">
+              <div class="form-group">
+                <label for="place-admin-password">Common Admin Password</label>
+                <input id="place-admin-password" type="password" placeholder="Enter admin password" />
+              </div>
+              <div class="btn-group">
+                <button class="btn btn-small" type="submit">Sign In</button>
+                <button class="btn btn-small btn-danger" id="place-admin-logout" type="button">Sign Out</button>
+              </div>
+              <p class="admin-status" id="place-admin-status"></p>
+            </form>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="./ecosystem-form-fields.js?v=20260503a"></script>
+  <script src="./ecosystem-store.js?v=20260503a"></script>
+  <script src="./place-initiatives.js?v=20260503a"></script>
+</body>
+</html>

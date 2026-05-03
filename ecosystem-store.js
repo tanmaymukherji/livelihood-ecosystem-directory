@@ -46,6 +46,18 @@ window.EcosystemStore = (() => {
     return { entityTypes, entities, fieldDefinitions };
   }
 
+  async function loadPlaceInitiativesData() {
+    const [entityTypes, entities, placeInitiatives, placeLocations, placePartners, placeRoleTypes] = await Promise.all([
+      fetchAllRows(ENTITY_TYPES_TABLE(), 'sort_order'),
+      fetchAllRows(PUBLIC_ENTITIES_VIEW(), 'entity_name'),
+      fetchAllRows('place_initiatives_public', 'initiative_name'),
+      fetchAllRows('place_initiative_locations_public', 'sort_order'),
+      fetchAllRows('place_initiative_partners_public', 'sort_order'),
+      fetchAllRows('place_role_types', 'sort_order'),
+    ]);
+    return { entityTypes, entities, placeInitiatives, placeLocations, placePartners, placeRoleTypes };
+  }
+
   async function adminRequest(action, payload = {}) {
     const config = window.APP_CONFIG || {};
     const response = await fetch(ADMIN_API_URL(), {
@@ -66,5 +78,5 @@ window.EcosystemStore = (() => {
     return data;
   }
 
-  return { loadDirectory, adminRequest };
+  return { loadDirectory, loadPlaceInitiativesData, adminRequest };
 })();
