@@ -1237,6 +1237,9 @@ function renderDetail(placeUid) {
       ${partnerRows.length ? partnerRows.map((partner) => `<article class="place-detail-card place-detail-card-compact"><strong>${esc(partner.partner_name)}</strong><small>${esc(getRoleLabel(partner.role_slug, partner.role_label))}</small><p>${esc(partner.thematic_area || 'No thematic area listed')}</p></article>`).join('') : '<article class="place-detail-card place-detail-card-compact"><p class="section-note">No partner organisations have been linked yet.</p></article>'}
     </section>
     <section class="place-detail-row place-detail-row-needs">
+      <article class="place-detail-row-header">
+        <h4>Potential Partners by Need</h4>
+      </article>
       <article class="place-detail-card place-detail-card-compact">
         <h4>Current Needs</h4>
         ${thematicNeeds.labels.length
