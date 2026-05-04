@@ -92,6 +92,7 @@ a{text-decoration:none}
 .admin-editor-fields{display:none}
 .admin-editor-fields.active{display:grid;gap:.35rem}
 .place-admin-tools{display:grid;gap:1.25rem;margin-top:1.25rem}
+.place-admin-tools[hidden]{display:none !important}
 .place-admin-tools .section{margin:0;padding:1rem;border:1px solid #dbe5ef;border-radius:18px;background:#fbfcfe}
 .place-spider-admin-grid{display:grid;gap:1rem}
 .place-spider-admin-card{display:grid;gap:.8rem}
