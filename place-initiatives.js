@@ -359,17 +359,19 @@ function buildSpiderChartSvg(placeName, recordedAt, metricsJson) {
 
 function getPlaceIdentityTokens(place) {
   if (!place) return [];
-  const base = [
-    place.place_uid,
+  const exact = [normalizeText(place.place_uid)].filter(Boolean);
+  const semantic = [
     place.slug,
     place.initiative_name,
   ].map((value) => normalizeText(value)).filter(Boolean);
   const expanded = [];
-  base.forEach((token) => {
+  semantic.forEach((token) => {
     expanded.push(token);
-    token.split(/[^a-z0-9]+/).filter((part) => part.length >= 4).forEach((part) => expanded.push(part));
+    token.split(/[^a-z0-9]+/)
+      .filter((part) => part.length >= 4 && !['place', 'block', 'village', 'district', 'state', 'initiative'].includes(part))
+      .forEach((part) => expanded.push(part));
   });
-  return Array.from(new Set(expanded));
+  return Array.from(new Set([...exact, ...expanded]));
 }
 
 function itemMatchesPlaceIdentity(place, values = []) {
