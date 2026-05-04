@@ -57,6 +57,44 @@ const SOTH_STAGES = ['Initiate', 'Engage', 'Action', 'Auto Pilot'];
 const GRAMEEE_STAGES = ['Triggering', 'Incubating', 'Sustaining'];
 const LOCATION_DATA_URL = 'https://cdn.jsdelivr.net/gh/pranshumaheshwari/indian-cities-and-villages@master/data.json';
 const STATE_DISTRICT_URL = 'https://cdn.jsdelivr.net/gh/aharnish-infotech/india-state-district-json@main/India-State-District.json';
+const INDIA_STATE_CENTERS = {
+  'andaman and nicobar islands': { lat: 11.7401, lng: 92.6586 },
+  'andhra pradesh': { lat: 15.9129, lng: 79.74 },
+  'arunachal pradesh': { lat: 28.218, lng: 94.7278 },
+  'assam': { lat: 26.2006, lng: 92.9376 },
+  'bihar': { lat: 25.0961, lng: 85.3131 },
+  'chandigarh': { lat: 30.7333, lng: 76.7794 },
+  'chhattisgarh': { lat: 21.2787, lng: 81.8661 },
+  'dadra and nagar haveli and daman and diu': { lat: 20.4283, lng: 72.8397 },
+  'delhi': { lat: 28.7041, lng: 77.1025 },
+  'goa': { lat: 15.2993, lng: 74.124 },
+  'gujarat': { lat: 22.2587, lng: 71.1924 },
+  'haryana': { lat: 29.0588, lng: 76.0856 },
+  'himachal pradesh': { lat: 31.1048, lng: 77.1734 },
+  'jammu and kashmir': { lat: 33.7782, lng: 76.5762 },
+  'jharkhand': { lat: 23.6102, lng: 85.2799 },
+  'karnataka': { lat: 15.3173, lng: 75.7139 },
+  'kerala': { lat: 10.8505, lng: 76.2711 },
+  'ladakh': { lat: 34.1526, lng: 77.5771 },
+  'lakshadweep': { lat: 10.5667, lng: 72.6417 },
+  'madhya pradesh': { lat: 22.9734, lng: 78.6569 },
+  'maharashtra': { lat: 19.7515, lng: 75.7139 },
+  'manipur': { lat: 24.6637, lng: 93.9063 },
+  'meghalaya': { lat: 25.467, lng: 91.3662 },
+  'mizoram': { lat: 23.1645, lng: 92.9376 },
+  'nagaland': { lat: 26.1584, lng: 94.5624 },
+  'odisha': { lat: 20.9517, lng: 85.0985 },
+  'puducherry': { lat: 11.9416, lng: 79.8083 },
+  'punjab': { lat: 31.1471, lng: 75.3412 },
+  'rajasthan': { lat: 27.0238, lng: 74.2179 },
+  'sikkim': { lat: 27.533, lng: 88.5122 },
+  'tamil nadu': { lat: 11.1271, lng: 78.6569 },
+  'telangana': { lat: 18.1124, lng: 79.0193 },
+  'tripura': { lat: 23.9408, lng: 91.9882 },
+  'uttar pradesh': { lat: 26.8467, lng: 80.9462 },
+  'uttarakhand': { lat: 30.0668, lng: 79.0193 },
+  'west bengal': { lat: 22.9868, lng: 87.855 }
+};
 
 const els = {
   mapStatus: document.getElementById('place-map-status'),
@@ -99,6 +137,14 @@ const els = {
 
 function normalizeText(value) {
   return String(value || '').trim().toLowerCase();
+}
+
+function toCoordinate(value) {
+  if (value === null || value === undefined) return null;
+  const text = String(value).trim();
+  if (!text) return null;
+  const num = Number(text);
+  return Number.isFinite(num) ? num : null;
 }
 
 function slugify(value) {
@@ -167,6 +213,29 @@ function formatCompactDate(value) {
 function getRoleLabel(roleSlug, roleLabel) {
   const found = placeState.placeRoleTypes.find((role) => role.slug === roleSlug);
   return roleLabel || found?.label || roleSlug || 'Unassigned';
+}
+
+function getStateCenter(stateName) {
+  const key = normalizeText(stateName)
+    .replace(/\s*&\s*/g, ' and ')
+    .replace(/\but\b/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return INDIA_STATE_CENTERS[key] || null;
+}
+
+function parseStateNameFromLabel(label) {
+  const parts = String(label || '').split(',').map((item) => item.trim()).filter(Boolean);
+  for (let index = parts.length - 1; index >= 0; index -= 1) {
+    if (getStateCenter(parts[index])) return parts[index];
+  }
+  return '';
+}
+
+function hasUsableCoordinatePair(item) {
+  const latitude = toCoordinate(item?.latitude);
+  const longitude = toCoordinate(item?.longitude);
+  return latitude !== null && longitude !== null;
 }
 
 function getStatusMeta(value) {
@@ -472,12 +541,22 @@ function getEntityGeographyTokens(entity) {
 }
 
 function buildPlaceCoverageContext(locations) {
+  const enriched = locations.map((item) => {
+    const inferred = inferLocationHierarchyMatch(item);
+    return {
+      ...item,
+      state_name: item.state_name || inferred?.state_name || parseStateNameFromLabel(item.display_label || item.location_name) || null,
+      district_name: item.district_name || inferred?.district_name || null,
+      block_name: item.block_name || inferred?.block_name || null,
+      village_name: item.village_name || inferred?.village_name || null,
+    };
+  });
   return {
-    states: new Set(locations.map((item) => normalizeGeographyText(item.state_name)).filter(Boolean)),
-    districts: new Set(locations.map((item) => normalizeGeographyText(item.district_name)).filter(Boolean)),
-    blocks: new Set(locations.map((item) => normalizeGeographyText(item.block_name)).filter(Boolean)),
-    villages: new Set(locations.map((item) => normalizeGeographyText(item.village_name)).filter(Boolean)),
-    labels: new Set(locations.map((item) => normalizeGeographyText(locationDisplayLabel(item))).filter(Boolean)),
+    states: new Set(enriched.map((item) => normalizeGeographyText(item.state_name)).filter(Boolean)),
+    districts: new Set(enriched.map((item) => normalizeGeographyText(item.district_name)).filter(Boolean)),
+    blocks: new Set(enriched.map((item) => normalizeGeographyText(item.block_name)).filter(Boolean)),
+    villages: new Set(enriched.map((item) => normalizeGeographyText(item.village_name)).filter(Boolean)),
+    labels: new Set(enriched.map((item) => normalizeGeographyText(locationDisplayLabel(item))).filter(Boolean)),
   };
 }
 
@@ -613,7 +692,41 @@ function locationDisplayLabel(item) {
 }
 
 function getPlaceStates(locations) {
-  return Array.from(new Set(locations.map((item) => item.state_name).filter(Boolean))).sort((left, right) => left.localeCompare(right));
+  return Array.from(new Set(locations.map((item) => item.state_name || inferLocationHierarchyMatch(item)?.state_name || parseStateNameFromLabel(item.display_label || item.location_name)).filter(Boolean))).sort((left, right) => left.localeCompare(right));
+}
+
+function inferLocationHierarchyMatch(item) {
+  const candidates = [
+    item.display_label,
+    item.location_name,
+    item.village_name,
+    item.block_name,
+    item.district_name,
+  ].map((value) => String(value || '').trim()).filter(Boolean);
+  if (!candidates.length || !Array.isArray(placeState.flatLocationEntries) || !placeState.flatLocationEntries.length) return null;
+  const matches = placeState.flatLocationEntries.filter((entry) => {
+    if (entry.location_kind !== guessLocationKind(item)) return false;
+    const entryTokens = [
+      entry.display_label,
+      entry.location_name,
+      entry.village_name,
+      entry.block_name,
+      entry.district_name,
+      entry.state_name,
+    ].map((value) => normalizeText(value));
+    return candidates.some((candidate) => entryTokens.includes(normalizeText(candidate)));
+  }).slice(0, 12);
+  if (!matches.length) return null;
+  const stateNames = Array.from(new Set(matches.map((entry) => entry.state_name).filter(Boolean)));
+  const districtNames = Array.from(new Set(matches.map((entry) => entry.district_name).filter(Boolean)));
+  const blockNames = Array.from(new Set(matches.map((entry) => entry.block_name).filter(Boolean)));
+  const villageNames = Array.from(new Set(matches.map((entry) => entry.village_name).filter(Boolean)));
+  return {
+    state_name: stateNames.length === 1 ? stateNames[0] : null,
+    district_name: districtNames.length === 1 ? districtNames[0] : null,
+    block_name: blockNames.length === 1 ? blockNames[0] : null,
+    village_name: villageNames.length === 1 ? villageNames[0] : null,
+  };
 }
 
 function dedupeBy(values, keyFn) {
@@ -1071,12 +1184,26 @@ function createCirclePolygon(lat, lng, radiusDegrees, steps = 28) {
 }
 
 function getPlaceCentroid(locations) {
-  const points = locations.filter((item) => Number.isFinite(Number(item.latitude)) && Number.isFinite(Number(item.longitude)));
-  if (!points.length) return { lat: INDIA_CENTER.lat, lng: INDIA_CENTER.lng };
+  const points = locations
+    .map((item) => ({ lat: toCoordinate(item.latitude), lng: toCoordinate(item.longitude) }))
+    .filter((item) => item.lat !== null && item.lng !== null);
+  if (!points.length) {
+    const fallback = getPlaceFallbackCentroid(locations);
+    return { lat: fallback.lat, lng: fallback.lng };
+  }
   return {
-    lat: points.reduce((sum, item) => sum + Number(item.latitude), 0) / points.length,
-    lng: points.reduce((sum, item) => sum + Number(item.longitude), 0) / points.length,
+    lat: points.reduce((sum, item) => sum + item.lat, 0) / points.length,
+    lng: points.reduce((sum, item) => sum + item.lng, 0) / points.length,
   };
+}
+
+function getPlaceFallbackCentroid(locations) {
+  const states = getPlaceStates(locations);
+  for (const stateName of states) {
+    const center = getStateCenter(stateName);
+    if (center) return center;
+  }
+  return INDIA_CENTER;
 }
 
 function buildPlaceGeoJson() {
@@ -1087,9 +1214,9 @@ function buildPlaceGeoJson() {
     const color = getPlaceColor(place.place_uid);
     const centroid = getPlaceCentroid(locations);
     locations.forEach((location, index) => {
-      const lat = Number(location.latitude);
-      const lng = Number(location.longitude);
-      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+      const lat = toCoordinate(location.latitude);
+      const lng = toCoordinate(location.longitude);
+      if (lat === null || lng === null) return;
       polygonFeatures.push({
         type: 'Feature',
         geometry: {
@@ -1369,13 +1496,20 @@ function renderRoleCallouts() {
 }
 
 function fitToPlace(placeUid) {
-  const locations = getPlaceLocations(placeUid).filter((item) => Number.isFinite(Number(item.latitude)) && Number.isFinite(Number(item.longitude)));
-  if (!placeState.map || !placeState.map.fitBounds || !locations.length) return;
+  const locations = getPlaceLocations(placeUid).filter((item) => hasUsableCoordinatePair(item));
+  if (!placeState.map) return;
+  if (!locations.length) {
+    const fallback = getPlaceCentroid(getPlaceLocations(placeUid));
+    placeState.map.setCenter?.(fallback);
+    placeState.map.setZoom?.(6);
+    return;
+  }
+  if (!placeState.map.fitBounds) return;
   const bounds = locations.reduce((acc, item) => {
-    acc.minLng = Math.min(acc.minLng, Number(item.longitude));
-    acc.maxLng = Math.max(acc.maxLng, Number(item.longitude));
-    acc.minLat = Math.min(acc.minLat, Number(item.latitude));
-    acc.maxLat = Math.max(acc.maxLat, Number(item.latitude));
+    acc.minLng = Math.min(acc.minLng, toCoordinate(item.longitude));
+    acc.maxLng = Math.max(acc.maxLng, toCoordinate(item.longitude));
+    acc.minLat = Math.min(acc.minLat, toCoordinate(item.latitude));
+    acc.maxLat = Math.max(acc.maxLat, toCoordinate(item.latitude));
     return acc;
   }, { minLng: 180, maxLng: -180, minLat: 90, maxLat: -90 });
   placeState.map.fitBounds([[bounds.minLng - 0.6, bounds.minLat - 0.6], [bounds.maxLng + 0.6, bounds.maxLat + 0.6]], { padding: 84, duration: 700 });
