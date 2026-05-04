@@ -85,11 +85,100 @@ function renderTypeSpecificDetails(entity, fieldDefinitions) {
     .filter((item) => item.type_slug === entity.entity_type_slug)
     .sort((left, right) => Number(left.sort_order || 0) - Number(right.sort_order || 0));
   const values = entity.type_specific_data && typeof entity.type_specific_data === 'object' ? entity.type_specific_data : {};
+  if (entity.entity_type_slug === 'story_teller') {
+    return renderStoryTellerDetails(definitions, values);
+  }
   const rows = definitions
     .map((field) => ({ field, value: formatDynamicValue(field, values[field.field_key]) }))
     .filter((item) => item.value);
   if (!rows.length) return `<div class="vendor-inline-list"><strong>Type-Specific Details</strong><div>No data available.</div></div>`;
   return `<div class="vendor-inline-list"><strong>Type-Specific Details</strong>${rows.map((item) => `<div><strong>${esc(item.field.label)}:</strong> ${esc(item.value)}</div>`).join('')}</div>`;
+}
+
+function normalizeUrl(value) {
+  const text = String(value || '').trim();
+  if (!text) return '';
+  if (/^https?:\/\//i.test(text)) return text;
+  return `https://${text}`;
+}
+
+function parseStoryLinkLines(value) {
+  return String(value || '')
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const parts = line.includes('|') ? line.split('|') : [line];
+      const label = String(parts[0] || '').trim();
+      const url = normalizeUrl(parts.length > 1 ? parts.slice(1).join('|').trim() : line);
+      return url ? { label, url } : null;
+    })
+    .filter(Boolean);
+}
+
+function getYouTubeEmbedUrl(value) {
+  const raw = normalizeUrl(value);
+  if (!raw) return '';
+  try {
+    const url = new URL(raw);
+    if (url.hostname.includes('youtu.be')) {
+      const videoId = url.pathname.replace(/\//g, '').trim();
+      return videoId ? `https://www.youtube.com/embed/${videoId}` : '';
+    }
+    if (url.hostname.includes('youtube.com')) {
+      if (url.pathname === '/watch') {
+        const videoId = url.searchParams.get('v');
+        return videoId ? `https://www.youtube.com/embed/${videoId}` : '';
+      }
+      const match = url.pathname.match(/\/(embed|shorts)\/([^/?#]+)/i);
+      if (match?.[2]) return `https://www.youtube.com/embed/${match[2]}`;
+    }
+  } catch {}
+  return '';
+}
+
+function renderStoryTellerDetails(definitions, values) {
+  const socialFieldLabels = {
+    youtube_url: 'YouTube',
+    instagram_url: 'Instagram',
+    linkedin_url: 'LinkedIn',
+    facebook_url: 'Facebook',
+    portfolio_website: 'Website / Portfolio',
+  };
+  const standardRows = [];
+  definitions.forEach((field) => {
+    const fieldValue = values[field.field_key];
+    if (!fieldValue) return;
+    if (field.field_key in socialFieldLabels) return;
+    if (field.field_key === 'other_social_links') return;
+    if (field.field_key === 'known_work_links') return;
+    standardRows.push(`<div><strong>${esc(field.label)}:</strong> ${esc(formatDynamicValue(field, fieldValue))}</div>`);
+  });
+
+  const socialLinks = Object.entries(socialFieldLabels)
+    .map(([fieldKey, label]) => ({ label, url: normalizeUrl(values[fieldKey]) }))
+    .filter((item) => item.url);
+  const otherLinks = parseStoryLinkLines(values.other_social_links);
+  const knownWorks = parseStoryLinkLines(values.known_work_links);
+  const youTubeEmbedUrl = getYouTubeEmbedUrl(values.youtube_url);
+
+  return `
+    <div class="vendor-inline-list">
+      <strong>Type-Specific Details</strong>
+      ${standardRows.length ? standardRows.join('') : '<div>No data available.</div>'}
+      ${socialLinks.length ? `<div><strong>Social Handles:</strong> ${socialLinks.map((item) => `<a href="${esc(item.url)}" target="_blank" rel="noreferrer">${esc(item.label)}</a>`).join(' | ')}</div>` : ''}
+      ${otherLinks.length ? `<div><strong>Other Social Links:</strong>${otherLinks.map((item) => `<div><a href="${esc(item.url)}" target="_blank" rel="noreferrer">${esc(item.label || item.url)}</a></div>`).join('')}</div>` : ''}
+      ${knownWorks.length ? `<div><strong>Known Works:</strong>${knownWorks.map((item, index) => `<div><a href="${esc(item.url)}" target="_blank" rel="noreferrer">${esc(item.label && item.label !== item.url ? item.label : `Work Link ${index + 1}`)}</a></div>`).join('')}</div>` : ''}
+      ${youTubeEmbedUrl ? `
+        <div class="story-video-block">
+          <strong>YouTube Video</strong>
+          <div class="story-video-frame">
+            <iframe src="${esc(youTubeEmbedUrl)}" title="Story Teller YouTube video" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+          </div>
+        </div>
+      ` : values.youtube_url ? `<div><strong>YouTube:</strong> <a href="${esc(normalizeUrl(values.youtube_url))}" target="_blank" rel="noreferrer">Open YouTube</a></div>` : ''}
+    </div>
+  `;
 }
 
 function getPlaceTopThematicNeeds(placeUid, placeThematicNeeds) {
