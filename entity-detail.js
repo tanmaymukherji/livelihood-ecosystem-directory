@@ -92,6 +92,68 @@ function renderTypeSpecificDetails(entity, fieldDefinitions) {
   return `<div class="vendor-inline-list"><strong>Type-Specific Details</strong>${rows.map((item) => `<div><strong>${esc(item.field.label)}:</strong> ${esc(item.value)}</div>`).join('')}</div>`;
 }
 
+function getPlaceTopThematicNeeds(placeUid, placeThematicNeeds) {
+  const items = asArray(placeThematicNeeds)
+    .filter((item) => item.place_uid === placeUid)
+    .sort((left, right) => new Date(right.recorded_at || 0).getTime() - new Date(left.recorded_at || 0).getTime());
+  const seen = new Set();
+  const orderedNeeds = [];
+  items.forEach((item) => {
+    asArray(item.thematic_needs).forEach((need) => {
+      const label = String(need || '').trim();
+      const key = label.toLowerCase();
+      if (!label || seen.has(key)) return;
+      seen.add(key);
+      orderedNeeds.push(label);
+    });
+  });
+  return {
+    labels: orderedNeeds,
+    latestRecordedAt: items[0]?.recorded_at || '',
+  };
+}
+
+function getSpiderChartNeedIdentifiers(placeUid, placeSpiderSnapshots) {
+  const latestSnapshot = asArray(placeSpiderSnapshots)
+    .filter((item) => item.place_uid === placeUid)
+    .sort((left, right) => new Date(right.recorded_at || 0).getTime() - new Date(left.recorded_at || 0).getTime())[0];
+  if (!latestSnapshot) {
+    return {
+      labels: [],
+      recordedAt: '',
+    };
+  }
+  const labels = normalizePlaceMetricSet(latestSnapshot.metrics_json)
+    .filter((metric) => {
+      if (metric.key === 'arresting_distress_migration') return metric.normalized > 50;
+      return metric.normalized < 50;
+    })
+    .map((metric) => `${metric.label} (${Math.round(metric.normalized)} / 100)`);
+  return {
+    labels,
+    recordedAt: latestSnapshot.recorded_at || '',
+  };
+}
+
+function renderPlaceNeedSignals(entity, placeThematicNeeds, placeSpiderSnapshots) {
+  const thematicNeeds = getPlaceTopThematicNeeds(entity.entity_uid, placeThematicNeeds);
+  const spiderNeeds = getSpiderChartNeedIdentifiers(entity.entity_uid, placeSpiderSnapshots);
+  if (!thematicNeeds.labels.length && !spiderNeeds.labels.length) {
+    return `<div class="vendor-inline-list"><strong>Place Need Signals</strong><div>${esc(entity.entity_name)}: No data available.</div></div>`;
+  }
+  return `
+    <div class="vendor-inline-list">
+      <strong>Place Need Signals</strong>
+      ${thematicNeeds.labels.length
+        ? `<div><strong>Top Thematic Needs:</strong> ${esc(thematicNeeds.labels.join(', '))}${thematicNeeds.latestRecordedAt ? ` <span class="section-note">(latest update: ${esc(formatDateTime(thematicNeeds.latestRecordedAt))})</span>` : ''}</div>`
+        : `<div><strong>Top Thematic Needs:</strong> No data available.</div>`}
+      ${spiderNeeds.labels.length
+        ? `<div><strong>Spider Chart Identifiers of Needs:</strong> ${esc(spiderNeeds.labels.join(', '))}${spiderNeeds.recordedAt ? ` <span class="section-note">(latest spider chart: ${esc(formatDateTime(spiderNeeds.recordedAt))})</span>` : ''}</div>`
+        : `<div><strong>Spider Chart Identifiers of Needs:</strong> No data available.</div>`}
+    </div>
+  `;
+}
+
 function splitSpiderLabel(label, maxChars = 16, maxLines = 3) {
   const parts = String(label || '')
     .replace(/\//g, ' / ')
@@ -829,6 +891,7 @@ async function initEntityDetail() {
         ${officeLocations.length ? `<div class="vendor-inline-list"><strong>Office Locations</strong>${officeLocations.map((item) => `<div>${esc(item)}</div>`).join('')}</div>` : ''}
         ${socialMedia.length ? `<div class="vendor-inline-list"><strong>Social Media</strong>${socialMedia.map(([label, value]) => `<div>${esc(label)}: <a href="${esc(value)}" target="_blank" rel="noreferrer">${esc(value)}</a></div>`).join('')}</div>` : ''}
         ${renderTypeSpecificDetails(entity, fieldDefinitions)}
+        ${isPlace ? renderPlaceNeedSignals(entity, placeThematicNeeds, placeSpiderSnapshots) : ''}
       </section>
       ${isPlace ? renderPlaceDocuments(entity, placeDocuments, adminSession.valid) : ''}
       ${isPlace ? renderPlaceSpiderHistory(entity, placeSpiderSnapshots, adminSession.valid) : ''}
