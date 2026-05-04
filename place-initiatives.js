@@ -7,6 +7,7 @@ const placeState = {
   placeLocations: [],
   placePartners: [],
   placeRoleTypes: [],
+  placeDocuments: [],
   placeSpiderSnapshots: [],
   placeThematicNeeds: [],
   selectedPlaceUid: '',
@@ -437,6 +438,44 @@ function getPlaceIdentityTokens(place) {
   ].map((value) => normalizeText(value)).filter(Boolean);
 }
 
+function getPlaceLocationMatchTokens(placeUid) {
+  const locations = getPlaceLocations(placeUid);
+  const tokens = [];
+  const push = (value) => {
+    const text = normalizeText(value);
+    if (!text) return;
+    tokens.push(text);
+  };
+  locations.forEach((item) => {
+    push(item.location_name);
+    push(item.display_label);
+    push(item.village_name);
+    push(item.block_name);
+    push(item.district_name);
+    push(item.state_name);
+  });
+  return Array.from(new Set(tokens.filter((item) => item.length > 2)));
+}
+
+function recordMatchesPlaceContext(placeUid, record, extraValues = []) {
+  const place = getPlaceByUid(placeUid);
+  const values = [
+    record?.place_uid,
+    record?.place_name,
+    record?.title,
+    record?.notes,
+    record?.description,
+    ...extraValues,
+  ].map((value) => normalizeText(value)).filter(Boolean);
+  if (!values.length) return false;
+  if (record?.place_uid === placeUid) return true;
+  if (itemMatchesPlaceIdentity(place, values)) return true;
+  const locationTokens = getPlaceLocationMatchTokens(placeUid);
+  if (!locationTokens.length) return false;
+  const haystack = values.join(' | ');
+  return locationTokens.some((token) => haystack.includes(token));
+}
+
 function itemMatchesPlaceIdentity(place, values = []) {
   const tokens = getPlaceIdentityTokens(place);
   if (!tokens.length) return false;
@@ -445,9 +484,8 @@ function itemMatchesPlaceIdentity(place, values = []) {
 }
 
 function getPlaceTopThematicNeeds(placeUid) {
-  const place = getPlaceByUid(placeUid);
   const items = asArray(placeState.placeThematicNeeds)
-    .filter((item) => item.place_uid === placeUid || itemMatchesPlaceIdentity(place, [item.place_uid, ...(asArray(item.thematic_needs))]))
+    .filter((item) => recordMatchesPlaceContext(placeUid, item, asArray(item.thematic_needs)))
     .sort((left, right) => new Date(right.recorded_at || 0).getTime() - new Date(left.recorded_at || 0).getTime());
   const seen = new Set();
   const orderedNeeds = [];
@@ -468,12 +506,20 @@ function getPlaceTopThematicNeeds(placeUid) {
 }
 
 function getPlaceSpiderSnapshots(placeUid) {
-  const place = getPlaceByUid(placeUid);
   return dedupeBy(
     asArray(placeState.placeSpiderSnapshots)
-      .filter((item) => item.place_uid === placeUid || itemMatchesPlaceIdentity(place, [item.place_uid, item.title, item.notes]))
+      .filter((item) => recordMatchesPlaceContext(placeUid, item))
       .sort((left, right) => new Date(right.recorded_at || 0).getTime() - new Date(left.recorded_at || 0).getTime()),
     (item) => normalizeText([item.place_uid, item.title, item.recorded_at].join('|'))
+  );
+}
+
+function getPlaceDocuments(placeUid) {
+  return dedupeBy(
+    asArray(placeState.placeDocuments)
+      .filter((item) => recordMatchesPlaceContext(placeUid, item))
+      .sort((left, right) => new Date(right.recorded_at || 0).getTime() - new Date(left.recorded_at || 0).getTime()),
+    (item) => normalizeText([item.place_uid, item.title, item.recorded_at, item.file_url].join('|'))
   );
 }
 
@@ -1383,6 +1429,7 @@ function renderDetail(placeUid) {
   const lead = partners.find((item) => item.partner_kind === 'lead') || null;
   const partnerRows = partners.filter((item) => item.partner_kind !== 'lead');
   const states = getPlaceStates(locations);
+  const documents = getPlaceDocuments(placeUid);
   const spiderSnapshots = getPlaceSpiderSnapshots(placeUid);
   const thematicNeeds = getPlaceTopThematicNeeds(placeUid);
   const spiderNeedSignals = getSpiderChartNeedIdentifiers(placeUid);
@@ -1434,6 +1481,9 @@ function renderDetail(placeUid) {
         ${spiderNeedSignals.labels.length
           ? `<p><strong>Spider Chart Identifiers of Needs:</strong> ${esc(spiderNeedSignals.labels.join(', '))}</p><p class="section-note">Latest spider chart: ${esc(formatDateTime(spiderNeedSignals.recordedAt))}</p>`
           : '<p class="section-note">No spider chart need signals are available yet.</p>'}
+        ${documents.length
+          ? `<div class="vendor-inline-list">${documents.map((document) => `<a href="${esc(document.file_url || '#')}" target="_blank" rel="noreferrer">Document - ${esc(document.title || formatCompactDate(document.recorded_at))}</a>`).join('')}</div>`
+          : '<p class="section-note">No approved place documents are available for this Place yet.</p>'}
       </article>
       <article class="place-detail-card place-detail-card-compact">
         <h4>Potential Partners by Need</h4>
@@ -1768,6 +1818,7 @@ async function initializePageData() {
   placeState.placeLocations = Array.isArray(data.placeLocations) ? data.placeLocations : [];
   placeState.placePartners = Array.isArray(data.placePartners) ? data.placePartners : [];
   placeState.placeRoleTypes = Array.isArray(data.placeRoleTypes) ? data.placeRoleTypes : [];
+  placeState.placeDocuments = Array.isArray(data.placeDocuments) ? data.placeDocuments : [];
   placeState.placeSpiderSnapshots = Array.isArray(data.placeSpiderSnapshots) ? data.placeSpiderSnapshots : [];
   placeState.placeThematicNeeds = Array.isArray(data.placeThematicNeeds) ? data.placeThematicNeeds : [];
   placeState.placeRoleTypes.sort((left, right) => Number(left.sort_order || 0) - Number(right.sort_order || 0));
