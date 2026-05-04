@@ -50,15 +50,17 @@ window.EcosystemStore = (() => {
   }
 
   async function loadPlaceInitiativesData() {
-    const [entityTypes, entities, placeInitiatives, placeLocations, placePartners, placeRoleTypes] = await Promise.all([
+    const [entityTypes, entities, placeInitiatives, placeLocations, placePartners, placeRoleTypes, placeSpiderSnapshots, placeThematicNeeds] = await Promise.all([
       fetchAllRows(ENTITY_TYPES_TABLE(), 'sort_order'),
       fetchAllRows(PUBLIC_ENTITIES_VIEW(), 'entity_name'),
       fetchAllRows('place_initiatives_public', 'initiative_name'),
       fetchAllRows('place_initiative_locations_public', 'sort_order'),
       fetchAllRows('place_initiative_partners_public', 'sort_order'),
       fetchAllRows('place_role_types', 'sort_order'),
+      fetchAllRows('place_spider_chart_snapshots_public', 'recorded_at'),
+      fetchAllRows('place_thematic_need_records_public', 'recorded_at'),
     ]);
-    return { entityTypes, entities, placeInitiatives, placeLocations, placePartners, placeRoleTypes };
+    return { entityTypes, entities, placeInitiatives, placeLocations, placePartners, placeRoleTypes, placeSpiderSnapshots, placeThematicNeeds };
   }
 
   async function adminRequest(action, payload = {}) {

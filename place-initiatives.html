@@ -6,8 +6,8 @@
   <link rel="icon" href="data:," />
   <title>Place Initiatives | Livelihood Ecosystem Directory</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="./config.js?v=20260504a"></script>
-  <link rel="stylesheet" href="./styles.css?v=20260504a" />
+  <script src="./config.js?v=20260504b"></script>
+  <link rel="stylesheet" href="./styles.css?v=20260504b" />
 </head>
 <body class="place-read-only">
   <div class="vendor-shell place-shell">
@@ -181,11 +181,22 @@
           </div>
         </div>
       </section>
+
+      <div id="place-spider-modal" class="place-modal" hidden aria-hidden="true">
+        <div class="place-modal-backdrop" data-close-place-modal></div>
+        <div class="place-modal-dialog">
+          <div class="place-modal-toolbar">
+            <h3 id="place-spider-modal-title">Spider Chart</h3>
+            <button class="btn btn-small" type="button" data-close-place-modal>Close</button>
+          </div>
+          <div id="place-spider-modal-body"></div>
+        </div>
+      </div>
     </main>
   </div>
 
-  <script src="./ecosystem-form-fields.js?v=20260504a"></script>
-  <script src="./ecosystem-store.js?v=20260504a"></script>
-  <script src="./place-initiatives.js?v=20260504a"></script>
+  <script src="./ecosystem-form-fields.js?v=20260504b"></script>
+  <script src="./ecosystem-store.js?v=20260504b"></script>
+  <script src="./place-initiatives.js?v=20260504b"></script>
 </body>
 </html>

@@ -84,6 +84,9 @@ const PLACE_ROLE_TO_ENTITY_TYPE: Record<string, string> = {
   incubator: "incubation_centre",
   institutes: "institute",
   trader_association: "trader_association",
+  csr_philanthropy: "csr_philanthropy",
+  environmental_expert: "environmental_expert",
+  story_tellers: "story_teller",
 };
 
 type EntityInput = Record<string, unknown>;

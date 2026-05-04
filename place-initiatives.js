@@ -7,6 +7,8 @@ const placeState = {
   placeLocations: [],
   placePartners: [],
   placeRoleTypes: [],
+  placeSpiderSnapshots: [],
+  placeThematicNeeds: [],
   selectedPlaceUid: '',
   adminToken: '',
   adminEnabled: false,
@@ -33,6 +35,22 @@ const STATUS_OPTIONS = [
   { value: 'not_started', label: 'Not Started', color: '#d74c4c' },
   { value: 'in_progress', label: 'In Progress', color: '#f39c12' },
   { value: 'mature', label: 'Mature', color: '#2f9d63' },
+];
+const PLACE_SPIDER_METRICS = [
+  { key: 'arresting_distress_migration', label: 'Arresting Distress Migration', defaultMax: 5 },
+  { key: 'export_import', label: 'Export Import', defaultMax: 5 },
+  { key: 'income', label: 'Income', defaultMax: 5 },
+  { key: 'livelihood_basket', label: 'Livelihood Basket', defaultMax: 5 },
+  { key: 'youth_employment', label: 'Youth Employment', defaultMax: 5 },
+  { key: 'agro_ecology', label: 'Agro Ecology', defaultMax: 5 },
+  { key: 'energy', label: 'Energy', defaultMax: 5 },
+  { key: 'forest', label: 'Forest', defaultMax: 5 },
+  { key: 'soil', label: 'Soil', defaultMax: 5 },
+  { key: 'water', label: 'Water', defaultMax: 5 },
+  { key: 'gender_inclusion', label: 'Gender Inclusion', defaultMax: 5 },
+  { key: 'nutrition', label: 'Nutrition', defaultMax: 5 },
+  { key: 'institution', label: 'Institution', defaultMax: 5 },
+  { key: 'wash', label: 'Water / Sanitation / Hygiene', defaultMax: 5 },
 ];
 const SOTH_STAGES = ['Initiate', 'Engage', 'Action', 'Auto Pilot'];
 const GRAMEEE_STAGES = ['Triggering', 'Incubating', 'Sustaining'];
@@ -73,6 +91,9 @@ const els = {
   adminPassword: document.getElementById('place-admin-password'),
   callouts: document.getElementById('place-role-callouts'),
   toggleRoleBoxes: document.getElementById('toggle-role-boxes'),
+  spiderModal: document.getElementById('place-spider-modal'),
+  spiderModalTitle: document.getElementById('place-spider-modal-title'),
+  spiderModalBody: document.getElementById('place-spider-modal-body'),
 };
 
 function normalizeText(value) {
@@ -109,6 +130,37 @@ function safeJsonParse(value, fallback) {
   } catch {
     return fallback;
   }
+}
+
+function asArray(value) {
+  return Array.isArray(value) ? value.filter(Boolean) : [];
+}
+
+function formatDateTime(value) {
+  if (!value) return 'Not recorded';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return new Intl.DateTimeFormat('en-IN', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(date);
+}
+
+function formatDate(value) {
+  if (!value) return 'Not listed';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return new Intl.DateTimeFormat('en-IN', { dateStyle: 'medium' }).format(date);
+}
+
+function formatCompactDate(value) {
+  if (!value) return 'Not listed';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const year = String(date.getFullYear()).slice(-2);
+  return `${day}/${month}/${year}`;
 }
 
 function getRoleLabel(roleSlug, roleLabel) {
@@ -203,6 +255,275 @@ function getEntityTheme(entity) {
     ? Object.values(entity.type_specific_data).flatMap((value) => Array.isArray(value) ? value : [value]).filter(Boolean)
     : [];
   return [...tags, ...typeSpecific].slice(0, 8).join(', ');
+}
+
+function flattenTypeSpecificValues(value) {
+  if (Array.isArray(value)) return value.flatMap((item) => flattenTypeSpecificValues(item));
+  if (value && typeof value === 'object') return Object.values(value).flatMap((item) => flattenTypeSpecificValues(item));
+  return value == null ? [] : [String(value)];
+}
+
+function normalizePlaceMetricSet(metricsJson) {
+  const source = metricsJson && typeof metricsJson === 'object' ? metricsJson : {};
+  return PLACE_SPIDER_METRICS.map((metric) => {
+    const entry = source[metric.key] && typeof source[metric.key] === 'object' ? source[metric.key] : {};
+    const score = Math.max(0, Number(entry.score || 0));
+    const maxScore = Math.max(1, Number(entry.max_score || metric.defaultMax || 5));
+    const normalized = Math.max(0, Math.min(100, (score / maxScore) * 100));
+    return { ...metric, score, maxScore, normalized };
+  });
+}
+
+function splitSpiderLabel(label, maxChars = 16, maxLines = 3) {
+  const parts = String(label || '').replace(/\//g, ' / ').split(/\s+/).filter(Boolean);
+  const lines = [];
+  let current = '';
+  for (const part of parts) {
+    const next = current ? `${current} ${part}` : part;
+    if (next.length <= maxChars || !current || part === '/') {
+      current = next;
+      continue;
+    }
+    lines.push(current);
+    current = part;
+  }
+  if (current) lines.push(current);
+  if (lines.length <= maxLines) return lines;
+  const compact = lines.slice(0, maxLines - 1);
+  compact.push(lines.slice(maxLines - 1).join(' '));
+  return compact;
+}
+
+function buildSpiderChartSvg(placeName, recordedAt, metricsJson) {
+  const metrics = normalizePlaceMetricSet(metricsJson);
+  const width = 980;
+  const height = 900;
+  const centerX = width / 2;
+  const centerY = 470;
+  const radius = 250;
+  const labelRadius = 356;
+  const lineHeight = 18;
+  const polygonPoints = metrics.map((metric, index) => {
+    const angle = (-Math.PI / 2) + ((Math.PI * 2 * index) / metrics.length);
+    const pointRadius = radius * (metric.normalized / 100);
+    return [centerX + Math.cos(angle) * pointRadius, centerY + Math.sin(angle) * pointRadius];
+  });
+  const labelPoints = metrics.map((metric, index) => {
+    const angle = (-Math.PI / 2) + ((Math.PI * 2 * index) / metrics.length);
+    const lines = splitSpiderLabel(metric.label);
+    return {
+      ...metric,
+      x: centerX + Math.cos(angle) * labelRadius,
+      y: centerY + Math.sin(angle) * labelRadius,
+      lines,
+      textAnchor: Math.cos(angle) > 0.22 ? 'start' : Math.cos(angle) < -0.22 ? 'end' : 'middle',
+    };
+  });
+  const rings = [25, 50, 75, 100];
+  const ringPolygons = rings.map((ring) => {
+    const points = metrics.map((metric, index) => {
+      const angle = (-Math.PI / 2) + ((Math.PI * 2 * index) / metrics.length);
+      const pointRadius = radius * (ring / 100);
+      return `${centerX + Math.cos(angle) * pointRadius},${centerY + Math.sin(angle) * pointRadius}`;
+    }).join(' ');
+    return `<polygon points="${points}" fill="none" stroke="#d7dfeb" stroke-width="1"></polygon>`;
+  }).join('');
+  const axisLines = metrics.map((metric, index) => {
+    const angle = (-Math.PI / 2) + ((Math.PI * 2 * index) / metrics.length);
+    const x = centerX + Math.cos(angle) * radius;
+    const y = centerY + Math.sin(angle) * radius;
+    return `<line x1="${centerX}" y1="${centerY}" x2="${x}" y2="${y}" stroke="#d7dfeb" stroke-width="1"></line>`;
+  }).join('');
+  const dataPolygon = polygonPoints.map((point) => point.join(',')).join(' ');
+  const dataDots = polygonPoints.map((point) => `<circle cx="${point[0]}" cy="${point[1]}" r="4" fill="#2f7d73" stroke="#ffffff" stroke-width="2"></circle>`).join('');
+  const labels = labelPoints.map((metric) => {
+    const startY = metric.y - (((metric.lines.length - 1) * lineHeight) / 2);
+    const tspans = metric.lines.map((line, index) => `<tspan x="${metric.x}" dy="${index === 0 ? 0 : lineHeight}">${esc(line)}</tspan>`).join('');
+    return `<text x="${metric.x}" y="${startY}" font-size="14" font-weight="600" text-anchor="${metric.textAnchor}" fill="#28435c">${tspans}</text>`;
+  }).join('');
+  const ringLabels = rings.map((ring) => `<text x="${centerX + 12}" y="${centerY - ((radius * ring) / 100) + 5}" font-size="12" font-weight="600" fill="#688099">${ring}</text>`).join('');
+  return `
+    <svg viewBox="0 0 ${width} ${height}" class="place-radar-svg" role="img" aria-label="Spider chart for ${esc(placeName)}" preserveAspectRatio="xMidYMid meet">
+      <rect x="0" y="0" width="${width}" height="${height}" fill="#fbfcfe"></rect>
+      <text x="${centerX}" y="48" text-anchor="middle" font-size="28" font-weight="700" fill="#16324f">${esc(placeName)}</text>
+      <text x="${centerX}" y="78" text-anchor="middle" font-size="15" fill="#5f7388">${esc(formatDateTime(recordedAt))}</text>
+      ${ringPolygons}
+      ${axisLines}
+      ${ringLabels}
+      <polygon points="${dataPolygon}" fill="rgba(47,125,115,0.22)" stroke="#2f7d73" stroke-width="3"></polygon>
+      ${dataDots}
+      ${labels}
+    </svg>
+  `;
+}
+
+function getPlaceTopThematicNeeds(placeUid) {
+  const items = asArray(placeState.placeThematicNeeds)
+    .filter((item) => item.place_uid === placeUid)
+    .sort((left, right) => new Date(right.recorded_at || 0).getTime() - new Date(left.recorded_at || 0).getTime());
+  const seen = new Set();
+  const orderedNeeds = [];
+  items.forEach((item) => {
+    asArray(item.thematic_needs).forEach((need) => {
+      const label = String(need || '').trim();
+      const key = normalizeText(label);
+      if (!label || seen.has(key)) return;
+      seen.add(key);
+      orderedNeeds.push(label);
+    });
+  });
+  return {
+    labels: orderedNeeds,
+    latestRecordedAt: items[0]?.recorded_at || '',
+    records: items,
+  };
+}
+
+function getPlaceSpiderSnapshots(placeUid) {
+  return asArray(placeState.placeSpiderSnapshots)
+    .filter((item) => item.place_uid === placeUid)
+    .sort((left, right) => new Date(right.recorded_at || 0).getTime() - new Date(left.recorded_at || 0).getTime());
+}
+
+function getSpiderChartNeedIdentifiers(placeUid) {
+  const latestSnapshot = getPlaceSpiderSnapshots(placeUid)[0];
+  if (!latestSnapshot) return { labels: [], recordedAt: '' };
+  const labels = normalizePlaceMetricSet(latestSnapshot.metrics_json)
+    .filter((metric) => metric.key === 'arresting_distress_migration' ? metric.normalized > 50 : metric.normalized < 50)
+    .map((metric) => `${metric.label} (${Math.round(metric.normalized)} / 100)`);
+  return { labels, recordedAt: latestSnapshot.recorded_at || '' };
+}
+
+function extractNeedKeywords(placeUid) {
+  const thematic = getPlaceTopThematicNeeds(placeUid).labels;
+  const spider = getSpiderChartNeedIdentifiers(placeUid).labels.map((item) => item.replace(/\s*\(\d+\s*\/\s*100\)\s*$/, ''));
+  return Array.from(new Set([...thematic, ...spider].map((item) => String(item).trim()).filter(Boolean)));
+}
+
+function normalizeGeographyText(value) {
+  return normalizeText(String(value || '').replace(/[|;/]+/g, ', ').replace(/\s+/g, ' ').trim());
+}
+
+function getEntityGeographyTokens(entity) {
+  const values = [];
+  const push = (value) => {
+    const text = String(value || '').trim();
+    if (!text) return;
+    values.push(text);
+  };
+  push(entity.state);
+  push(entity.country);
+  push(entity.location_label);
+  asArray(entity.office_locations).forEach(push);
+  if (entity.type_specific_data && typeof entity.type_specific_data === 'object') {
+    const typeSpecific = entity.type_specific_data;
+    [
+      typeSpecific.geography_served,
+      typeSpecific.preferred_geography,
+      typeSpecific.service_locations,
+    ].flatMap((value) => flattenTypeSpecificValues(value)).forEach(push);
+  }
+  return Array.from(new Set(values.map((item) => item.trim()).filter(Boolean)));
+}
+
+function buildPlaceCoverageContext(locations) {
+  return {
+    states: new Set(locations.map((item) => normalizeGeographyText(item.state_name)).filter(Boolean)),
+    districts: new Set(locations.map((item) => normalizeGeographyText(item.district_name)).filter(Boolean)),
+    blocks: new Set(locations.map((item) => normalizeGeographyText(item.block_name)).filter(Boolean)),
+    villages: new Set(locations.map((item) => normalizeGeographyText(item.village_name)).filter(Boolean)),
+    labels: new Set(locations.map((item) => normalizeGeographyText(locationDisplayLabel(item))).filter(Boolean)),
+  };
+}
+
+function geographyMatchesPlace(entity, locations) {
+  const tokens = getEntityGeographyTokens(entity);
+  if (!tokens.length) return false;
+  const context = buildPlaceCoverageContext(locations);
+  return tokens.some((value) => {
+    const token = normalizeGeographyText(value);
+    if (!token) return false;
+    if (/\b(india|pan india|pan-india|india wide|india-wide|nationwide|all india)\b/.test(token)) return true;
+    if (context.labels.has(token) || context.states.has(token) || context.districts.has(token) || context.blocks.has(token) || context.villages.has(token)) return true;
+    if ([...context.states].some((state) => token.includes(state))) return true;
+    if ([...context.districts].some((district) => token.includes(district))) return true;
+    if ([...context.blocks].some((block) => token.includes(block))) return true;
+    if ([...context.villages].some((village) => token.includes(village))) return true;
+    return false;
+  });
+}
+
+function getEntityThematicTokens(entity) {
+  return flattenTypeSpecificValues(entity.type_specific_data || {})
+    .concat(asArray(entity.tags))
+    .concat(asArray(entity.keywords))
+    .concat([entity.summary, entity.description])
+    .map((value) => String(value || '').trim())
+    .filter(Boolean);
+}
+
+function thematicMatchesNeed(entity, needKeywords) {
+  if (!needKeywords.length) return false;
+  const haystack = normalizeText(getEntityThematicTokens(entity).join(' | '));
+  if (!haystack) return false;
+  return needKeywords.some((keyword) => {
+    const normalizedKeyword = normalizeText(keyword);
+    if (!normalizedKeyword) return false;
+    return haystack.includes(normalizedKeyword)
+      || normalizedKeyword.split(/\s+/).some((part) => part.length > 3 && haystack.includes(part));
+  });
+}
+
+function getPotentialPartnersForPlace(placeUid, options = {}) {
+  const locations = getPlaceLocations(placeUid);
+  const partners = getPlacePartners(placeUid);
+  const linkedEntityIds = new Set(partners.map((item) => String(item.entity_uid || '').trim()).filter(Boolean));
+  const linkedEntityNames = new Set(partners.map((item) => normalizeText(item.partner_name)).filter(Boolean));
+  const needKeywords = options.needKeywords || [];
+  return placeState.entities
+    .filter((entity) => geographyMatchesPlace(entity, locations))
+    .filter((entity) => {
+      const entityUid = String(entity.entity_uid || '').trim();
+      const entityName = normalizeText(entity.entity_name);
+      if (entityUid && linkedEntityIds.has(entityUid)) return false;
+      if (entityName && linkedEntityNames.has(entityName)) return false;
+      return true;
+    })
+    .filter((entity) => !options.requireThematicMatch || thematicMatchesNeed(entity, needKeywords))
+    .slice(0, options.limit || 200);
+}
+
+function groupPartnersByType(entities) {
+  return entities.reduce((acc, entity) => {
+    const key = entity.entity_type_label || entity.entity_type_slug || 'Other';
+    if (!acc[key]) acc[key] = [];
+    acc[key].push(entity);
+    return acc;
+  }, {});
+}
+
+function openSpiderChartModal(place, snapshot) {
+  if (!els.spiderModal || !els.spiderModalBody || !snapshot) return;
+  els.spiderModalTitle.textContent = `${place.initiative_name} | ${formatCompactDate(snapshot.recorded_at)}`;
+  els.spiderModalBody.innerHTML = `
+    <div class="place-modal-chart">${buildSpiderChartSvg(place.initiative_name, snapshot.recorded_at, snapshot.metrics_json)}</div>
+    <div class="place-modal-summary">
+      <p><strong>Recorded:</strong> ${esc(formatDateTime(snapshot.recorded_at))}</p>
+      <p><strong>Title:</strong> ${esc(snapshot.title || `${place.initiative_name} Spider Chart`)}</p>
+      <p>${esc(snapshot.notes || 'No notes provided.')}</p>
+    </div>
+  `;
+  els.spiderModal.hidden = false;
+  els.spiderModal.setAttribute('aria-hidden', 'false');
+  document.body.classList.add('place-modal-open');
+}
+
+function closeSpiderChartModal() {
+  if (!els.spiderModal) return;
+  els.spiderModal.hidden = true;
+  els.spiderModal.setAttribute('aria-hidden', 'true');
+  if (els.spiderModalBody) els.spiderModalBody.innerHTML = '';
+  document.body.classList.remove('place-modal-open');
 }
 
 function getPlaceByUid(placeUid) {
@@ -876,32 +1197,12 @@ function renderDetail(placeUid) {
   const lead = partners.find((item) => item.partner_kind === 'lead') || null;
   const partnerRows = partners.filter((item) => item.partner_kind !== 'lead');
   const states = getPlaceStates(locations);
-  const linkedEntityIds = new Set(
-    partners
-      .map((item) => String(item.entity_uid || '').trim())
-      .filter(Boolean)
-  );
-  const linkedEntityNames = new Set(
-    partners
-      .map((item) => normalizeText(item.partner_name))
-      .filter(Boolean)
-  );
-  const potentialPartners = placeState.entities
-    .filter((entity) => !states.length || states.includes(entity.state))
-    .filter((entity) => {
-      const entityUid = String(entity.entity_uid || '').trim();
-      const entityName = normalizeText(entity.entity_name);
-      if (entityUid && linkedEntityIds.has(entityUid)) return false;
-      if (entityName && linkedEntityNames.has(entityName)) return false;
-      return true;
-    })
-    .slice(0, 150)
-    .reduce((acc, entity) => {
-      const key = entity.entity_type_label || entity.entity_type_slug || 'Other';
-      if (!acc[key]) acc[key] = [];
-      acc[key].push(entity);
-      return acc;
-    }, {});
+  const spiderSnapshots = getPlaceSpiderSnapshots(placeUid);
+  const thematicNeeds = getPlaceTopThematicNeeds(placeUid);
+  const spiderNeedSignals = getSpiderChartNeedIdentifiers(placeUid);
+  const needKeywords = extractNeedKeywords(placeUid);
+  const needAlignedPartners = getPotentialPartnersForPlace(placeUid, { requireThematicMatch: true, needKeywords, limit: 60 });
+  const potentialPartners = groupPartnersByType(getPotentialPartnersForPlace(placeUid, { limit: 180 }));
 
   els.detailStatus.textContent = `${place.initiative_name} covers ${locations.length} location${locations.length === 1 ? '' : 's'} across ${states.length || 1} state context${states.length === 1 ? '' : 's'}.`;
   els.detailContent.innerHTML = `
@@ -936,11 +1237,34 @@ function renderDetail(placeUid) {
       </article>
       ${partnerRows.length ? partnerRows.map((partner) => `<article class="place-detail-card place-detail-card-compact"><strong>${esc(partner.partner_name)}</strong><small>${esc(getRoleLabel(partner.role_slug, partner.role_label))}</small><p>${esc(partner.thematic_area || 'No thematic area listed')}</p></article>`).join('') : '<article class="place-detail-card place-detail-card-compact"><p class="section-note">No partner organisations have been linked yet.</p></article>'}
     </section>
+    <section class="place-detail-row place-detail-row-needs">
+      <article class="place-detail-card place-detail-card-compact">
+        <h4>Current Needs</h4>
+        ${thematicNeeds.labels.length
+          ? `<p><strong>Thematic Needs:</strong> ${esc(thematicNeeds.labels.join(', '))}</p><p class="section-note">Latest update: ${esc(formatDateTime(thematicNeeds.latestRecordedAt))}</p>`
+          : '<p class="section-note">No thematic need updates have been recorded yet.</p>'}
+        ${spiderNeedSignals.labels.length
+          ? `<p><strong>Spider Chart Identifiers of Needs:</strong> ${esc(spiderNeedSignals.labels.join(', '))}</p><p class="section-note">Latest spider chart: ${esc(formatDateTime(spiderNeedSignals.recordedAt))}</p>`
+          : '<p class="section-note">No spider chart need signals are available yet.</p>'}
+      </article>
+      <article class="place-detail-card place-detail-card-compact">
+        <h4>Need-Aligned Potential Partners</h4>
+        ${needAlignedPartners.length
+          ? `<div class="place-inline-list">${needAlignedPartners.slice(0, 12).map((entity) => `<span class="innovation-chip innovation-chip-muted">${esc(entity.entity_name)} | ${esc(entity.entity_type_label || entity.entity_type_slug || 'Entity')}</span>`).join('')}</div>`
+          : '<p class="section-note">No geography-matched partners were found against the current thematic needs.</p>'}
+      </article>
+      <article class="place-detail-card place-detail-card-compact">
+        <h4>Spider Charts</h4>
+        ${spiderSnapshots.length
+          ? `<div class="vendor-inline-list">${spiderSnapshots.map((snapshot, index) => `<button class="btn btn-small" type="button" data-open-place-spider="${esc(String(index))}">Spider Chart - ${esc(formatCompactDate(snapshot.recorded_at))}</button>`).join('')}</div>`
+          : '<p class="section-note">No approved spider charts are available for this Place yet.</p>'}
+      </article>
+    </section>
     <section class="place-detail-row place-detail-row-potential">
       <article class="place-detail-row-header">
         <h4>Potential Partners By State</h4>
       </article>
-      ${Object.entries(potentialPartners).map(([group, entities]) => `<article class="place-detail-card place-detail-card-compact"><h4>${esc(group)}</h4><div class="place-inline-list">${entities.slice(0, 8).map((entity) => `<span class="innovation-chip innovation-chip-muted">${esc(entity.entity_name)}</span>`).join('') || '<span class="section-note">No entities listed.</span>'}</div></article>`).join('') || '<article class="place-detail-card place-detail-card-compact"><p class="section-note">No potential partners were found for the selected state set.</p></article>'}
+      ${Object.entries(potentialPartners).map(([group, entities]) => `<article class="place-detail-card place-detail-card-compact"><h4>${esc(group)}</h4><div class="place-inline-list">${entities.slice(0, 8).map((entity) => `<span class="innovation-chip innovation-chip-muted">${esc(entity.entity_name)}</span>`).join('') || '<span class="section-note">No entities listed.</span>'}</div></article>`).join('') || '<article class="place-detail-card place-detail-card-compact"><p class="section-note">No geography-matched potential partners were found for this Place.</p></article>'}
     </section>
   `;
 }
@@ -1297,6 +1621,8 @@ async function initializePageData() {
   placeState.placeLocations = Array.isArray(data.placeLocations) ? data.placeLocations : [];
   placeState.placePartners = Array.isArray(data.placePartners) ? data.placePartners : [];
   placeState.placeRoleTypes = Array.isArray(data.placeRoleTypes) ? data.placeRoleTypes : [];
+  placeState.placeSpiderSnapshots = Array.isArray(data.placeSpiderSnapshots) ? data.placeSpiderSnapshots : [];
+  placeState.placeThematicNeeds = Array.isArray(data.placeThematicNeeds) ? data.placeThematicNeeds : [];
   placeState.placeRoleTypes.sort((left, right) => Number(left.sort_order || 0) - Number(right.sort_order || 0));
   ensureRoleOptions();
   setStatus(els.mapStatus, `Loaded ${placeState.placeInitiatives.length} place initiative${placeState.placeInitiatives.length === 1 ? '' : 's'} across India.`);
@@ -1432,10 +1758,25 @@ function bindEvents() {
   });
 
   els.detailContent.addEventListener('click', (event) => {
+    const spiderButton = event.target.closest('[data-open-place-spider]');
+    if (spiderButton) {
+      const placeUid = placeState.selectedPlaceUid;
+      const place = getPlaceByUid(placeUid);
+      const snapshot = getPlaceSpiderSnapshots(placeUid)[Number(spiderButton.dataset.openPlaceSpider)];
+      if (place && snapshot) openSpiderChartModal(place, snapshot);
+      return;
+    }
     const button = event.target.closest('[data-open-place]');
     if (!button) return;
     selectPlace(button.dataset.openPlace, { fit: true });
     document.querySelector('.place-editor-shell')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+
+  document.querySelectorAll('[data-close-place-modal]').forEach((button) => {
+    button.addEventListener('click', closeSpiderChartModal);
+  });
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') closeSpiderChartModal();
   });
 
   els.callouts.addEventListener('pointerdown', (event) => {
