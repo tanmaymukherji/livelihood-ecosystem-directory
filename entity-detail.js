@@ -78,25 +78,18 @@ function splitSpiderLabel(label, maxChars = 16, maxLines = 3) {
   let current = '';
   for (const part of parts) {
     const next = current ? `${current} ${part}` : part;
-    if (next.length <= maxChars || !current) {
+    if (next.length <= maxChars || !current || part === '/') {
       current = next;
       continue;
     }
     lines.push(current);
     current = part;
-    if (lines.length === maxLines - 1) break;
   }
-  const consumed = lines.join(' ').split(/\s+/).filter(Boolean).length;
-  const remaining = parts.slice(consumed);
-  if (current && lines.length < maxLines) {
-    lines.push(current);
-  }
-  if (remaining.length) {
-    const tail = remaining.join(' ');
-    if (lines.length < maxLines) lines.push(tail);
-    else lines[lines.length - 1] = `${lines[lines.length - 1]} ${tail}`.trim();
-  }
-  return lines.slice(0, maxLines);
+  if (current) lines.push(current);
+  if (lines.length <= maxLines) return lines;
+  const compact = lines.slice(0, maxLines - 1);
+  compact.push(lines.slice(maxLines - 1).join(' '));
+  return compact;
 }
 
 function buildSpiderChartSvg(placeName, recordedAt, metricsJson) {
@@ -242,37 +235,45 @@ function renderPlaceMetricEditorRows() {
 function renderPlaceSubmissionSections(entity) {
   return `
     <section class="section">
-      <h3>Submit a New Place Document</h3>
-      <p class="section-note">New place documents are sent for admin approval before they appear publicly.</p>
-      <form class="admin-form" id="place-document-form">
-        <input type="hidden" id="place-document-place-uid" value="${esc(entity.entity_uid)}" />
-        <div class="form-group"><label for="place-document-title">Title</label><input id="place-document-title" type="text" required /></div>
-        <div class="form-group"><label for="place-document-description">Description</label><textarea id="place-document-description" rows="4"></textarea></div>
-        <div class="form-group"><label for="place-document-date">Document Date</label><input id="place-document-date" type="date" /></div>
-        <div class="form-group"><label for="place-document-recorded-at">Recorded At</label><input id="place-document-recorded-at" type="datetime-local" required /></div>
-        <div class="form-group"><label for="place-document-file">File</label><input id="place-document-file" type="file" required /></div>
-        <div class="form-group"><label for="place-document-submit-name">Your Name</label><input id="place-document-submit-name" type="text" required /></div>
-        <div class="form-group"><label for="place-document-submit-email">Your Email</label><input id="place-document-submit-email" type="email" required /></div>
-        <button class="btn btn-success" type="submit">Send Document for Approval</button>
-        <p class="admin-status" id="place-document-status"></p>
-      </form>
+      <details class="section-collapsible">
+        <summary><h3>Submit a New Place Document</h3></summary>
+        <div class="section-collapsible-body">
+          <p class="section-note">New place documents are sent for admin approval before they appear publicly.</p>
+          <form class="admin-form" id="place-document-form">
+            <input type="hidden" id="place-document-place-uid" value="${esc(entity.entity_uid)}" />
+            <div class="form-group"><label for="place-document-title">Title</label><input id="place-document-title" type="text" required /></div>
+            <div class="form-group"><label for="place-document-description">Description</label><textarea id="place-document-description" rows="4"></textarea></div>
+            <div class="form-group"><label for="place-document-date">Document Date</label><input id="place-document-date" type="date" /></div>
+            <div class="form-group"><label for="place-document-recorded-at">Recorded At</label><input id="place-document-recorded-at" type="datetime-local" required /></div>
+            <div class="form-group"><label for="place-document-file">File</label><input id="place-document-file" type="file" required /></div>
+            <div class="form-group"><label for="place-document-submit-name">Your Name</label><input id="place-document-submit-name" type="text" required /></div>
+            <div class="form-group"><label for="place-document-submit-email">Your Email</label><input id="place-document-submit-email" type="email" required /></div>
+            <button class="btn btn-success" type="submit">Send Document for Approval</button>
+            <p class="admin-status" id="place-document-status"></p>
+          </form>
+        </div>
+      </details>
     </section>
     <section class="section">
-      <h3>Submit Spider Chart Information</h3>
-      <p class="section-note">Each spider chart snapshot is stored with its date and normalized to 100 when viewed.</p>
-      <form class="admin-form" id="place-spider-form">
-        <input type="hidden" id="place-spider-place-uid" value="${esc(entity.entity_uid)}" />
-        <div class="form-group"><label for="place-spider-title">Snapshot Title</label><input id="place-spider-title" type="text" placeholder="${esc(entity.entity_name)} Spider Chart" /></div>
-        <div class="form-group"><label for="place-spider-recorded-at">Recorded At</label><input id="place-spider-recorded-at" type="datetime-local" required /></div>
-        <div class="form-group"><label for="place-spider-notes">Notes</label><textarea id="place-spider-notes" rows="4" placeholder="Context, data source, or collection notes"></textarea></div>
-        <div class="place-metric-grid">
-          ${renderPlaceMetricEditorRows()}
+      <details class="section-collapsible">
+        <summary><h3>Submit Spider Chart Information</h3></summary>
+        <div class="section-collapsible-body">
+          <p class="section-note">Each spider chart snapshot is stored with its date and normalized to 100 when viewed.</p>
+          <form class="admin-form" id="place-spider-form">
+            <input type="hidden" id="place-spider-place-uid" value="${esc(entity.entity_uid)}" />
+            <div class="form-group"><label for="place-spider-title">Snapshot Title</label><input id="place-spider-title" type="text" placeholder="${esc(entity.entity_name)} Spider Chart" /></div>
+            <div class="form-group"><label for="place-spider-recorded-at">Recorded At</label><input id="place-spider-recorded-at" type="datetime-local" required /></div>
+            <div class="form-group"><label for="place-spider-notes">Notes</label><textarea id="place-spider-notes" rows="4" placeholder="Context, data source, or collection notes"></textarea></div>
+            <div class="place-metric-grid">
+              ${renderPlaceMetricEditorRows()}
+            </div>
+            <div class="form-group"><label for="place-spider-submit-name">Your Name</label><input id="place-spider-submit-name" type="text" required /></div>
+            <div class="form-group"><label for="place-spider-submit-email">Your Email</label><input id="place-spider-submit-email" type="email" required /></div>
+            <button class="btn btn-success" type="submit">Send Spider Chart for Approval</button>
+            <p class="admin-status" id="place-spider-status"></p>
+          </form>
         </div>
-        <div class="form-group"><label for="place-spider-submit-name">Your Name</label><input id="place-spider-submit-name" type="text" required /></div>
-        <div class="form-group"><label for="place-spider-submit-email">Your Email</label><input id="place-spider-submit-email" type="email" required /></div>
-        <button class="btn btn-success" type="submit">Send Spider Chart for Approval</button>
-        <p class="admin-status" id="place-spider-status"></p>
-      </form>
+      </details>
     </section>
     <div id="place-spider-modal" class="place-modal" hidden aria-hidden="true">
       <div class="place-modal-backdrop" data-close-place-modal></div>
@@ -507,24 +508,28 @@ async function initEntityDetail() {
       ${isPlace ? renderPlaceSpiderHistory(entity, placeSpiderSnapshots) : ''}
       ${isPlace ? renderPlaceSubmissionSections(entity) : ''}
       <section class="section">
-        <h3>Request an Edit or Deletion</h3>
-        <p class="section-note">If this listing needs correction or removal, this request will be sent to the admin team at tanmay@greenruraleconomy.in.</p>
-        <form class="admin-form" id="contact-request-form">
-          <input id="contact-request-entity-uid" type="hidden" value="${esc(entity.entity_uid)}" />
-          <div class="form-group">
-            <label for="contact-request-type">Request Type</label>
-            <select id="contact-request-type">
-              <option value="edit">Edit this record</option>
-              <option value="delete">Delete this record</option>
-            </select>
+        <details class="section-collapsible">
+          <summary><h3>Request an Edit or Deletion</h3></summary>
+          <div class="section-collapsible-body">
+            <p class="section-note">If this listing needs correction or removal, this request will be sent to the admin team at tanmay@greenruraleconomy.in.</p>
+            <form class="admin-form" id="contact-request-form">
+              <input id="contact-request-entity-uid" type="hidden" value="${esc(entity.entity_uid)}" />
+              <div class="form-group">
+                <label for="contact-request-type">Request Type</label>
+                <select id="contact-request-type">
+                  <option value="edit">Edit this record</option>
+                  <option value="delete">Delete this record</option>
+                </select>
+              </div>
+              <div class="form-group"><label for="contact-request-name">Your Name</label><input id="contact-request-name" type="text" required /></div>
+              <div class="form-group"><label for="contact-request-email">Your Email</label><input id="contact-request-email" type="email" required /></div>
+              <div class="form-group"><label for="contact-request-phone">Your Phone</label><input id="contact-request-phone" type="text" /></div>
+              <div class="form-group"><label for="contact-request-message">What should change?</label><textarea id="contact-request-message" rows="5" required></textarea></div>
+              <button class="btn btn-success" type="submit">Send Request</button>
+              <p class="admin-status" id="contact-request-status"></p>
+            </form>
           </div>
-          <div class="form-group"><label for="contact-request-name">Your Name</label><input id="contact-request-name" type="text" required /></div>
-          <div class="form-group"><label for="contact-request-email">Your Email</label><input id="contact-request-email" type="email" required /></div>
-          <div class="form-group"><label for="contact-request-phone">Your Phone</label><input id="contact-request-phone" type="text" /></div>
-          <div class="form-group"><label for="contact-request-message">What should change?</label><textarea id="contact-request-message" rows="5" required></textarea></div>
-          <button class="btn btn-success" type="submit">Send Request</button>
-          <p class="admin-status" id="contact-request-status"></p>
-        </form>
+        </details>
       </section>
     `;
 

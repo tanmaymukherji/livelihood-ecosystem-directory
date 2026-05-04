@@ -198,6 +198,13 @@ body.is-print-prep .place-bottom-scroll{
 }
 .place-history-list{display:grid;gap:.9rem}
 .place-history-card{display:grid;gap:.55rem}
+.section-collapsible{border:1px solid #dde6ee;border-radius:16px;background:#fbfcfe}
+.section-collapsible summary{display:flex;align-items:center;justify-content:space-between;gap:1rem;cursor:pointer;list-style:none;padding:1rem 1.1rem}
+.section-collapsible summary::-webkit-details-marker{display:none}
+.section-collapsible summary h3{margin:0;font-size:1.02rem}
+.section-collapsible summary::after{content:'Expand';font-size:.82rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#49627a}
+.section-collapsible[open] summary::after{content:'Collapse'}
+.section-collapsible-body{padding:0 1.1rem 1.1rem}
 .place-metric-grid{display:grid;gap:.75rem;margin-top:.4rem}
 .place-metric-row{display:grid;grid-template-columns:minmax(0,1.6fr) 120px 120px;gap:.8rem;align-items:center;padding:.75rem;border:1px solid #dde6ee;border-radius:12px;background:#f8fbfd}
 .place-metric-row small{display:block;color:#5d7287;margin-top:.2rem}
