@@ -58,8 +58,8 @@ const PLACE_SPIDER_METRICS = [
 ];
 const SOTH_STAGES = ['Initiate', 'Engage', 'Action', 'Auto Pilot'];
 const GRAMEEE_STAGES = ['Triggering', 'Incubating', 'Sustaining'];
-const LOCATION_DATA_URL = 'https://cdn.jsdelivr.net/gh/pranshumaheshwari/indian-cities-and-villages@master/data.json';
-const STATE_DISTRICT_URL = 'https://cdn.jsdelivr.net/gh/aharnish-infotech/india-state-district-json@main/India-State-District.json';
+const LOCATION_DATA_URL = 'https://raw.githubusercontent.com/pranshumaheshwari/indian-cities-and-villages/master/data.json';
+const STATE_DISTRICT_URL = 'https://raw.githubusercontent.com/aharnish-infotech/india-state-district-json/main/India-State-District.json';
 const INDIA_STATE_CENTERS = {
   'andaman and nicobar islands': { lat: 11.7401, lng: 92.6586 },
   'andhra pradesh': { lat: 15.9129, lng: 79.74 },
@@ -216,6 +216,18 @@ function formatCompactDate(value) {
 function getRoleLabel(roleSlug, roleLabel) {
   const found = placeState.placeRoleTypes.find((role) => role.slug === roleSlug);
   return roleLabel || found?.label || roleSlug || 'Unassigned';
+}
+
+function getEntityDetailHref(entityUid) {
+  const uid = String(entityUid || '').trim();
+  return uid ? `./entity-detail.html?entity=${encodeURIComponent(uid)}` : '';
+}
+
+function renderEntityNameLink(entityUid, label, className = '') {
+  const href = getEntityDetailHref(entityUid);
+  const text = esc(label || 'Not listed');
+  if (!href) return text;
+  return `<a${className ? ` class="${esc(className)}"` : ''} href="${href}" target="_blank" rel="noreferrer">${text}</a>`;
 }
 
 function getStateCenter(stateName) {
@@ -1601,7 +1613,7 @@ function renderDetail(placeUid) {
       </article>
       <article class="place-detail-card">
         <h4>Lead Organisation</h4>
-        <p><strong>${esc(lead?.partner_name || place.lead_name || 'Not listed')}</strong></p>
+        <p><strong>${renderEntityNameLink(lead?.entity_uid || place.lead_entity_uid, lead?.partner_name || place.lead_name || 'Not listed')}</strong></p>
         <p>${esc(getRoleLabel(lead?.role_slug || place.lead_role_slug, lead?.role_label || place.lead_role_label))}</p>
         <p>${esc(lead?.thematic_area || place.lead_thematic_area || 'No thematic area listed')}</p>
         <p>${lead?.website_url || place.lead_website_url ? `<a href="${esc(lead?.website_url || place.lead_website_url)}" target="_blank" rel="noreferrer">${esc(lead?.website_url || place.lead_website_url)}</a>` : 'No website listed'}</p>
@@ -1621,7 +1633,7 @@ function renderDetail(placeUid) {
       <article class="place-detail-row-header">
         <h4>Partner Organisations</h4>
       </article>
-      ${partnerRows.length ? partnerRows.map((partner) => `<article class="place-detail-card place-detail-card-compact"><strong>${esc(partner.partner_name)}</strong><small>${esc(getRoleLabel(partner.role_slug, partner.role_label))}</small><p>${esc(partner.thematic_area || 'No thematic area listed')}</p></article>`).join('') : '<article class="place-detail-card place-detail-card-compact"><p class="section-note">No partner organisations have been linked yet.</p></article>'}
+      ${partnerRows.length ? partnerRows.map((partner) => `<article class="place-detail-card place-detail-card-compact"><strong>${renderEntityNameLink(partner.entity_uid, partner.partner_name)}</strong><small>${esc(getRoleLabel(partner.role_slug, partner.role_label))}</small><p>${esc(partner.thematic_area || 'No thematic area listed')}</p></article>`).join('') : '<article class="place-detail-card place-detail-card-compact"><p class="section-note">No partner organisations have been linked yet.</p></article>'}
     </section>
     <section class="place-detail-row place-detail-row-needs">
       <article class="place-detail-row-header">
@@ -1649,7 +1661,7 @@ function renderDetail(placeUid) {
       <article class="place-detail-card place-detail-card-compact">
         <h4>Potential Partners by Need</h4>
         ${needPartnerGroups.length
-          ? `<div class="place-need-groups">${needPartnerGroups.map((group) => `<div class="place-need-group"><strong>${esc(group.sourceName)}</strong><div class="place-need-groups">${group.items.map((item) => `<div class="place-need-group"><strong>${esc(item.needLabel)}</strong><div class="place-inline-list">${item.entities.map((entity) => `<span class="innovation-chip innovation-chip-muted">${esc(entity.entity_name)} | ${esc(entity.entity_type_label || entity.entity_type_slug || 'Entity')}</span>`).join('')}</div></div>`).join('')}</div></div>`).join('')}</div>`
+          ? `<div class="place-need-groups">${needPartnerGroups.map((group) => `<div class="place-need-group"><strong>${esc(group.sourceName)}</strong><div class="place-need-groups">${group.items.map((item) => `<div class="place-need-group"><strong>${esc(item.needLabel)}</strong><div class="place-inline-list">${item.entities.map((entity) => `<span class="innovation-chip innovation-chip-muted">${renderEntityNameLink(entity.entity_uid, entity.entity_name)} | ${esc(entity.entity_type_label || entity.entity_type_slug || 'Entity')}</span>`).join('')}</div></div>`).join('')}</div></div>`).join('')}</div>`
           : '<p class="section-note">No geography-matched partners were found against the current thematic needs.</p>'}
       </article>
       <article class="place-detail-card place-detail-card-compact">
@@ -1663,7 +1675,7 @@ function renderDetail(placeUid) {
       <article class="place-detail-row-header">
         <h4>Potential Partners By State</h4>
       </article>
-      ${Object.entries(potentialPartners).map(([group, entities]) => `<article class="place-detail-card place-detail-card-compact"><h4>${esc(group)}</h4><div class="place-inline-list">${entities.slice(0, 8).map((entity) => `<span class="innovation-chip innovation-chip-muted">${esc(entity.entity_name)}</span>`).join('') || '<span class="section-note">No entities listed.</span>'}</div></article>`).join('') || '<article class="place-detail-card place-detail-card-compact"><p class="section-note">No geography-matched potential partners were found for this Place.</p></article>'}
+      ${Object.entries(potentialPartners).map(([group, entities]) => `<article class="place-detail-card place-detail-card-compact"><h4>${esc(group)}</h4><div class="place-inline-list">${entities.slice(0, 8).map((entity) => `<span class="innovation-chip innovation-chip-muted">${renderEntityNameLink(entity.entity_uid, entity.entity_name)}</span>`).join('') || '<span class="section-note">No entities listed.</span>'}</div></article>`).join('') || '<article class="place-detail-card place-detail-card-compact"><p class="section-note">No geography-matched potential partners were found for this Place.</p></article>'}
     </section>
   `;
 }
@@ -1695,7 +1707,7 @@ function renderRoleCallouts() {
             return `
               <div class="place-role-summary-row ${hasPartners ? 'is-present' : 'is-missing'}">
                 <strong>${esc(role.label)}</strong>
-                <span>${hasPartners ? esc(matching.map((item) => item.partner_name).join(', ')) : 'Partner to be Identified'}</span>
+                <span>${hasPartners ? matching.map((item) => renderEntityNameLink(item.entity_uid, item.partner_name)).join(', ') : 'Partner to be Identified'}</span>
               </div>
             `;
           }).join('')}
@@ -1844,33 +1856,49 @@ async function loadLocationDatasets() {
     fetch(STATE_DISTRICT_URL),
     fetch(LOCATION_DATA_URL),
   ]);
+  let flat = [];
   if (stateDistrictResponse.status === 'fulfilled' && stateDistrictResponse.value.ok) {
     const json = await stateDistrictResponse.value.json();
-    const flat = [];
     (Array.isArray(json) ? json : []).forEach((item) => {
-      const stateName = item.state || item.name || item.State || '';
+      const stateName = item.state || item.name || item.State || item.StateName || '';
       if (stateName) {
         flat.push(buildLocationEntry('state', { state_name: stateName, location_name: stateName, display_label: stateName }));
       }
-      const districts = Array.isArray(item.districts) ? item.districts : [];
-      districts.forEach((district) => {
+      const districtName = item.district || item.District || item['DistrictName(InEnglish)'] || '';
+      if (districtName) {
         flat.push(buildLocationEntry('district', {
           state_name: stateName,
-          district_name: district,
-          location_name: district,
-          display_label: [district, stateName].filter(Boolean).join(', '),
+          district_name: districtName,
+          location_name: districtName,
+          display_label: [districtName, stateName].filter(Boolean).join(', '),
         }));
-      });
+      }
     });
-    placeState.flatLocationEntries = dedupeBy(flat, (item) => normalizeText(item.display_label));
   }
   if (hierarchyResponse.status === 'fulfilled' && hierarchyResponse.value.ok) {
     const hierarchyJson = await hierarchyResponse.value.json();
-    placeState.locationHierarchy = hierarchyJson;
-    const flat = Array.isArray(placeState.flatLocationEntries) ? [...placeState.flatLocationEntries] : [];
-    for (const [stateName, districts] of Object.entries(hierarchyJson || {})) {
-      for (const [districtName, blocks] of Object.entries(districts || {})) {
-        for (const [blockName, villages] of Object.entries(blocks || {})) {
+    const normalizedHierarchy = {};
+    (Array.isArray(hierarchyJson) ? hierarchyJson : []).forEach((stateEntry) => {
+      const stateName = String(stateEntry.state || stateEntry.StateName || '').trim();
+      if (!stateName) return;
+      if (!normalizedHierarchy[stateName]) normalizedHierarchy[stateName] = {};
+      flat.push(buildLocationEntry('state', { state_name: stateName, location_name: stateName, display_label: stateName }));
+      const districts = Array.isArray(stateEntry.districts) ? stateEntry.districts : [];
+      districts.forEach((districtEntry) => {
+        const districtName = String(districtEntry.district || districtEntry.DistrictName || '').trim();
+        if (!districtName) return;
+        if (!normalizedHierarchy[stateName][districtName]) normalizedHierarchy[stateName][districtName] = {};
+        flat.push(buildLocationEntry('district', {
+          state_name: stateName,
+          district_name: districtName,
+          location_name: districtName,
+          display_label: [districtName, stateName].filter(Boolean).join(', '),
+        }));
+        const blocks = Array.isArray(districtEntry.subDistricts) ? districtEntry.subDistricts : [];
+        blocks.forEach((blockEntry) => {
+          const blockName = String(blockEntry.subDistrict || blockEntry.block || '').trim();
+          if (!blockName) return;
+          if (!normalizedHierarchy[stateName][districtName][blockName]) normalizedHierarchy[stateName][districtName][blockName] = [];
           flat.push(buildLocationEntry('block', {
             state_name: stateName,
             district_name: districtName,
@@ -1878,7 +1906,8 @@ async function loadLocationDatasets() {
             location_name: blockName,
             display_label: [blockName, districtName, stateName].filter(Boolean).join(', '),
           }));
-          const villageNames = Array.isArray(villages) ? villages : Object.keys(villages || {});
+          const villageNames = Array.isArray(blockEntry.villages) ? blockEntry.villages : [];
+          normalizedHierarchy[stateName][districtName][blockName] = villageNames.slice();
           villageNames.forEach((villageName) => {
             flat.push(buildLocationEntry('village', {
               state_name: stateName,
@@ -1889,10 +1918,14 @@ async function loadLocationDatasets() {
               display_label: [villageName, blockName, districtName, stateName].filter(Boolean).join(', '),
             }));
           });
-        }
-      }
-    }
-    placeState.flatLocationEntries = dedupeBy(flat, (item) => normalizeText(`${item.location_kind}|${item.display_label}`));
+        });
+      });
+    });
+    placeState.locationHierarchy = normalizedHierarchy;
+  }
+  placeState.flatLocationEntries = dedupeBy(flat, (item) => normalizeText(`${item.location_kind}|${item.display_label}`));
+  if (!placeState.flatLocationEntries.length) {
+    setStatus(els.saveStatus, 'Standard India place-name dataset could not be loaded for autocomplete.', true);
   }
 }
 
