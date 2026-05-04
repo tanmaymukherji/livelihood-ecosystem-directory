@@ -88,7 +88,7 @@ function renderTypeSpecificDetails(entity, fieldDefinitions) {
   const rows = definitions
     .map((field) => ({ field, value: formatDynamicValue(field, values[field.field_key]) }))
     .filter((item) => item.value);
-  if (!rows.length) return '';
+  if (!rows.length) return `<div class="vendor-inline-list"><strong>Type-Specific Details</strong><div>No data available.</div></div>`;
   return `<div class="vendor-inline-list"><strong>Type-Specific Details</strong>${rows.map((item) => `<div><strong>${esc(item.field.label)}:</strong> ${esc(item.value)}</div>`).join('')}</div>`;
 }
 
@@ -887,11 +887,15 @@ async function initEntityDetail() {
             <p><strong>Keywords:</strong> ${esc(keywords.join(', ') || 'Not listed')}</p>
             <p><strong>Source:</strong> ${entity.source_url ? `<a href="${esc(entity.source_url)}" target="_blank" rel="noreferrer">${esc(entity.source_label || entity.source_url)}</a>` : esc(entity.source_label || 'Manual entry')}</p>
           </div>
+          <div>
+            ${renderTypeSpecificDetails(entity, fieldDefinitions)}
+          </div>
+          <div>
+            ${isPlace ? renderPlaceNeedSignals(entity, placeThematicNeeds, placeSpiderSnapshots) : '<div class="vendor-inline-list"><strong>Place Need Signals</strong><div>No data available.</div></div>'}
+          </div>
         </div>
         ${officeLocations.length ? `<div class="vendor-inline-list"><strong>Office Locations</strong>${officeLocations.map((item) => `<div>${esc(item)}</div>`).join('')}</div>` : ''}
         ${socialMedia.length ? `<div class="vendor-inline-list"><strong>Social Media</strong>${socialMedia.map(([label, value]) => `<div>${esc(label)}: <a href="${esc(value)}" target="_blank" rel="noreferrer">${esc(value)}</a></div>`).join('')}</div>` : ''}
-        ${renderTypeSpecificDetails(entity, fieldDefinitions)}
-        ${isPlace ? renderPlaceNeedSignals(entity, placeThematicNeeds, placeSpiderSnapshots) : ''}
       </section>
       ${isPlace ? renderPlaceDocuments(entity, placeDocuments, adminSession.valid) : ''}
       ${isPlace ? renderPlaceSpiderHistory(entity, placeSpiderSnapshots, adminSession.valid) : ''}
