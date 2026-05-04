@@ -69,25 +69,61 @@ function renderTypeSpecificDetails(entity, fieldDefinitions) {
   return `<div class="vendor-inline-list"><strong>Type-Specific Details</strong>${rows.map((item) => `<div><strong>${esc(item.field.label)}:</strong> ${esc(item.value)}</div>`).join('')}</div>`;
 }
 
+function splitSpiderLabel(label, maxChars = 16, maxLines = 3) {
+  const parts = String(label || '')
+    .replace(/\//g, ' / ')
+    .split(/\s+/)
+    .filter(Boolean);
+  const lines = [];
+  let current = '';
+  for (const part of parts) {
+    const next = current ? `${current} ${part}` : part;
+    if (next.length <= maxChars || !current) {
+      current = next;
+      continue;
+    }
+    lines.push(current);
+    current = part;
+    if (lines.length === maxLines - 1) break;
+  }
+  const consumed = lines.join(' ').split(/\s+/).filter(Boolean).length;
+  const remaining = parts.slice(consumed);
+  if (current && lines.length < maxLines) {
+    lines.push(current);
+  }
+  if (remaining.length) {
+    const tail = remaining.join(' ');
+    if (lines.length < maxLines) lines.push(tail);
+    else lines[lines.length - 1] = `${lines[lines.length - 1]} ${tail}`.trim();
+  }
+  return lines.slice(0, maxLines);
+}
+
 function buildSpiderChartSvg(placeName, recordedAt, metricsJson) {
   const metrics = normalizePlaceMetricSet(metricsJson);
-  const size = 560;
-  const center = size / 2;
-  const radius = 180;
+  const width = 980;
+  const height = 900;
+  const centerX = width / 2;
+  const centerY = 470;
+  const radius = 250;
+  const labelRadius = 356;
+  const lineHeight = 18;
   const polygonPoints = metrics.map((metric, index) => {
     const angle = (-Math.PI / 2) + ((Math.PI * 2 * index) / metrics.length);
     const pointRadius = radius * (metric.normalized / 100);
     return [
-      center + Math.cos(angle) * pointRadius,
-      center + Math.sin(angle) * pointRadius,
+      centerX + Math.cos(angle) * pointRadius,
+      centerY + Math.sin(angle) * pointRadius,
     ];
   });
   const labelPoints = metrics.map((metric, index) => {
     const angle = (-Math.PI / 2) + ((Math.PI * 2 * index) / metrics.length);
+    const lines = splitSpiderLabel(metric.label);
     return {
       ...metric,
-      x: center + Math.cos(angle) * (radius + 36),
-      y: center + Math.sin(angle) * (radius + 36),
+      x: centerX + Math.cos(angle) * labelRadius,
+      y: centerY + Math.sin(angle) * labelRadius,
+      lines,
       textAnchor: Math.cos(angle) > 0.22 ? 'start' : Math.cos(angle) < -0.22 ? 'end' : 'middle',
     };
   });
@@ -96,25 +132,31 @@ function buildSpiderChartSvg(placeName, recordedAt, metricsJson) {
     const points = metrics.map((metric, index) => {
       const angle = (-Math.PI / 2) + ((Math.PI * 2 * index) / metrics.length);
       const pointRadius = radius * (ring / 100);
-      return `${center + Math.cos(angle) * pointRadius},${center + Math.sin(angle) * pointRadius}`;
+      return `${centerX + Math.cos(angle) * pointRadius},${centerY + Math.sin(angle) * pointRadius}`;
     }).join(' ');
     return `<polygon points="${points}" fill="none" stroke="#d7dfeb" stroke-width="1"></polygon>`;
   }).join('');
   const axisLines = metrics.map((metric, index) => {
     const angle = (-Math.PI / 2) + ((Math.PI * 2 * index) / metrics.length);
-    const x = center + Math.cos(angle) * radius;
-    const y = center + Math.sin(angle) * radius;
-    return `<line x1="${center}" y1="${center}" x2="${x}" y2="${y}" stroke="#d7dfeb" stroke-width="1"></line>`;
+    const x = centerX + Math.cos(angle) * radius;
+    const y = centerY + Math.sin(angle) * radius;
+    return `<line x1="${centerX}" y1="${centerY}" x2="${x}" y2="${y}" stroke="#d7dfeb" stroke-width="1"></line>`;
   }).join('');
   const dataPolygon = polygonPoints.map((point) => point.join(',')).join(' ');
   const dataDots = polygonPoints.map((point) => `<circle cx="${point[0]}" cy="${point[1]}" r="4" fill="#2f7d73" stroke="#ffffff" stroke-width="2"></circle>`).join('');
-  const labels = labelPoints.map((metric) => `<text x="${metric.x}" y="${metric.y}" font-size="12" text-anchor="${metric.textAnchor}" fill="#28435c">${esc(metric.label)}</text>`).join('');
-  const ringLabels = rings.map((ring, index) => `<text x="${center + 8}" y="${center - ((radius * ring) / 100) + 4}" font-size="11" fill="#688099">${ring}</text>`).join('');
+  const labels = labelPoints.map((metric) => {
+    const startY = metric.y - (((metric.lines.length - 1) * lineHeight) / 2);
+    const tspans = metric.lines
+      .map((line, index) => `<tspan x="${metric.x}" dy="${index === 0 ? 0 : lineHeight}">${esc(line)}</tspan>`)
+      .join('');
+    return `<text x="${metric.x}" y="${startY}" font-size="14" font-weight="600" text-anchor="${metric.textAnchor}" fill="#28435c">${tspans}</text>`;
+  }).join('');
+  const ringLabels = rings.map((ring) => `<text x="${centerX + 12}" y="${centerY - ((radius * ring) / 100) + 5}" font-size="12" font-weight="600" fill="#688099">${ring}</text>`).join('');
   return `
-    <svg viewBox="0 0 ${size} ${size}" class="place-radar-svg" role="img" aria-label="Spider chart for ${esc(placeName)}">
-      <rect x="0" y="0" width="${size}" height="${size}" fill="#fbfcfe"></rect>
-      <text x="${center}" y="36" text-anchor="middle" font-size="24" font-weight="700" fill="#16324f">${esc(placeName)}</text>
-      <text x="${center}" y="62" text-anchor="middle" font-size="13" fill="#5f7388">${esc(formatDateTime(recordedAt))}</text>
+    <svg viewBox="0 0 ${width} ${height}" class="place-radar-svg" role="img" aria-label="Spider chart for ${esc(placeName)}" preserveAspectRatio="xMidYMid meet">
+      <rect x="0" y="0" width="${width}" height="${height}" fill="#fbfcfe"></rect>
+      <text x="${centerX}" y="48" text-anchor="middle" font-size="28" font-weight="700" fill="#16324f">${esc(placeName)}</text>
+      <text x="${centerX}" y="78" text-anchor="middle" font-size="15" fill="#5f7388">${esc(formatDateTime(recordedAt))}</text>
       ${ringPolygons}
       ${axisLines}
       ${ringLabels}
