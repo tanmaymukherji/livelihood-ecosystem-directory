@@ -307,6 +307,9 @@ function renderPlaceAdminCollections(entity) {
   const isPlace = entity?.entity_type_slug === 'place';
   if (!placeAdminToolsEl || !placeAdminSpiderListEl || !placeAdminDocumentListEl || !placeAdminNeedsListEl) return;
   placeAdminToolsEl.hidden = !isPlace;
+  placeAdminToolsEl.querySelectorAll('input, textarea, select, button').forEach((element) => {
+    if ('disabled' in element) element.disabled = !isPlace;
+  });
   if (!isPlace) {
     placeAdminNeedsListEl.innerHTML = '';
     placeAdminSpiderListEl.innerHTML = '';
@@ -460,6 +463,9 @@ function rerenderDynamicFieldsForSelectedType() {
   const shouldShowPlaceTools = selectedEntity?.entity_type_slug === 'place' && selectedType === 'place';
   if (!shouldShowPlaceTools) {
     if (placeAdminToolsEl) placeAdminToolsEl.hidden = true;
+    placeAdminToolsEl?.querySelectorAll('input, textarea, select, button').forEach((element) => {
+      if ('disabled' in element) element.disabled = true;
+    });
     if (placeAdminNeedsListEl) placeAdminNeedsListEl.innerHTML = '';
     if (placeAdminSpiderListEl) placeAdminSpiderListEl.innerHTML = '';
     if (placeAdminDocumentListEl) placeAdminDocumentListEl.innerHTML = '';
