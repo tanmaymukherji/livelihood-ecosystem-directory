@@ -114,7 +114,8 @@ function buildTypeCheckboxes() {
   if (!container || !submissionTypeEl) return;
   container.innerHTML = '';
   submissionTypeEl.innerHTML = '';
-  directoryState.entityTypes.forEach((type) => {
+  const sortedTypes = [...directoryState.entityTypes].sort((left, right) => String(left.label || left.type_slug || '').localeCompare(String(right.label || right.type_slug || ''), undefined, { sensitivity: 'base' }));
+  sortedTypes.forEach((type) => {
     const checkbox = document.createElement('label');
     checkbox.className = 'checkbox-card';
     checkbox.innerHTML = `

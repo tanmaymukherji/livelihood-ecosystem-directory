@@ -47,6 +47,7 @@ const ENTITY_TABLES: Record<string, string> = {
   cso: "cso_entities",
   csr_philanthropy: "csr_philanthropy_entities",
   environmental_expert: "environmental_expert_entities",
+  story_teller: "story_teller_entities",
   place: "place_entities",
 };
 
