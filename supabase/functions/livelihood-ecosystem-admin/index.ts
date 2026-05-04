@@ -624,16 +624,25 @@ async function buildApprovedEntityPayload(typeSlug: string, input: EntityInput, 
 
   if (typeSlug === "place") {
     const placeKind = requireString(typeSpecificData.place_kind);
+    const villageName = requireString(typeSpecificData.village_name);
+    const gramPanchayatName = requireString(typeSpecificData.gram_panchayat_name);
     const blockName = requireString(typeSpecificData.block_name);
     const districtName = requireString(typeSpecificData.district_name);
     const stateName = requireString(typeSpecificData.state_name);
     payload.district = requireString(payload.district) || districtName || null;
     payload.state = requireString(payload.state) || stateName || null;
     payload.location_label = requireString(payload.location_label) || [entityName, placeKind].filter(Boolean).join(" | ") || entityName;
-    payload.primary_address = requireString(payload.primary_address) || [blockName, districtName, stateName, "India"].filter(Boolean).join(", ");
+    payload.primary_address = requireString(payload.primary_address) || [
+      villageName,
+      gramPanchayatName,
+      blockName,
+      districtName,
+      stateName,
+      "India",
+    ].filter(Boolean).join(", ");
     payload.keywords = mergeUniqueTextArrays(
       toTextArray(payload.keywords),
-      [placeKind, blockName, districtName, stateName],
+      [placeKind, villageName, gramPanchayatName, blockName, districtName, stateName],
     );
   }
 
