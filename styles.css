@@ -202,6 +202,7 @@ body.is-print-prep .place-bottom-scroll{
 .place-metric-row{display:grid;grid-template-columns:minmax(0,1.6fr) 120px 120px;gap:.8rem;align-items:center;padding:.75rem;border:1px solid #dde6ee;border-radius:12px;background:#f8fbfd}
 .place-metric-row small{display:block;color:#5d7287;margin-top:.2rem}
 .place-modal{position:fixed;inset:0;z-index:80;display:grid;place-items:center;padding:24px}
+.place-modal[hidden]{display:none !important}
 .place-modal-backdrop{position:absolute;inset:0;background:rgba(14,24,35,.58)}
 .place-modal-dialog{position:relative;max-width:min(1100px,calc(100vw - 32px));max-height:calc(100vh - 32px);overflow:auto;background:#ffffff;border-radius:20px;box-shadow:0 24px 72px rgba(14,24,35,.28);padding:1rem}
 .place-modal-toolbar{display:flex;justify-content:space-between;align-items:center;gap:1rem;margin-bottom:.75rem}

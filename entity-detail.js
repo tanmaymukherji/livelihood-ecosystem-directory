@@ -144,9 +144,10 @@ function renderPlaceDocuments(entity, placeDocuments) {
             </div>
             <p>${esc(item.description || 'No description provided.')}</p>
             <p><strong>Recorded:</strong> ${esc(formatDateTime(item.recorded_at))}</p>
+            <p><strong>File:</strong> ${esc(item.file_name || 'Document')}</p>
             <div class="btn-group">
               <a class="btn btn-small" href="${esc(item.file_url)}" target="_blank" rel="noreferrer">Open Document</a>
-              <a class="btn btn-small" href="${esc(item.file_url)}" download="${esc(item.file_name || 'place-document')}">Download</a>
+              <a class="btn btn-small" href="${esc(item.file_url)}" target="_blank" rel="noreferrer" download="${esc(item.file_name || 'place-document')}">Download</a>
             </div>
           </article>
         `).join('')}
@@ -231,11 +232,11 @@ function renderPlaceSubmissionSections(entity) {
         <p class="admin-status" id="place-spider-status"></p>
       </form>
     </section>
-    <div id="place-spider-modal" class="place-modal" hidden>
+    <div id="place-spider-modal" class="place-modal" hidden aria-hidden="true">
       <div class="place-modal-backdrop" data-close-place-modal></div>
       <div class="place-modal-dialog">
         <div class="place-modal-toolbar">
-          <h3>Spider Chart</h3>
+          <h3 id="place-spider-modal-title">Spider Chart</h3>
           <button class="btn btn-small" type="button" data-close-place-modal>Close</button>
         </div>
         <div id="place-spider-modal-body"></div>
@@ -370,27 +371,31 @@ async function submitPlaceDocument(event, entity) {
 function openPlaceSpiderModal(entity, snapshot) {
   const modal = document.getElementById('place-spider-modal');
   const body = document.getElementById('place-spider-modal-body');
+  const titleEl = document.getElementById('place-spider-modal-title');
   if (!modal || !body) return;
-  const metrics = normalizePlaceMetricSet(snapshot.metrics_json);
+  if (titleEl) {
+    titleEl.textContent = `${entity.entity_name} - ${formatDateTime(snapshot.recorded_at)}`;
+  }
   body.innerHTML = `
     <div class="place-modal-chart">${buildSpiderChartSvg(entity.entity_name, snapshot.recorded_at, snapshot.metrics_json)}</div>
     <div class="place-modal-summary">
       <p><strong>Title:</strong> ${esc(snapshot.title || entity.entity_name)}</p>
       <p><strong>Recorded:</strong> ${esc(formatDateTime(snapshot.recorded_at))}</p>
       <p><strong>Notes:</strong> ${esc(snapshot.notes || 'No notes provided.')}</p>
-      <div class="place-metric-summary">
-        ${metrics.map((metric) => `<div><strong>${esc(metric.label)}:</strong> ${esc(String(metric.score))} / ${esc(String(metric.maxScore))} (${esc(metric.normalized.toFixed(0))}/100)</div>`).join('')}
-      </div>
     </div>
   `;
   modal.hidden = false;
+  modal.setAttribute('aria-hidden', 'false');
   document.body.classList.add('place-modal-open');
 }
 
 function closePlaceSpiderModal() {
   const modal = document.getElementById('place-spider-modal');
+  const body = document.getElementById('place-spider-modal-body');
   if (!modal) return;
   modal.hidden = true;
+  modal.setAttribute('aria-hidden', 'true');
+  if (body) body.innerHTML = '';
   document.body.classList.remove('place-modal-open');
 }
 
