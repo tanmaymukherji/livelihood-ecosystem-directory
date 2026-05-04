@@ -538,9 +538,131 @@ async function fetchAllRows(table: string, orderColumn: string) {
   return rows;
 }
 
+async function reconcileLinkedPlaceArtifacts() {
+  const supabase = getSupabaseAdmin();
+  const [approvedPlaceSubmissions, approvedPlaces, pendingPlaceDocumentSubmissions, pendingPlaceSpiderSubmissions] = await Promise.all([
+    fetchAllRows("ecosystem_entity_submissions", "created_at"),
+    fetchAllRows("place_entities", "created_at"),
+    fetchAllRows("place_document_submissions", "created_at"),
+    fetchAllRows("place_spider_chart_submissions", "created_at"),
+  ]);
+
+  const approvedSubmissionMap = new Map(
+    approvedPlaceSubmissions
+      .filter((item) => requireString(item.entity_type_slug) === "place" && requireString(item.status) === "approved")
+      .map((item) => [String(item.id), item]),
+  );
+
+  const approvedPlaceByName = new Map<string, Record<string, unknown>>();
+  for (const item of approvedPlaces) {
+    if (requireString(item.approval_status) !== "approved" || item.is_deleted) continue;
+    const key = requireString(item.entity_name).trim().toLowerCase();
+    if (!key || approvedPlaceByName.has(key)) continue;
+    approvedPlaceByName.set(key, item);
+  }
+
+  for (const item of pendingPlaceSpiderSubmissions) {
+    if (requireString(item.status) !== "pending") continue;
+    const linkedId = requireString(item.linked_place_submission_id);
+    const parent = linkedId ? approvedSubmissionMap.get(linkedId) : null;
+    if (!parent) continue;
+    const place = approvedPlaceByName.get(requireString(parent.entity_name).trim().toLowerCase());
+    if (!place) continue;
+    const snapshotUid = `place-spider-reconcile-${String(item.id).replace(/-/g, "")}`;
+    const { data: existing } = await supabase.from("place_spider_chart_snapshots").select("id").eq("snapshot_uid", snapshotUid).maybeSingle();
+    if (!existing) {
+      const payload = {
+        snapshot_uid: snapshotUid,
+        place_uid: requireString(place.entity_uid),
+        place_name: requireString(place.entity_name),
+        recorded_at: toIsoDateTime(item.recorded_at, new Date().toISOString()),
+        title: requireString(item.title) || null,
+        notes: requireString(item.notes) || null,
+        metrics_json: normalizePlaceMetrics(item.metrics_json),
+        created_by_name: requireString(item.submitted_by_name) || requireString(parent.reviewed_by) || null,
+        created_by_email: requireString(item.submitted_by_email) || null,
+        admin_notes: requireString(item.admin_notes) || "Approved with parent place by reconciliation",
+        approval_status: "approved",
+        approved_at: requireString(place.approved_at) || requireString(parent.reviewed_at) || new Date().toISOString(),
+        approved_by: requireString(place.approved_by) || requireString(parent.reviewed_by) || "system",
+        is_deleted: false,
+        updated_at: new Date().toISOString(),
+      };
+      await supabase.from("place_spider_chart_snapshots").insert(payload);
+    }
+    await supabase.from("place_spider_chart_submissions").update({
+      place_uid: requireString(place.entity_uid),
+      status: "approved",
+      admin_notes: requireString(item.admin_notes) || "Approved with parent place by reconciliation",
+      updated_at: new Date().toISOString(),
+    }).eq("id", item.id);
+  }
+
+  for (const item of pendingPlaceDocumentSubmissions) {
+    if (requireString(item.status) !== "pending") continue;
+    const linkedId = requireString(item.linked_place_submission_id);
+    const parent = linkedId ? approvedSubmissionMap.get(linkedId) : null;
+    if (!parent) continue;
+    const place = approvedPlaceByName.get(requireString(parent.entity_name).trim().toLowerCase());
+    if (!place) continue;
+    let filePath = requireString(item.file_path);
+    let fileUrl = requireString(item.file_url);
+    let githubSha = requireString(item.github_sha) || null;
+    if ((!filePath || !fileUrl) && requireString(item.file_content_base64)) {
+      const recordedAt = toIsoDateTime(item.recorded_at, new Date().toISOString());
+      const uploaded = await uploadFileToGithub(
+        buildPlaceDocumentPath(requireString(place.entity_name), recordedAt, requireString(item.file_name), String(item.id).slice(0, 8)),
+        requireString(item.file_content_base64),
+        `Reconcile place document for ${requireString(place.entity_name)}`,
+      );
+      filePath = uploaded.filePath;
+      fileUrl = uploaded.fileUrl;
+      githubSha = uploaded.sha;
+    }
+    if (!filePath || !fileUrl) continue;
+    const documentUid = `place-doc-reconcile-${String(item.id).replace(/-/g, "")}`;
+    const { data: existing } = await supabase.from("place_document_records").select("id").eq("document_uid", documentUid).maybeSingle();
+    if (!existing) {
+      const payload = {
+        document_uid: documentUid,
+        place_uid: requireString(place.entity_uid),
+        place_name: requireString(place.entity_name),
+        title: requireString(item.title) || requireString(item.file_name),
+        description: requireString(item.description) || null,
+        recorded_at: toIsoDateTime(item.recorded_at, new Date().toISOString()),
+        document_date: toNullableDate(item.document_date),
+        file_name: requireString(item.file_name),
+        file_path: filePath,
+        file_url: fileUrl,
+        mime_type: requireString(item.mime_type) || null,
+        github_sha: githubSha,
+        created_by_name: requireString(item.submitted_by_name) || requireString(parent.reviewed_by) || null,
+        created_by_email: requireString(item.submitted_by_email) || null,
+        admin_notes: requireString(item.admin_notes) || "Approved with parent place by reconciliation",
+        approval_status: "approved",
+        approved_at: requireString(place.approved_at) || requireString(parent.reviewed_at) || new Date().toISOString(),
+        approved_by: requireString(place.approved_by) || requireString(parent.reviewed_by) || "system",
+        is_deleted: false,
+        updated_at: new Date().toISOString(),
+      };
+      await supabase.from("place_document_records").insert(payload);
+    }
+    await supabase.from("place_document_submissions").update({
+      place_uid: requireString(place.entity_uid),
+      file_path: filePath,
+      file_url: fileUrl,
+      github_sha: githubSha,
+      status: "approved",
+      admin_notes: requireString(item.admin_notes) || "Approved with parent place by reconciliation",
+      updated_at: new Date().toISOString(),
+    }).eq("id", item.id);
+  }
+}
+
 async function handleLoadAdminData(token: string) {
   const session = await validateSession(token);
   if (!session) return errorResponse("Invalid admin session.", 401);
+  await reconcileLinkedPlaceArtifacts();
   const [entityTypes, entities, fieldDefinitions, submissions, contactRequests, placeDocumentSubmissions, placeSpiderSubmissions, placeDocuments, placeSpiderSnapshots] = await Promise.all([
     fetchAllRows("ecosystem_entity_types", "sort_order"),
     fetchAllRows("ecosystem_directory_entities_all", "entity_name"),

@@ -752,42 +752,55 @@ async function handleSubmission(event) {
       },
     });
     const linkedPlaceSubmissionId = entityResponse?.item?.id || '';
+    const artifactErrors = [];
     if (isPlace && submissionAddPlaceDocumentEl?.checked && placeDocumentFile) {
-      const fileContentBase64 = await readFileAsBase64(placeDocumentFile);
-      await EcosystemStore.adminRequest('submitPlaceDocument', {
-        submission: {
-          linked_place_submission_id: linkedPlaceSubmissionId,
-          place_name: placeValues?.entity_name || '',
-          title: document.getElementById('submission-place-document-title').value || placeDocumentFile.name,
-          description: document.getElementById('submission-place-document-description').value,
-          document_date: document.getElementById('submission-place-document-date').value,
-          recorded_at: document.getElementById('submission-place-document-recorded-at').value || new Date().toISOString().slice(0, 16),
-          file_name: placeDocumentFile.name,
-          mime_type: placeDocumentFile.type,
-          file_size_bytes: placeDocumentFile.size,
-          file_content_base64: fileContentBase64,
-          submitted_by_name: submitterName,
-          submitted_by_email: submitterEmail,
-        },
-      });
+      try {
+        const fileContentBase64 = await readFileAsBase64(placeDocumentFile);
+        await EcosystemStore.adminRequest('submitPlaceDocument', {
+          submission: {
+            linked_place_submission_id: linkedPlaceSubmissionId,
+            place_name: placeValues?.entity_name || '',
+            title: document.getElementById('submission-place-document-title').value || placeDocumentFile.name,
+            description: document.getElementById('submission-place-document-description').value,
+            document_date: document.getElementById('submission-place-document-date').value,
+            recorded_at: document.getElementById('submission-place-document-recorded-at').value || new Date().toISOString().slice(0, 16),
+            file_name: placeDocumentFile.name,
+            mime_type: placeDocumentFile.type,
+            file_size_bytes: placeDocumentFile.size,
+            file_content_base64: fileContentBase64,
+            submitted_by_name: submitterName,
+            submitted_by_email: submitterEmail,
+          },
+        });
+      } catch (error) {
+        artifactErrors.push(`document: ${error.message || 'upload failed'}`);
+      }
     }
     if (isPlace && submissionAddPlaceSpiderEl?.checked) {
-      await EcosystemStore.adminRequest('submitPlaceSpider', {
-        submission: {
-          linked_place_submission_id: linkedPlaceSubmissionId,
-          place_name: placeValues?.entity_name || '',
-          title: document.getElementById('submission-place-spider-title').value || `${placeValues?.entity_name || 'Place'} Spider Chart`,
-          recorded_at: document.getElementById('submission-place-spider-recorded-at').value || new Date().toISOString().slice(0, 16),
-          notes: document.getElementById('submission-place-spider-notes').value,
-          metrics_json: collectPlaceSpiderMetricsFromSubmission(),
-          submitted_by_name: submitterName,
-          submitted_by_email: submitterEmail,
-        },
-      });
+      try {
+        await EcosystemStore.adminRequest('submitPlaceSpider', {
+          submission: {
+            linked_place_submission_id: linkedPlaceSubmissionId,
+            place_name: placeValues?.entity_name || '',
+            title: document.getElementById('submission-place-spider-title').value || `${placeValues?.entity_name || 'Place'} Spider Chart`,
+            recorded_at: document.getElementById('submission-place-spider-recorded-at').value || new Date().toISOString().slice(0, 16),
+            notes: document.getElementById('submission-place-spider-notes').value,
+            metrics_json: collectPlaceSpiderMetricsFromSubmission(),
+            submitted_by_name: submitterName,
+            submitted_by_email: submitterEmail,
+          },
+        });
+      } catch (error) {
+        artifactErrors.push(`spider chart: ${error.message || 'submission failed'}`);
+      }
     }
     event.target.reset();
     renderPlaceMetricInputs();
     renderSubmissionDynamicFields();
+    if (artifactErrors.length) {
+      setStatus(submissionStatusEl, `Place submission was received, but the following item(s) did not save: ${artifactErrors.join('; ')}.`, true);
+      return;
+    }
     setStatus(submissionStatusEl, 'Submission received. It will appear after admin approval.');
   } catch (error) {
     setStatus(submissionStatusEl, error.message || 'Submission failed.', true);
