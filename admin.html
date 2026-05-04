@@ -6,8 +6,8 @@
   <link rel="icon" href="data:," />
   <title>Livelihood Ecosystem Admin</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="./config.js?v=20260504i"></script>
-  <link rel="stylesheet" href="./styles.css?v=20260504i" />
+  <script src="./config.js?v=20260504j"></script>
+  <link rel="stylesheet" href="./styles.css?v=20260504j" />
 </head>
 <body>
   <div class="admin-shell">
@@ -120,6 +120,19 @@
               <p class="admin-status" id="adminEditStatus"></p>
               <div id="placeAdminTools" class="place-admin-tools" hidden>
                 <section class="section">
+                  <h4>Place Thematic Needs</h4>
+                  <p class="section-note">Maintain the history of thematic needs for this Place. Each update can contain multiple thematic needs with organisation and date.</p>
+                  <div id="placeAdminNeedsList" class="admin-card-list"></div>
+                  <div class="admin-form" id="placeAdminNeedsForm">
+                    <div class="form-group"><label for="placeAdminNeedsThematics">Thematic Needs</label><textarea id="placeAdminNeedsThematics" rows="4" placeholder="One thematic need per line"></textarea></div>
+                    <div class="form-group"><label for="placeAdminNeedsOrg">Updated By Organisation</label><input id="placeAdminNeedsOrg" type="text" /></div>
+                    <div class="form-group"><label for="placeAdminNeedsRecordedAt">Recorded At</label><input id="placeAdminNeedsRecordedAt" type="datetime-local" /></div>
+                    <div class="form-group"><label for="placeAdminNeedsDetails">Details</label><textarea id="placeAdminNeedsDetails" rows="3"></textarea></div>
+                    <button class="btn btn-success" type="button" id="placeAdminNeedsSaveButton">Add Need Update</button>
+                    <p class="admin-status" id="placeAdminNeedsStatus"></p>
+                  </div>
+                </section>
+                <section class="section">
                   <h4>Place Spider Chart Records</h4>
                   <p class="section-note">Edit approved spider chart snapshots for this Place and save the updated metrics directly.</p>
                   <div id="placeAdminSpiderList" class="admin-card-list"></div>
@@ -151,8 +164,8 @@
       </section>
     </main>
   </div>
-  <script src="./ecosystem-form-fields.js?v=20260504i"></script>
-  <script src="./ecosystem-store.js?v=20260504i"></script>
-  <script src="./admin.js?v=20260504i"></script>
+  <script src="./ecosystem-form-fields.js?v=20260504j"></script>
+  <script src="./ecosystem-store.js?v=20260504j"></script>
+  <script src="./admin.js?v=20260504j"></script>
 </body>
 </html>

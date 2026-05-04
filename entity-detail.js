@@ -277,6 +277,34 @@ function renderPlaceSpiderHistory(entity, placeSpiderSnapshots, isAdmin = false)
   `;
 }
 
+function renderPlaceThematicNeeds(entity, placeThematicNeeds) {
+  const items = asArray(placeThematicNeeds)
+    .filter((item) => item.place_uid === entity.entity_uid)
+    .sort((left, right) => new Date(right.recorded_at || 0).getTime() - new Date(left.recorded_at || 0).getTime());
+  if (!items.length) {
+    return `<section class="section"><h3>Thematic Needs</h3><p class="section-note">No thematic need updates have been recorded for this Place yet.</p></section>`;
+  }
+  return `
+    <section class="section">
+      <h3>Thematic Needs</h3>
+      <div class="place-history-list">
+        ${items.map((item) => `
+          <article class="admin-card place-history-card">
+            <div class="admin-card-header">
+              <h4>${esc((item.thematic_needs || []).join(', ') || 'Thematic needs update')}</h4>
+              <span class="admin-badge">${esc(formatDateTime(item.recorded_at))}</span>
+            </div>
+            <p><strong>Updated By Organisation:</strong> ${esc(item.updated_by_org || 'Not listed')}</p>
+            <p><strong>Updated By:</strong> ${esc(item.updated_by_name || item.updated_by_email || 'Not listed')}</p>
+            <p><strong>Thematic Needs:</strong> ${esc((item.thematic_needs || []).join(', ') || 'Not listed')}</p>
+            <p>${esc(item.details || 'No extra details provided.')}</p>
+          </article>
+        `).join('')}
+      </div>
+    </section>
+  `;
+}
+
 function renderPlaceMetricEditorRows() {
   return PLACE_SPIDER_METRICS.map((metric) => `
     <div class="place-metric-row">
@@ -593,7 +621,7 @@ async function initEntityDetail() {
 
   try {
     const adminSession = await verifyAdminSession();
-    const { entityTypes, entities, fieldDefinitions, placeDocuments, placeSpiderSnapshots } = await EcosystemStore.loadDirectory();
+    const { entityTypes, entities, fieldDefinitions, placeDocuments, placeSpiderSnapshots, placeThematicNeeds } = await EcosystemStore.loadDirectory();
     const entity = entities.find((item) => item.entity_uid === entityUid);
     if (!entity) {
       root.innerHTML = '<section class="section"><p>Entity not found in the approved directory.</p></section>';
@@ -647,6 +675,7 @@ async function initEntityDetail() {
       </section>
       ${isPlace ? renderPlaceDocuments(entity, placeDocuments, adminSession.valid) : ''}
       ${isPlace ? renderPlaceSpiderHistory(entity, placeSpiderSnapshots, adminSession.valid) : ''}
+      ${isPlace ? renderPlaceThematicNeeds(entity, placeThematicNeeds) : ''}
       ${isPlace ? renderPlaceSubmissionSections(entity) : ''}
       <section class="section">
         <details class="section-collapsible">

@@ -43,6 +43,8 @@ const submissionPlaceDocumentBlockEl = document.getElementById('submission-place
 const submissionAddPlaceSpiderEl = document.getElementById('submission-add-place-spider');
 const submissionPlaceSpiderBlockEl = document.getElementById('submission-place-spider-block');
 const submissionPlaceMetricGridEl = document.getElementById('submission-place-metric-grid');
+const submissionAddPlaceNeedsEl = document.getElementById('submission-add-place-needs');
+const submissionPlaceNeedsBlockEl = document.getElementById('submission-place-needs-block');
 const paginationEls = [
   document.getElementById('results-pagination-top'),
   document.getElementById('results-pagination-bottom'),
@@ -166,6 +168,13 @@ function renderPlaceMetricInputs() {
   `).join('');
 }
 
+function parseLineList(value) {
+  return String(value || '')
+    .split(/\r?\n/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
 function syncSubmissionFormForType() {
   const isPlace = isPlaceSubmissionType();
   Object.values(submissionFieldGroups).forEach((group) => {
@@ -177,9 +186,11 @@ function syncSubmissionFormForType() {
   if (!isPlace) {
     if (submissionAddPlaceDocumentEl) submissionAddPlaceDocumentEl.checked = false;
     if (submissionAddPlaceSpiderEl) submissionAddPlaceSpiderEl.checked = false;
+    if (submissionAddPlaceNeedsEl) submissionAddPlaceNeedsEl.checked = false;
   }
   if (submissionPlaceDocumentBlockEl) submissionPlaceDocumentBlockEl.hidden = !isPlace || !submissionAddPlaceDocumentEl?.checked;
   if (submissionPlaceSpiderBlockEl) submissionPlaceSpiderBlockEl.hidden = !isPlace || !submissionAddPlaceSpiderEl?.checked;
+  if (submissionPlaceNeedsBlockEl) submissionPlaceNeedsBlockEl.hidden = !isPlace || !submissionAddPlaceNeedsEl?.checked;
 }
 
 function buildPlaceSubmissionValues(typeSpecificData) {
@@ -794,6 +805,32 @@ async function handleSubmission(event) {
         artifactErrors.push(`spider chart: ${error.message || 'submission failed'}`);
       }
     }
+    if (isPlace && submissionAddPlaceNeedsEl?.checked) {
+      const thematicNeeds = parseLineList(document.getElementById('submission-place-needs-thematics').value);
+      const updatedByOrg = document.getElementById('submission-place-needs-org').value;
+      if (!thematicNeeds.length) {
+        artifactErrors.push('thematic needs: add at least one thematic need');
+      } else if (!updatedByOrg.trim()) {
+        artifactErrors.push('thematic needs: organisation name is required');
+      } else {
+        try {
+          await EcosystemStore.adminRequest('submitPlaceThematicNeed', {
+            submission: {
+              linked_place_submission_id: linkedPlaceSubmissionId,
+              place_name: placeValues?.entity_name || '',
+              thematic_needs: thematicNeeds,
+              details: document.getElementById('submission-place-needs-details').value,
+              updated_by_org: updatedByOrg,
+              updated_by_name: submitterName,
+              updated_by_email: submitterEmail,
+              recorded_at: document.getElementById('submission-place-needs-recorded-at').value || new Date().toISOString().slice(0, 16),
+            },
+          });
+        } catch (error) {
+          artifactErrors.push(`thematic needs: ${error.message || 'submission failed'}`);
+        }
+      }
+    }
     event.target.reset();
     renderPlaceMetricInputs();
     renderSubmissionDynamicFields();
@@ -842,6 +879,7 @@ document.getElementById('submission-form').addEventListener('submit', handleSubm
 submissionTypeEl.addEventListener('change', renderSubmissionDynamicFields);
 submissionAddPlaceDocumentEl?.addEventListener('change', syncSubmissionFormForType);
 submissionAddPlaceSpiderEl?.addEventListener('change', syncSubmissionFormForType);
+submissionAddPlaceNeedsEl?.addEventListener('change', syncSubmissionFormForType);
 renderPlaceMetricInputs();
 Object.values(searchEls).forEach((input) => {
   input.addEventListener('keypress', (event) => { if (event.key === 'Enter') applyFilters(); });

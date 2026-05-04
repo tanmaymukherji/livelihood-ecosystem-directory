@@ -540,11 +540,12 @@ async function fetchAllRows(table: string, orderColumn: string) {
 
 async function reconcileLinkedPlaceArtifacts() {
   const supabase = getSupabaseAdmin();
-  const [approvedPlaceSubmissions, approvedPlaces, pendingPlaceDocumentSubmissions, pendingPlaceSpiderSubmissions] = await Promise.all([
+  const [approvedPlaceSubmissions, approvedPlaces, pendingPlaceDocumentSubmissions, pendingPlaceSpiderSubmissions, pendingPlaceThematicNeedSubmissions] = await Promise.all([
     fetchAllRows("ecosystem_entity_submissions", "created_at"),
     fetchAllRows("place_entities", "created_at"),
     fetchAllRows("place_document_submissions", "created_at"),
     fetchAllRows("place_spider_chart_submissions", "created_at"),
+    fetchAllRows("place_thematic_need_submissions", "created_at"),
   ]);
 
   const approvedSubmissionMap = new Map(
@@ -657,13 +658,49 @@ async function reconcileLinkedPlaceArtifacts() {
       updated_at: new Date().toISOString(),
     }).eq("id", item.id);
   }
+
+  for (const item of pendingPlaceThematicNeedSubmissions) {
+    if (requireString(item.status) !== "pending") continue;
+    const linkedId = requireString(item.linked_place_submission_id);
+    const parent = linkedId ? approvedSubmissionMap.get(linkedId) : null;
+    if (!parent) continue;
+    const place = approvedPlaceByName.get(requireString(parent.entity_name).trim().toLowerCase());
+    if (!place) continue;
+    const needUid = `place-needs-reconcile-${String(item.id).replace(/-/g, "")}`;
+    const { data: existing } = await supabase.from("place_thematic_need_records").select("id").eq("need_uid", needUid).maybeSingle();
+    if (!existing) {
+      await supabase.from("place_thematic_need_records").insert({
+        need_uid: needUid,
+        place_uid: requireString(place.entity_uid),
+        place_name: requireString(place.entity_name),
+        thematic_needs: toTextArray(item.thematic_needs),
+        details: requireString(item.details) || null,
+        updated_by_org: requireString(item.updated_by_org),
+        updated_by_name: requireString(item.updated_by_name) || null,
+        updated_by_email: requireString(item.updated_by_email) || null,
+        recorded_at: toIsoDateTime(item.recorded_at, new Date().toISOString()),
+        admin_notes: requireString(item.admin_notes) || "Approved with parent place by reconciliation",
+        approval_status: "approved",
+        approved_at: requireString(place.approved_at) || requireString(parent.reviewed_at) || new Date().toISOString(),
+        approved_by: requireString(place.approved_by) || requireString(parent.reviewed_by) || "system",
+        is_deleted: false,
+        updated_at: new Date().toISOString(),
+      });
+    }
+    await supabase.from("place_thematic_need_submissions").update({
+      place_uid: requireString(place.entity_uid),
+      status: "approved",
+      admin_notes: requireString(item.admin_notes) || "Approved with parent place by reconciliation",
+      updated_at: new Date().toISOString(),
+    }).eq("id", item.id);
+  }
 }
 
 async function handleLoadAdminData(token: string) {
   const session = await validateSession(token);
   if (!session) return errorResponse("Invalid admin session.", 401);
   await reconcileLinkedPlaceArtifacts();
-  const [entityTypes, entities, fieldDefinitions, submissions, contactRequests, placeDocumentSubmissions, placeSpiderSubmissions, placeDocuments, placeSpiderSnapshots] = await Promise.all([
+  const [entityTypes, entities, fieldDefinitions, submissions, contactRequests, placeDocumentSubmissions, placeSpiderSubmissions, placeDocuments, placeSpiderSnapshots, placeThematicNeedSubmissions, placeThematicNeeds] = await Promise.all([
     fetchAllRows("ecosystem_entity_types", "sort_order"),
     fetchAllRows("ecosystem_directory_entities_all", "entity_name"),
     fetchAllRows("ecosystem_entity_field_definitions", "sort_order"),
@@ -673,6 +710,8 @@ async function handleLoadAdminData(token: string) {
     fetchAllRows("place_spider_chart_submissions", "created_at"),
     fetchAllRows("place_document_records", "recorded_at"),
     fetchAllRows("place_spider_chart_snapshots", "recorded_at"),
+    fetchAllRows("place_thematic_need_submissions", "created_at"),
+    fetchAllRows("place_thematic_need_records", "recorded_at"),
   ]);
   return jsonResponse({
     entityTypes,
@@ -684,6 +723,8 @@ async function handleLoadAdminData(token: string) {
     placeSpiderSubmissions: placeSpiderSubmissions.filter((item) => item.status === "pending" && !item.linked_place_submission_id),
     placeDocuments: placeDocuments.filter((item) => !item.is_deleted),
     placeSpiderSnapshots: placeSpiderSnapshots.filter((item) => !item.is_deleted),
+    placeThematicNeedSubmissions: placeThematicNeedSubmissions.filter((item) => item.status === "pending" && !item.linked_place_submission_id),
+    placeThematicNeeds: placeThematicNeeds.filter((item) => !item.is_deleted),
   });
 }
 
@@ -852,6 +893,12 @@ async function handleApproveSubmission(token: string, submissionId: string) {
       requireString(approvedEntity?.entity_name) || requireString(data.entity_name),
       session.username,
     );
+    await approveLinkedPlaceThematicNeedSubmissions(
+      submissionId,
+      requireString(approvedEntity?.entity_uid),
+      requireString(approvedEntity?.entity_name) || requireString(data.entity_name),
+      session.username,
+    );
   }
   await supabase.from("ecosystem_entity_submissions").update({
     status: "approved",
@@ -881,6 +928,11 @@ async function handleRejectSubmission(token: string, submissionId: string) {
       updated_at: new Date().toISOString(),
     }).eq("linked_place_submission_id", submissionId).eq("status", "pending");
     await supabase.from("place_spider_chart_submissions").update({
+      status: "rejected",
+      admin_notes: `Rejected with parent place by ${session.username} on ${new Date().toISOString()}`,
+      updated_at: new Date().toISOString(),
+    }).eq("linked_place_submission_id", submissionId).eq("status", "pending");
+    await supabase.from("place_thematic_need_submissions").update({
       status: "rejected",
       admin_notes: `Rejected with parent place by ${session.username} on ${new Date().toISOString()}`,
       updated_at: new Date().toISOString(),
@@ -1266,6 +1318,105 @@ async function handleDeletePlaceDocumentRecord(token: string, documentUid: strin
   return jsonResponse({ ok: true });
 }
 
+async function handleSubmitPlaceThematicNeed(submission: Record<string, unknown>) {
+  const supabase = getSupabaseAdmin();
+  const placeUid = requireString(submission.place_uid);
+  const linkedPlaceSubmissionId = requireString(submission.linked_place_submission_id) || null;
+  const placeName = requireString(submission.place_name);
+  const updatedByOrg = requireString(submission.updated_by_org);
+  const updatedByEmail = requireString(submission.updated_by_email);
+  const thematicNeeds = toTextArray(submission.thematic_needs);
+  const recordedAt = toIsoDateTime(submission.recorded_at, new Date().toISOString());
+  if ((!placeUid && !linkedPlaceSubmissionId) || !placeName || !updatedByOrg || !updatedByEmail || !thematicNeeds.length) {
+    return errorResponse("Place, thematic needs, organisation, and email are required.", 400);
+  }
+  const row = {
+    place_uid: placeUid || null,
+    linked_place_submission_id: linkedPlaceSubmissionId,
+    place_name: placeName,
+    thematic_needs: thematicNeeds,
+    details: requireString(submission.details) || null,
+    updated_by_org: updatedByOrg,
+    updated_by_name: requireString(submission.updated_by_name) || null,
+    updated_by_email: updatedByEmail,
+    recorded_at: recordedAt,
+    status: "pending",
+    updated_at: new Date().toISOString(),
+  };
+  const { data, error } = await supabase.from("place_thematic_need_submissions").insert(row).select("*").single();
+  if (error) return errorResponse(`Place thematic need submission failed: ${error.message}`, 500);
+  return jsonResponse({ ok: true, item: data });
+}
+
+async function handleCreatePlaceThematicNeedRecord(token: string, submission: Record<string, unknown>) {
+  const supabase = getSupabaseAdmin();
+  const session = await validateSession(token);
+  if (!session) return errorResponse("Invalid admin session.", 401);
+  const placeUid = requireString(submission.place_uid);
+  const placeName = requireString(submission.place_name);
+  const updatedByOrg = requireString(submission.updated_by_org);
+  const thematicNeeds = toTextArray(submission.thematic_needs);
+  if (!placeUid || !placeName || !updatedByOrg || !thematicNeeds.length) {
+    return errorResponse("Place, organisation, and thematic needs are required.", 400);
+  }
+  const payload = {
+    need_uid: `place-needs-${slugify(placeName)}-${crypto.randomUUID().slice(0, 8)}`,
+    place_uid: placeUid,
+    place_name: placeName,
+    thematic_needs: thematicNeeds,
+    details: requireString(submission.details) || null,
+    updated_by_org: updatedByOrg,
+    updated_by_name: requireString(submission.updated_by_name) || session.username,
+    updated_by_email: requireString(submission.updated_by_email) || null,
+    recorded_at: toIsoDateTime(submission.recorded_at, new Date().toISOString()),
+    admin_notes: `Created by ${session.username} on ${new Date().toISOString()}`,
+    approval_status: "approved",
+    approved_at: new Date().toISOString(),
+    approved_by: session.username,
+    is_deleted: false,
+    updated_at: new Date().toISOString(),
+  };
+  const { data, error } = await supabase.from("place_thematic_need_records").insert(payload).select("*").single();
+  if (error) return errorResponse(`Place thematic need create failed: ${error.message}`, 500);
+  return jsonResponse({ ok: true, item: data });
+}
+
+async function handleUpdatePlaceThematicNeedRecord(token: string, needUid: string, updates: Record<string, unknown>) {
+  const supabase = getSupabaseAdmin();
+  const session = await validateSession(token);
+  if (!session) return errorResponse("Invalid admin session.", 401);
+  if (!needUid) return errorResponse("Missing thematic need id.", 400);
+  const thematicNeeds = toTextArray(updates.thematic_needs);
+  if (!thematicNeeds.length || !requireString(updates.updated_by_org)) {
+    return errorResponse("Thematic needs and organisation are required.", 400);
+  }
+  const payload = {
+    thematic_needs: thematicNeeds,
+    details: requireString(updates.details) || null,
+    updated_by_org: requireString(updates.updated_by_org),
+    recorded_at: toIsoDateTime(updates.recorded_at, new Date().toISOString()),
+    admin_notes: `Updated by ${session.username} on ${new Date().toISOString()}`,
+    updated_at: new Date().toISOString(),
+  };
+  const { error } = await supabase.from("place_thematic_need_records").update(payload).eq("need_uid", needUid);
+  if (error) return errorResponse(`Place thematic need update failed: ${error.message}`, 500);
+  return jsonResponse({ ok: true });
+}
+
+async function handleDeletePlaceThematicNeedRecord(token: string, needUid: string) {
+  const supabase = getSupabaseAdmin();
+  const session = await validateSession(token);
+  if (!session) return errorResponse("Invalid admin session.", 401);
+  if (!needUid) return errorResponse("Missing thematic need id.", 400);
+  const { error } = await supabase.from("place_thematic_need_records").update({
+    is_deleted: true,
+    admin_notes: `Deleted by ${session.username} on ${new Date().toISOString()}`,
+    updated_at: new Date().toISOString(),
+  }).eq("need_uid", needUid);
+  if (error) return errorResponse(`Place thematic need delete failed: ${error.message}`, 500);
+  return jsonResponse({ ok: true });
+}
+
 async function approveLinkedPlaceSpiderSubmissions(
   parentSubmissionId: string,
   placeUid: string,
@@ -1361,6 +1512,48 @@ async function approveLinkedPlaceDocumentSubmissions(
     const { error: insertError } = await supabase.from("place_document_records").insert(payload);
     if (insertError) throw new Error(`Linked place document approval failed: ${insertError.message}`);
     await supabase.from("place_document_submissions").update({
+      place_uid: placeUid,
+      status: "approved",
+      admin_notes: `Approved with parent place by ${sessionUsername} on ${new Date().toISOString()}`,
+      updated_at: new Date().toISOString(),
+    }).eq("id", item.id);
+  }
+}
+
+async function approveLinkedPlaceThematicNeedSubmissions(
+  parentSubmissionId: string,
+  placeUid: string,
+  placeName: string,
+  sessionUsername: string
+) {
+  const supabase = getSupabaseAdmin();
+  const { data, error } = await supabase
+    .from("place_thematic_need_submissions")
+    .select("*")
+    .eq("linked_place_submission_id", parentSubmissionId)
+    .eq("status", "pending");
+  if (error) throw new Error(`Linked place thematic need submissions could not be loaded: ${error.message}`);
+  for (const item of data || []) {
+    const payload = {
+      need_uid: `place-needs-${slugify(placeName)}-${crypto.randomUUID().slice(0, 8)}`,
+      place_uid: placeUid,
+      place_name: placeName,
+      thematic_needs: toTextArray(item.thematic_needs),
+      details: requireString(item.details) || null,
+      updated_by_org: requireString(item.updated_by_org),
+      updated_by_name: requireString(item.updated_by_name) || null,
+      updated_by_email: requireString(item.updated_by_email) || null,
+      recorded_at: toIsoDateTime(item.recorded_at, new Date().toISOString()),
+      admin_notes: requireString(item.admin_notes) || null,
+      approval_status: "approved",
+      approved_at: new Date().toISOString(),
+      approved_by: sessionUsername,
+      is_deleted: false,
+      updated_at: new Date().toISOString(),
+    };
+    const { error: insertError } = await supabase.from("place_thematic_need_records").insert(payload);
+    if (insertError) throw new Error(`Linked place thematic need approval failed: ${insertError.message}`);
+    await supabase.from("place_thematic_need_submissions").update({
       place_uid: placeUid,
       status: "approved",
       admin_notes: `Approved with parent place by ${sessionUsername} on ${new Date().toISOString()}`,
@@ -1728,6 +1921,8 @@ Deno.serve(async (request) => {
         return await handleSubmitContactRequest(contactRequest);
       case "submitPlaceSpider":
         return await handleSubmitPlaceSpider(submission);
+      case "submitPlaceThematicNeed":
+        return await handleSubmitPlaceThematicNeed(submission);
       case "approvePlaceSpider":
         return await handleApprovePlaceSpider(token, placeSubmissionId);
       case "rejectPlaceSpider":
@@ -1744,6 +1939,12 @@ Deno.serve(async (request) => {
         return await handleCreatePlaceDocumentRecord(token, submission);
       case "deletePlaceDocumentRecord":
         return await handleDeletePlaceDocumentRecord(token, body.documentUid ? String(body.documentUid) : "");
+      case "createPlaceThematicNeedRecord":
+        return await handleCreatePlaceThematicNeedRecord(token, submission);
+      case "updatePlaceThematicNeedRecord":
+        return await handleUpdatePlaceThematicNeedRecord(token, body.needUid ? String(body.needUid) : "", updates);
+      case "deletePlaceThematicNeedRecord":
+        return await handleDeletePlaceThematicNeedRecord(token, body.needUid ? String(body.needUid) : "");
       case "upsertPlaceInitiative":
         return await handleUpsertPlaceInitiative(token, place);
       case "deletePlaceInitiative":

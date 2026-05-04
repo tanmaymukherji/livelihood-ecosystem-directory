@@ -16,6 +16,8 @@ const adminEditorEmpty = document.getElementById('adminEditorEmpty');
 const adminEditorFields = document.getElementById('adminEditorFields');
 const editDynamicFieldsEl = document.getElementById('edit-dynamic-fields');
 const placeAdminToolsEl = document.getElementById('placeAdminTools');
+const placeAdminNeedsListEl = document.getElementById('placeAdminNeedsList');
+const placeAdminNeedsStatusEl = document.getElementById('placeAdminNeedsStatus');
 const placeAdminSpiderListEl = document.getElementById('placeAdminSpiderList');
 const placeAdminDocumentListEl = document.getElementById('placeAdminDocumentList');
 const placeAdminDocumentStatusEl = document.getElementById('placeAdminDocumentStatus');
@@ -43,6 +45,7 @@ const state = {
   placeSpiderSubmissions: [],
   placeDocuments: [],
   placeSpiderSnapshots: [],
+  placeThematicNeeds: [],
   selectedEntityUid: '',
 };
 
@@ -107,6 +110,10 @@ async function readFileAsBase64(file) {
     binary += String.fromCharCode(...bytes.subarray(index, index + chunkSize));
   }
   return window.btoa(binary);
+}
+
+function parseLineList(value) {
+  return String(value || '').split(/\r?\n/).map((item) => item.trim()).filter(Boolean);
 }
 
 function getStoredToken() {
@@ -298,13 +305,39 @@ function renderPlaceSpiderMetricRows(snapshot) {
 
 function renderPlaceAdminCollections(entity) {
   const isPlace = entity?.entity_type_slug === 'place';
-  if (!placeAdminToolsEl || !placeAdminSpiderListEl || !placeAdminDocumentListEl) return;
+  if (!placeAdminToolsEl || !placeAdminSpiderListEl || !placeAdminDocumentListEl || !placeAdminNeedsListEl) return;
   placeAdminToolsEl.hidden = !isPlace;
   if (!isPlace) {
+    placeAdminNeedsListEl.innerHTML = '';
     placeAdminSpiderListEl.innerHTML = '';
     placeAdminDocumentListEl.innerHTML = '';
+    setStatus(placeAdminNeedsStatusEl, '');
     setStatus(placeAdminDocumentStatusEl, '');
     return;
+  }
+
+  const needs = state.placeThematicNeeds
+    .filter((item) => item.place_uid === entity.entity_uid)
+    .sort((left, right) => new Date(right.recorded_at || 0).getTime() - new Date(left.recorded_at || 0).getTime());
+  if (!needs.length) {
+    placeAdminNeedsListEl.innerHTML = '<article class="admin-card"><p>No thematic need updates for this Place yet.</p></article>';
+  } else {
+    placeAdminNeedsListEl.innerHTML = needs.map((item) => `
+      <article class="admin-card">
+        <div class="admin-card-header">
+          <h4>${esc((item.thematic_needs || []).join(', ') || 'Need update')}</h4>
+          <span class="admin-badge">${esc(formatDateTime(item.recorded_at))}</span>
+        </div>
+        <div class="form-group"><label>Thematic Needs</label><textarea rows="3" data-admin-place-needs-thematics>${esc((item.thematic_needs || []).join('\n'))}</textarea></div>
+        <div class="form-group"><label>Updated By Organisation</label><input type="text" data-admin-place-needs-org value="${esc(item.updated_by_org || '')}" /></div>
+        <div class="form-group"><label>Recorded At</label><input type="datetime-local" data-admin-place-needs-recorded-at value="${esc(String(item.recorded_at || '').slice(0, 16))}" /></div>
+        <div class="form-group"><label>Details</label><textarea rows="3" data-admin-place-needs-details>${esc(item.details || '')}</textarea></div>
+        <div class="admin-inline-actions">
+          <button class="btn btn-success btn-small" type="button" data-save-place-needs="${esc(item.need_uid)}">Save Need Update</button>
+          <button class="btn btn-danger btn-small" type="button" data-delete-place-needs="${esc(item.need_uid)}">Delete Need Update</button>
+        </div>
+      </article>
+    `).join('');
   }
 
   const snapshots = state.placeSpiderSnapshots
@@ -352,11 +385,19 @@ function renderPlaceAdminCollections(entity) {
     `).join('');
   }
   const titleEl = document.getElementById('placeAdminDocumentTitle');
+  const needsThematicsEl = document.getElementById('placeAdminNeedsThematics');
+  const needsOrgEl = document.getElementById('placeAdminNeedsOrg');
+  const needsRecordedAtEl = document.getElementById('placeAdminNeedsRecordedAt');
+  const needsDetailsEl = document.getElementById('placeAdminNeedsDetails');
   const descriptionEl = document.getElementById('placeAdminDocumentDescription');
   const documentDateEl = document.getElementById('placeAdminDocumentDate');
   const recordedAtEl = document.getElementById('placeAdminDocumentRecordedAt');
   const fileEl = document.getElementById('placeAdminDocumentFile');
   if (titleEl) titleEl.value = '';
+  if (needsThematicsEl) needsThematicsEl.value = '';
+  if (needsOrgEl) needsOrgEl.value = '';
+  if (needsRecordedAtEl && !needsRecordedAtEl.value) needsRecordedAtEl.value = new Date().toISOString().slice(0, 16);
+  if (needsDetailsEl) needsDetailsEl.value = '';
   if (descriptionEl) descriptionEl.value = '';
   if (documentDateEl) documentDateEl.value = '';
   if (recordedAtEl && !recordedAtEl.value) recordedAtEl.value = new Date().toISOString().slice(0, 16);
@@ -453,6 +494,7 @@ async function loadAdminData() {
   state.placeSpiderSubmissions = Array.isArray(data.placeSpiderSubmissions) ? data.placeSpiderSubmissions : [];
   state.placeDocuments = Array.isArray(data.placeDocuments) ? data.placeDocuments : [];
   state.placeSpiderSnapshots = Array.isArray(data.placeSpiderSnapshots) ? data.placeSpiderSnapshots : [];
+  state.placeThematicNeeds = Array.isArray(data.placeThematicNeeds) ? data.placeThematicNeeds : [];
   populateTypeOptions();
   filterEntities();
   renderSubmissions();
@@ -733,6 +775,81 @@ async function savePlaceSpiderSnapshot(snapshotUid, triggerButton) {
   }
 }
 
+async function savePlaceNeedRecord(needUid, triggerButton) {
+  const card = triggerButton.closest('.admin-card');
+  if (!card) return;
+  setStatus(sessionStatus, 'Saving thematic need update...');
+  try {
+    await EcosystemStore.adminRequest('updatePlaceThematicNeedRecord', {
+      token: getStoredToken(),
+      needUid,
+      updates: {
+        thematic_needs: parseLineList(card.querySelector('[data-admin-place-needs-thematics]')?.value),
+        updated_by_org: card.querySelector('[data-admin-place-needs-org]')?.value || '',
+        recorded_at: card.querySelector('[data-admin-place-needs-recorded-at]')?.value || '',
+        details: card.querySelector('[data-admin-place-needs-details]')?.value || '',
+      },
+    });
+    setStatus(sessionStatus, 'Thematic need update saved.');
+    await loadAdminData();
+  } catch (error) {
+    setStatus(sessionStatus, error.message || 'Thematic need update failed.', true);
+  }
+}
+
+async function deletePlaceNeedRecord(needUid) {
+  setStatus(sessionStatus, 'Deleting thematic need update...');
+  try {
+    await EcosystemStore.adminRequest('deletePlaceThematicNeedRecord', {
+      token: getStoredToken(),
+      needUid,
+    });
+    setStatus(sessionStatus, 'Thematic need update deleted.');
+    await loadAdminData();
+  } catch (error) {
+    setStatus(sessionStatus, error.message || 'Thematic need delete failed.', true);
+  }
+}
+
+async function createPlaceNeedRecord() {
+  const entityUid = String(editEls.entityUid.value || '').trim();
+  const entity = state.entities.find((item) => item.entity_uid === entityUid);
+  if (!entity || entity.entity_type_slug !== 'place') {
+    setStatus(placeAdminNeedsStatusEl, 'Select a Place record first.', true);
+    return;
+  }
+  const thematicNeeds = parseLineList(document.getElementById('placeAdminNeedsThematics').value);
+  if (!thematicNeeds.length) {
+    setStatus(placeAdminNeedsStatusEl, 'Add at least one thematic need.', true);
+    return;
+  }
+  const updatedByOrg = String(document.getElementById('placeAdminNeedsOrg').value || '').trim();
+  if (!updatedByOrg) {
+    setStatus(placeAdminNeedsStatusEl, 'Organisation name is required.', true);
+    return;
+  }
+  setStatus(placeAdminNeedsStatusEl, 'Saving thematic need update...');
+  try {
+    await EcosystemStore.adminRequest('createPlaceThematicNeedRecord', {
+      token: getStoredToken(),
+      submission: {
+        place_uid: entity.entity_uid,
+        place_name: entity.entity_name,
+        thematic_needs: thematicNeeds,
+        details: document.getElementById('placeAdminNeedsDetails').value,
+        updated_by_org: updatedByOrg,
+        updated_by_name: 'Admin',
+        updated_by_email: '',
+        recorded_at: document.getElementById('placeAdminNeedsRecordedAt').value || new Date().toISOString().slice(0, 16),
+      },
+    });
+    setStatus(placeAdminNeedsStatusEl, 'Thematic need update added.');
+    await loadAdminData();
+  } catch (error) {
+    setStatus(placeAdminNeedsStatusEl, error.message || 'Thematic need create failed.', true);
+  }
+}
+
 async function deletePlaceDocumentRecord(documentUid) {
   setStatus(sessionStatus, 'Deleting document...');
   try {
@@ -826,6 +943,7 @@ editEls.entityType.addEventListener('change', rerenderDynamicFieldsForSelectedTy
 document.getElementById('adminEditForm').addEventListener('submit', saveEntity);
 document.getElementById('deleteEntityButton').addEventListener('click', deleteEntity);
 document.getElementById('placeAdminDocumentUploadButton').addEventListener('click', uploadApprovedPlaceDocument);
+document.getElementById('placeAdminNeedsSaveButton').addEventListener('click', createPlaceNeedRecord);
 submissionQueue.addEventListener('click', (event) => {
   const approveButton = event.target.closest('[data-approve-submission]');
   if (approveButton) {
@@ -858,6 +976,15 @@ placeSpiderQueue.addEventListener('click', (event) => {
 placeAdminSpiderListEl?.addEventListener('click', (event) => {
   const saveButton = event.target.closest('[data-save-place-spider]');
   if (saveButton) savePlaceSpiderSnapshot(saveButton.dataset.savePlaceSpider, saveButton);
+});
+placeAdminNeedsListEl?.addEventListener('click', (event) => {
+  const saveButton = event.target.closest('[data-save-place-needs]');
+  if (saveButton) {
+    savePlaceNeedRecord(saveButton.dataset.savePlaceNeeds, saveButton);
+    return;
+  }
+  const deleteButton = event.target.closest('[data-delete-place-needs]');
+  if (deleteButton) deletePlaceNeedRecord(deleteButton.dataset.deletePlaceNeeds);
 });
 placeAdminDocumentListEl?.addEventListener('click', (event) => {
   const deleteButton = event.target.closest('[data-delete-place-document]');

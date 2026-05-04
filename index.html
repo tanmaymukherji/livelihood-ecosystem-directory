@@ -6,8 +6,8 @@
   <link rel="icon" href="data:," />
   <title>Livelihood Ecosystem Directory</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="./config.js?v=20260504e"></script>
-  <link rel="stylesheet" href="./styles.css?v=20260504e" />
+  <script src="./config.js?v=20260504j"></script>
+  <link rel="stylesheet" href="./styles.css?v=20260504j" />
 </head>
 <body>
   <div class="vendor-shell">
@@ -132,6 +132,27 @@
                 </div>
                 <div class="place-metric-grid" id="submission-place-metric-grid"></div>
               </div>
+              <div class="form-group">
+                <label><input id="submission-add-place-needs" type="checkbox" /> Add Initial Thematic Needs</label>
+              </div>
+              <div id="submission-place-needs-block" hidden>
+                <div class="form-group">
+                  <label for="submission-place-needs-thematics">Thematic Needs</label>
+                  <textarea id="submission-place-needs-thematics" rows="4" placeholder="One thematic need per line"></textarea>
+                </div>
+                <div class="form-group">
+                  <label for="submission-place-needs-org">Updated By Organisation</label>
+                  <input id="submission-place-needs-org" type="text" />
+                </div>
+                <div class="form-group">
+                  <label for="submission-place-needs-recorded-at">Recorded At</label>
+                  <input id="submission-place-needs-recorded-at" type="datetime-local" />
+                </div>
+                <div class="form-group">
+                  <label for="submission-place-needs-details">Details</label>
+                  <textarea id="submission-place-needs-details" rows="3" placeholder="What are the specific needs being observed on the ground?"></textarea>
+                </div>
+              </div>
             </div>
             <div class="form-group">
               <label for="submission-contact-name">Submitted By</label>
@@ -186,8 +207,8 @@
     </main>
   </div>
 
-  <script src="./ecosystem-form-fields.js?v=20260504e"></script>
-  <script src="./ecosystem-store.js?v=20260504e"></script>
-  <script src="./ecosystem-directory.js?v=20260504e"></script>
+  <script src="./ecosystem-form-fields.js?v=20260504j"></script>
+  <script src="./ecosystem-store.js?v=20260504j"></script>
+  <script src="./ecosystem-directory.js?v=20260504j"></script>
 </body>
 </html>
