@@ -15,6 +15,10 @@ const adminSearchResults = document.getElementById('adminSearchResults');
 const adminEditorEmpty = document.getElementById('adminEditorEmpty');
 const adminEditorFields = document.getElementById('adminEditorFields');
 const editDynamicFieldsEl = document.getElementById('edit-dynamic-fields');
+const placeAdminToolsEl = document.getElementById('placeAdminTools');
+const placeAdminSpiderListEl = document.getElementById('placeAdminSpiderList');
+const placeAdminDocumentListEl = document.getElementById('placeAdminDocumentList');
+const placeAdminDocumentStatusEl = document.getElementById('placeAdminDocumentStatus');
 const ADMIN_SESSION_KEY = 'livelihood-ecosystem-admin-session';
 
 const {
@@ -42,6 +46,23 @@ const state = {
   selectedEntityUid: '',
 };
 
+const PLACE_SPIDER_METRICS = [
+  { key: 'arresting_distress_migration', label: 'Arresting Distress Migration', defaultMax: 5 },
+  { key: 'export_import', label: 'Export Import', defaultMax: 5 },
+  { key: 'income', label: 'Income', defaultMax: 5 },
+  { key: 'livelihood_basket', label: 'Livelihood Basket', defaultMax: 5 },
+  { key: 'youth_employment', label: 'Youth Employment', defaultMax: 5 },
+  { key: 'agro_ecology', label: 'Agro Ecology', defaultMax: 5 },
+  { key: 'energy', label: 'Energy', defaultMax: 5 },
+  { key: 'forest', label: 'Forest', defaultMax: 5 },
+  { key: 'soil', label: 'Soil', defaultMax: 5 },
+  { key: 'water', label: 'Water', defaultMax: 5 },
+  { key: 'gender_inclusion', label: 'Gender Inclusion', defaultMax: 5 },
+  { key: 'nutrition', label: 'Nutrition', defaultMax: 5 },
+  { key: 'institution', label: 'Institution', defaultMax: 5 },
+  { key: 'wash', label: 'Water / Sanitation / Hygiene', defaultMax: 5 },
+];
+
 const editEls = {
   entityUid: document.getElementById('editEntityUid'),
   entityType: document.getElementById('editEntityType'),
@@ -68,6 +89,24 @@ function setStatus(element, message, isError = false) {
   if (!element) return;
   element.textContent = message || '';
   element.classList.toggle('error', Boolean(isError));
+}
+
+function formatDateTime(value) {
+  if (!value) return 'Not recorded';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return new Intl.DateTimeFormat('en-IN', { dateStyle: 'medium', timeStyle: 'short' }).format(date);
+}
+
+async function readFileAsBase64(file) {
+  const buffer = await file.arrayBuffer();
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  const chunkSize = 0x8000;
+  for (let index = 0; index < bytes.length; index += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(index, index + chunkSize));
+  }
+  return window.btoa(binary);
 }
 
 function getStoredToken() {
@@ -235,6 +274,91 @@ function renderEntityResults() {
   });
 }
 
+function renderPlaceSpiderMetricRows(snapshot) {
+  const metrics = snapshot.metrics_json && typeof snapshot.metrics_json === 'object' ? snapshot.metrics_json : {};
+  return PLACE_SPIDER_METRICS.map((metric) => {
+    const item = metrics[metric.key] && typeof metrics[metric.key] === 'object' ? metrics[metric.key] : {};
+    return `
+      <div class="place-spider-admin-row">
+        <div>
+          <strong>${esc(metric.label)}</strong>
+          <small>Saved as score and max score.</small>
+        </div>
+        <input type="number" step="any" min="0" data-admin-place-score="${esc(metric.key)}" value="${esc(String(item.score ?? 0))}" />
+        <input type="number" step="any" min="1" data-admin-place-max="${esc(metric.key)}" value="${esc(String(item.max_score ?? metric.defaultMax))}" />
+      </div>
+    `;
+  }).join('');
+}
+
+function renderPlaceAdminCollections(entity) {
+  const isPlace = entity?.entity_type_slug === 'place';
+  if (!placeAdminToolsEl || !placeAdminSpiderListEl || !placeAdminDocumentListEl) return;
+  placeAdminToolsEl.hidden = !isPlace;
+  if (!isPlace) {
+    placeAdminSpiderListEl.innerHTML = '';
+    placeAdminDocumentListEl.innerHTML = '';
+    setStatus(placeAdminDocumentStatusEl, '');
+    return;
+  }
+
+  const snapshots = state.placeSpiderSnapshots
+    .filter((item) => item.place_uid === entity.entity_uid)
+    .sort((left, right) => new Date(right.recorded_at || 0).getTime() - new Date(left.recorded_at || 0).getTime());
+  if (!snapshots.length) {
+    placeAdminSpiderListEl.innerHTML = '<article class="admin-card"><p>No approved spider chart records for this Place yet.</p></article>';
+  } else {
+    placeAdminSpiderListEl.innerHTML = snapshots.map((item) => `
+      <article class="admin-card place-spider-admin-card">
+        <div class="admin-card-header">
+          <h4>${esc(item.title || entity.entity_name || 'Spider chart')}</h4>
+          <span class="admin-badge">${esc(formatDateTime(item.recorded_at))}</span>
+        </div>
+        <div class="form-group"><label>Title</label><input type="text" data-admin-place-spider-title value="${esc(item.title || '')}" /></div>
+        <div class="form-group"><label>Recorded At</label><input type="datetime-local" data-admin-place-spider-recorded-at value="${esc(String(item.recorded_at || '').slice(0, 16))}" /></div>
+        <div class="form-group"><label>Notes</label><textarea rows="3" data-admin-place-spider-notes>${esc(item.notes || '')}</textarea></div>
+        <div class="place-spider-admin-metrics">${renderPlaceSpiderMetricRows(item)}</div>
+        <div class="admin-inline-actions">
+          <button class="btn btn-success btn-small" type="button" data-save-place-spider="${esc(item.snapshot_uid)}">Save Spider Chart</button>
+        </div>
+      </article>
+    `).join('');
+  }
+
+  const documents = state.placeDocuments
+    .filter((item) => item.place_uid === entity.entity_uid)
+    .sort((left, right) => new Date(right.recorded_at || 0).getTime() - new Date(left.recorded_at || 0).getTime());
+  if (!documents.length) {
+    placeAdminDocumentListEl.innerHTML = '<article class="admin-card"><p>No approved documents for this Place yet.</p></article>';
+  } else {
+    placeAdminDocumentListEl.innerHTML = documents.map((item) => `
+      <article class="admin-card">
+        <div class="admin-card-header">
+          <h4>${esc(item.title || item.file_name || 'Document')}</h4>
+          <span class="admin-badge">${esc(formatDateTime(item.recorded_at))}</span>
+        </div>
+        <p><strong>File:</strong> ${esc(item.file_name || 'Unknown file')}</p>
+        <p>${esc(item.description || 'No description')}</p>
+        <div class="admin-inline-actions">
+          <a class="btn btn-small" href="${esc(item.file_url)}" target="_blank" rel="noreferrer">Open</a>
+          <button class="btn btn-danger btn-small" type="button" data-delete-place-document="${esc(item.document_uid)}">Delete</button>
+        </div>
+      </article>
+    `).join('');
+  }
+  const titleEl = document.getElementById('placeAdminDocumentTitle');
+  const descriptionEl = document.getElementById('placeAdminDocumentDescription');
+  const documentDateEl = document.getElementById('placeAdminDocumentDate');
+  const recordedAtEl = document.getElementById('placeAdminDocumentRecordedAt');
+  const fileEl = document.getElementById('placeAdminDocumentFile');
+  if (titleEl) titleEl.value = '';
+  if (descriptionEl) descriptionEl.value = '';
+  if (documentDateEl) documentDateEl.value = '';
+  if (recordedAtEl && !recordedAtEl.value) recordedAtEl.value = new Date().toISOString().slice(0, 16);
+  if (fileEl) fileEl.value = '';
+  setStatus(placeAdminDocumentStatusEl, '');
+}
+
 function setEditorVisibility(visible) {
   adminEditorEmpty.style.display = visible ? 'none' : 'block';
   adminEditorFields.classList.toggle('active', Boolean(visible));
@@ -265,6 +389,7 @@ function fillEditor(entity) {
   editEls.longitude.value = entity.longitude ?? '';
   editEls.adminNotes.value = entity.admin_notes || '';
   renderEditDynamicFields(entity.entity_type_slug, entity.type_specific_data || {});
+  renderPlaceAdminCollections(entity);
   setEditorVisibility(true);
 }
 
@@ -273,6 +398,7 @@ function selectEntity(entityUid) {
   const entity = state.entities.find((item) => item.entity_uid === entityUid);
   if (!entity) {
     setEditorVisibility(false);
+    if (placeAdminToolsEl) placeAdminToolsEl.hidden = true;
     return;
   }
   fillEditor(entity);
@@ -370,6 +496,7 @@ async function handleLogout() {
   adminSearchResults.innerHTML = '';
   contactRequestList.innerHTML = '';
   setEditorVisibility(false);
+  if (placeAdminToolsEl) placeAdminToolsEl.hidden = true;
   setStatus(loginStatus, '');
   setStatus(sessionStatus, 'Signed out.');
 }
@@ -568,6 +695,96 @@ async function saveEntity(event) {
   }
 }
 
+function collectAdminSpiderMetrics(card) {
+  return Object.fromEntries(PLACE_SPIDER_METRICS.map((metric) => {
+    const scoreEl = card.querySelector(`[data-admin-place-score="${metric.key}"]`);
+    const maxEl = card.querySelector(`[data-admin-place-max="${metric.key}"]`);
+    return [metric.key, {
+      score: Number(scoreEl?.value || 0),
+      max_score: Number(maxEl?.value || metric.defaultMax || 5),
+    }];
+  }));
+}
+
+async function savePlaceSpiderSnapshot(snapshotUid, triggerButton) {
+  const card = triggerButton.closest('.place-spider-admin-card');
+  if (!card) return;
+  setStatus(sessionStatus, 'Saving spider chart...');
+  try {
+    await EcosystemStore.adminRequest('updatePlaceSpiderSnapshot', {
+      token: getStoredToken(),
+      snapshotUid,
+      updates: {
+        title: card.querySelector('[data-admin-place-spider-title]')?.value || '',
+        recorded_at: card.querySelector('[data-admin-place-spider-recorded-at]')?.value || '',
+        notes: card.querySelector('[data-admin-place-spider-notes]')?.value || '',
+        metrics_json: collectAdminSpiderMetrics(card),
+      },
+    });
+    setStatus(sessionStatus, 'Spider chart updated.');
+    await loadAdminData();
+  } catch (error) {
+    setStatus(sessionStatus, error.message || 'Spider chart update failed.', true);
+  }
+}
+
+async function deletePlaceDocumentRecord(documentUid) {
+  setStatus(sessionStatus, 'Deleting document...');
+  try {
+    await EcosystemStore.adminRequest('deletePlaceDocumentRecord', {
+      token: getStoredToken(),
+      documentUid,
+    });
+    setStatus(sessionStatus, 'Document deleted.');
+    await loadAdminData();
+  } catch (error) {
+    setStatus(sessionStatus, error.message || 'Document delete failed.', true);
+  }
+}
+
+async function uploadApprovedPlaceDocument(event) {
+  event.preventDefault();
+  const entityUid = String(editEls.entityUid.value || '').trim();
+  const entity = state.entities.find((item) => item.entity_uid === entityUid);
+  const file = document.getElementById('placeAdminDocumentFile').files?.[0];
+  if (!entity || entity.entity_type_slug !== 'place') {
+    setStatus(placeAdminDocumentStatusEl, 'Select a Place record first.', true);
+    return;
+  }
+  if (!file) {
+    setStatus(placeAdminDocumentStatusEl, 'Choose a file first.', true);
+    return;
+  }
+  if (file.size > (10 * 1024 * 1024)) {
+    setStatus(placeAdminDocumentStatusEl, 'Please keep uploaded documents under 10 MB.', true);
+    return;
+  }
+  setStatus(placeAdminDocumentStatusEl, 'Uploading approved document...');
+  try {
+    const fileContentBase64 = await readFileAsBase64(file);
+    await EcosystemStore.adminRequest('createPlaceDocumentRecord', {
+      token: getStoredToken(),
+      submission: {
+        place_uid: entity.entity_uid,
+        place_name: entity.entity_name,
+        title: document.getElementById('placeAdminDocumentTitle').value || file.name,
+        description: document.getElementById('placeAdminDocumentDescription').value,
+        document_date: document.getElementById('placeAdminDocumentDate').value,
+        recorded_at: document.getElementById('placeAdminDocumentRecordedAt').value,
+        file_name: file.name,
+        mime_type: file.type,
+        file_size_bytes: file.size,
+        file_content_base64: fileContentBase64,
+      },
+    });
+    event.target.reset();
+    setStatus(placeAdminDocumentStatusEl, 'Approved document uploaded.');
+    await loadAdminData();
+  } catch (error) {
+    setStatus(placeAdminDocumentStatusEl, error.message || 'Document upload failed.', true);
+  }
+}
+
 async function deleteEntity() {
   const entityUid = String(editEls.entityUid.value || '').trim();
   if (!entityUid) {
@@ -600,6 +817,7 @@ document.getElementById('adminEntityTypeFilter').addEventListener('change', () =
 editEls.entityType.addEventListener('change', rerenderDynamicFieldsForSelectedType);
 document.getElementById('adminEditForm').addEventListener('submit', saveEntity);
 document.getElementById('deleteEntityButton').addEventListener('click', deleteEntity);
+document.getElementById('placeAdminDocumentForm').addEventListener('submit', uploadApprovedPlaceDocument);
 submissionQueue.addEventListener('click', (event) => {
   const approveButton = event.target.closest('[data-approve-submission]');
   if (approveButton) {
@@ -628,6 +846,14 @@ placeSpiderQueue.addEventListener('click', (event) => {
   }
   const rejectButton = event.target.closest('[data-reject-place-spider]');
   if (rejectButton) rejectPlaceSpider(rejectButton.dataset.rejectPlaceSpider);
+});
+placeAdminSpiderListEl?.addEventListener('click', (event) => {
+  const saveButton = event.target.closest('[data-save-place-spider]');
+  if (saveButton) savePlaceSpiderSnapshot(saveButton.dataset.savePlaceSpider, saveButton);
+});
+placeAdminDocumentListEl?.addEventListener('click', (event) => {
+  const deleteButton = event.target.closest('[data-delete-place-document]');
+  if (deleteButton) deletePlaceDocumentRecord(deleteButton.dataset.deletePlaceDocument);
 });
 
 (async function initAdmin() {

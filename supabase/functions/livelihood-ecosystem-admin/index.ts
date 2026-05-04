@@ -1076,6 +1076,24 @@ async function handleRejectPlaceSpider(token: string, submissionId: string) {
   return jsonResponse({ ok: true });
 }
 
+async function handleUpdatePlaceSpiderSnapshot(token: string, snapshotUid: string, updates: Record<string, unknown>) {
+  const supabase = getSupabaseAdmin();
+  const session = await validateSession(token);
+  if (!session) return errorResponse("Invalid admin session.", 401);
+  if (!snapshotUid) return errorResponse("Missing spider chart id.", 400);
+  const payload = {
+    title: requireString(updates.title) || null,
+    recorded_at: toIsoDateTime(updates.recorded_at, new Date().toISOString()),
+    notes: requireString(updates.notes) || null,
+    metrics_json: normalizePlaceMetrics(updates.metrics_json),
+    admin_notes: `Updated by ${session.username} on ${new Date().toISOString()}`,
+    updated_at: new Date().toISOString(),
+  };
+  const { error } = await supabase.from("place_spider_chart_snapshots").update(payload).eq("snapshot_uid", snapshotUid);
+  if (error) return errorResponse(`Place spider chart update failed: ${error.message}`, 500);
+  return jsonResponse({ ok: true });
+}
+
 async function handleSubmitPlaceDocument(submission: Record<string, unknown>) {
   const supabase = getSupabaseAdmin();
   const placeUid = requireString(submission.place_uid);
@@ -1187,6 +1205,64 @@ async function handleRejectPlaceDocument(token: string, submissionId: string) {
     updated_at: new Date().toISOString(),
   }).eq("id", submissionId);
   if (error) return errorResponse(`Place document rejection failed: ${error.message}`, 500);
+  return jsonResponse({ ok: true });
+}
+
+async function handleCreatePlaceDocumentRecord(token: string, submission: Record<string, unknown>) {
+  const supabase = getSupabaseAdmin();
+  const session = await validateSession(token);
+  if (!session) return errorResponse("Invalid admin session.", 401);
+  const placeUid = requireString(submission.place_uid);
+  const placeName = requireString(submission.place_name);
+  const fileName = requireString(submission.file_name);
+  const fileContentBase64 = requireString(submission.file_content_base64);
+  const recordedAt = toIsoDateTime(submission.recorded_at, new Date().toISOString());
+  if (!placeUid || !placeName || !fileName || !fileContentBase64) {
+    return errorResponse("Place and file fields are required.", 400);
+  }
+  const uploaded = await uploadFileToGithub(
+    buildPlaceDocumentPath(placeName, recordedAt, fileName, crypto.randomUUID().slice(0, 8)),
+    fileContentBase64,
+    `Add approved place document for ${placeName}`,
+  );
+  const payload = {
+    document_uid: `place-doc-${slugify(placeName)}-${crypto.randomUUID().slice(0, 8)}`,
+    place_uid: placeUid,
+    place_name: placeName,
+    title: requireString(submission.title) || fileName,
+    description: requireString(submission.description) || null,
+    recorded_at: recordedAt,
+    document_date: toNullableDate(submission.document_date),
+    file_name: fileName,
+    file_path: uploaded.filePath,
+    file_url: uploaded.fileUrl,
+    mime_type: requireString(submission.mime_type) || null,
+    github_sha: uploaded.sha,
+    created_by_name: session.username,
+    created_by_email: null,
+    admin_notes: `Uploaded directly by ${session.username} on ${new Date().toISOString()}`,
+    approval_status: "approved",
+    approved_at: new Date().toISOString(),
+    approved_by: session.username,
+    is_deleted: false,
+    updated_at: new Date().toISOString(),
+  };
+  const { data, error } = await supabase.from("place_document_records").insert(payload).select("*").single();
+  if (error) return errorResponse(`Place document create failed: ${error.message}`, 500);
+  return jsonResponse({ ok: true, item: data });
+}
+
+async function handleDeletePlaceDocumentRecord(token: string, documentUid: string) {
+  const supabase = getSupabaseAdmin();
+  const session = await validateSession(token);
+  if (!session) return errorResponse("Invalid admin session.", 401);
+  if (!documentUid) return errorResponse("Missing document id.", 400);
+  const { error } = await supabase.from("place_document_records").update({
+    is_deleted: true,
+    admin_notes: `Deleted by ${session.username} on ${new Date().toISOString()}`,
+    updated_at: new Date().toISOString(),
+  }).eq("document_uid", documentUid);
+  if (error) return errorResponse(`Place document delete failed: ${error.message}`, 500);
   return jsonResponse({ ok: true });
 }
 
@@ -1656,12 +1732,18 @@ Deno.serve(async (request) => {
         return await handleApprovePlaceSpider(token, placeSubmissionId);
       case "rejectPlaceSpider":
         return await handleRejectPlaceSpider(token, placeSubmissionId);
+      case "updatePlaceSpiderSnapshot":
+        return await handleUpdatePlaceSpiderSnapshot(token, placeUid || submissionId || body.snapshotUid || "", updates);
       case "submitPlaceDocument":
         return await handleSubmitPlaceDocument(submission);
       case "approvePlaceDocument":
         return await handleApprovePlaceDocument(token, placeSubmissionId);
       case "rejectPlaceDocument":
         return await handleRejectPlaceDocument(token, placeSubmissionId);
+      case "createPlaceDocumentRecord":
+        return await handleCreatePlaceDocumentRecord(token, submission);
+      case "deletePlaceDocumentRecord":
+        return await handleDeletePlaceDocumentRecord(token, body.documentUid ? String(body.documentUid) : "");
       case "upsertPlaceInitiative":
         return await handleUpsertPlaceInitiative(token, place);
       case "deletePlaceInitiative":

@@ -6,8 +6,8 @@
   <link rel="icon" href="data:," />
   <title>Livelihood Ecosystem Admin</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="./config.js?v=20260504a"></script>
-  <link rel="stylesheet" href="./styles.css?v=20260504a" />
+  <script src="./config.js?v=20260504h"></script>
+  <link rel="stylesheet" href="./styles.css?v=20260504h" />
 </head>
 <body>
   <div class="admin-shell">
@@ -118,6 +118,27 @@
                 <button class="btn btn-danger" type="button" id="deleteEntityButton">Delete Record</button>
               </div>
               <p class="admin-status" id="adminEditStatus"></p>
+              <div id="placeAdminTools" class="place-admin-tools" hidden>
+                <section class="section">
+                  <h4>Place Spider Chart Records</h4>
+                  <p class="section-note">Edit approved spider chart snapshots for this Place and save the updated metrics directly.</p>
+                  <div id="placeAdminSpiderList" class="admin-card-list"></div>
+                </section>
+                <section class="section">
+                  <h4>Place Documents</h4>
+                  <p class="section-note">Delete outdated approved documents and upload a replacement that goes live immediately.</p>
+                  <div id="placeAdminDocumentList" class="admin-card-list"></div>
+                  <form class="admin-form" id="placeAdminDocumentForm">
+                    <div class="form-group"><label for="placeAdminDocumentTitle">Title</label><input id="placeAdminDocumentTitle" type="text" required /></div>
+                    <div class="form-group"><label for="placeAdminDocumentDescription">Description</label><textarea id="placeAdminDocumentDescription" rows="3"></textarea></div>
+                    <div class="form-group"><label for="placeAdminDocumentDate">Document Date</label><input id="placeAdminDocumentDate" type="date" /></div>
+                    <div class="form-group"><label for="placeAdminDocumentRecordedAt">Recorded At</label><input id="placeAdminDocumentRecordedAt" type="datetime-local" required /></div>
+                    <div class="form-group"><label for="placeAdminDocumentFile">Replacement / New File</label><input id="placeAdminDocumentFile" type="file" required /></div>
+                    <button class="btn btn-success" type="submit">Upload Approved Document</button>
+                    <p class="admin-status" id="placeAdminDocumentStatus"></p>
+                  </form>
+                </section>
+              </div>
             </div>
           </form>
         </div>
@@ -130,8 +151,8 @@
       </section>
     </main>
   </div>
-  <script src="./ecosystem-form-fields.js?v=20260504a"></script>
-  <script src="./ecosystem-store.js?v=20260504a"></script>
-  <script src="./admin.js?v=20260504a"></script>
+  <script src="./ecosystem-form-fields.js?v=20260504h"></script>
+  <script src="./ecosystem-store.js?v=20260504h"></script>
+  <script src="./admin.js?v=20260504h"></script>
 </body>
 </html>
