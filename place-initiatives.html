@@ -6,8 +6,8 @@
   <link rel="icon" href="data:," />
   <title>Place Initiatives | Livelihood Ecosystem Directory</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="./config.js?v=20260504h"></script>
-  <link rel="stylesheet" href="./styles.css?v=20260504h" />
+  <script src="./config.js?v=20260504i"></script>
+  <link rel="stylesheet" href="./styles.css?v=20260504i" />
 </head>
 <body class="place-read-only">
   <div class="vendor-shell place-shell">
@@ -46,7 +46,10 @@
               <h3>Place Editor</h3>
               <p class="section-note" id="place-editor-mode">View mode is active. Sign in at the bottom of the page to add or edit records.</p>
             </div>
-            <span class="admin-badge" id="place-admin-badge">Read only</span>
+            <div class="btn-group">
+              <button class="btn btn-small" id="new-place" type="button">Add New Place</button>
+              <span class="admin-badge" id="place-admin-badge">Read only</span>
+            </div>
           </div>
 
           <form class="admin-form place-editor-form" id="place-editor-form">
@@ -61,11 +64,11 @@
             <div class="form-group">
               <label for="place-location-search">Add Covered Location</label>
               <div class="place-search-row">
-                <input id="place-location-search" type="search" placeholder="Type village, block, district, or state name" autocomplete="off" />
+                <input id="place-location-search" type="search" placeholder="Type village, block, district, state name" autocomplete="off" />
                 <button class="btn btn-small" id="add-place-location" type="button">Add</button>
               </div>
               <div id="place-location-suggestions" class="place-suggestions" hidden></div>
-              <small>Location suggestions use public India place-name datasets and are narrowed as you type.</small>
+              <small>Select from the suggestion list so village, block, district, and state nomenclature stays standardized.</small>
             </div>
 
             <div id="place-location-list" class="place-location-list"></div>
@@ -135,7 +138,6 @@
             <div class="btn-group">
               <button class="btn btn-success" id="save-place" type="submit">Save Place</button>
               <button class="btn btn-danger" id="delete-place" type="button">Delete Place</button>
-              <button class="btn btn-small" id="new-place" type="button">New Place</button>
             </div>
             <p class="admin-status" id="place-save-status"></p>
           </form>
@@ -195,8 +197,8 @@
     </main>
   </div>
 
-  <script src="./ecosystem-form-fields.js?v=20260504h"></script>
-  <script src="./ecosystem-store.js?v=20260504h"></script>
-  <script src="./place-initiatives.js?v=20260504h"></script>
+  <script src="./ecosystem-form-fields.js?v=20260504i"></script>
+  <script src="./ecosystem-store.js?v=20260504i"></script>
+  <script src="./place-initiatives.js?v=20260504i"></script>
 </body>
 </html>

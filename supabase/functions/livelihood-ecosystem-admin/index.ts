@@ -394,6 +394,11 @@ function geocodeMatchLooksRelevant(match: Record<string, unknown> | null, hints:
   return hints.some((hint) => hint && displayName.includes(hint));
 }
 
+function coordinatesLookLikeIndia(latitude: number | null, longitude: number | null) {
+  if (latitude === null || longitude === null) return false;
+  return latitude >= 6 && latitude <= 38.5 && longitude >= 68 && longitude <= 98.5;
+}
+
 async function geocodeEntityFallback(input: Record<string, unknown>) {
   const queries = buildGeocodeQueries(input);
   const hints = buildGeocodeHints(input);
@@ -432,15 +437,28 @@ function buildPlaceLocationQuery(location: Record<string, unknown>) {
   ].filter(Boolean).join(", ");
 }
 
+function buildPlaceLocationHints(location: Record<string, unknown>) {
+  return dedupeLocations([
+    requireString(location.village_name),
+    requireString(location.block_name),
+    requireString(location.district_name),
+    requireString(location.state_name),
+    requireString(location.display_label),
+    requireString(location.location_name),
+  ]).map((value) => normalizeText(value));
+}
+
 async function geocodePlaceLocation(location: Record<string, unknown>) {
   if (hasUsableCoordinate(location.latitude, location.longitude)) {
-    return {
-      latitude: toNullableNumber(location.latitude),
-      longitude: toNullableNumber(location.longitude),
-    };
+    const latitude = toNullableNumber(location.latitude);
+    const longitude = toNullableNumber(location.longitude);
+    if (coordinatesLookLikeIndia(latitude, longitude)) {
+      return { latitude, longitude };
+    }
   }
   const query = buildPlaceLocationQuery(location) || requireString(location.display_label) || requireString(location.location_name);
   if (!query) return { latitude: null, longitude: null };
+  const hints = buildPlaceLocationHints(location);
   try {
     const response = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=${encodeURIComponent(query)}`, {
       headers: {
@@ -451,9 +469,13 @@ async function geocodePlaceLocation(location: Record<string, unknown>) {
     if (!response.ok) return { latitude: null, longitude: null };
     const data = await response.json() as Array<Record<string, unknown>>;
     const match = Array.isArray(data) ? data[0] : null;
+    if (!geocodeMatchLooksRelevant(match, hints)) return { latitude: null, longitude: null };
+    const latitude = toNullableNumber(match?.lat);
+    const longitude = toNullableNumber(match?.lon);
+    if (!coordinatesLookLikeIndia(latitude, longitude)) return { latitude: null, longitude: null };
     return {
-      latitude: toNullableNumber(match?.lat),
-      longitude: toNullableNumber(match?.lon),
+      latitude,
+      longitude,
     };
   } catch {
     return { latitude: null, longitude: null };

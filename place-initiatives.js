@@ -24,6 +24,7 @@ const placeState = {
   pendingLeadSuggestion: null,
   pendingPartnerSuggestions: new Map(),
   calloutPositions: {},
+  pendingLocationSelectionKey: '',
   roleBoxesVisible: false,
   calloutPlaceUid: '',
   isRebalancingCallouts: false,
@@ -178,7 +179,7 @@ function getCurrentMapZoom() {
 
 function getCalloutScale() {
   const zoom = getCurrentMapZoom();
-  return Math.max(0.58, Math.min(1.08, 0.58 + ((zoom - 4.5) * 0.11)));
+  return Math.max(0.68, Math.min(1.04, 0.72 + ((zoom - 4.7) * 0.08)));
 }
 
 function updateRoleBoxToggleLabel() {
@@ -194,6 +195,7 @@ function clearAutoCalloutPositions(placeUid) {
     if (placeState.calloutPositions[key]?.manual) return;
     delete placeState.calloutPositions[key];
   });
+  delete placeState.calloutPositions[`${placeUid}:summary`];
 }
 
 function forceMapRepaint(options = {}) {
@@ -421,6 +423,29 @@ function extractNeedKeywords(placeUid) {
   return Array.from(new Set([...thematic, ...spider].map((item) => String(item).trim()).filter(Boolean)));
 }
 
+function getNeedToPotentialPartnerGroups(placeUid) {
+  const locations = getPlaceLocations(placeUid);
+  const needLabels = extractNeedKeywords(placeUid);
+  if (!needLabels.length) return [];
+  const partners = getPlacePartners(placeUid);
+  const linkedEntityIds = new Set(partners.map((item) => String(item.entity_uid || '').trim()).filter(Boolean));
+  const linkedEntityNames = new Set(partners.map((item) => normalizeText(item.partner_name)).filter(Boolean));
+  return needLabels.map((needLabel) => {
+    const entities = placeState.entities
+      .filter((entity) => geographyMatchesPlace(entity, locations))
+      .filter((entity) => {
+        const entityUid = String(entity.entity_uid || '').trim();
+        const entityName = normalizeText(entity.entity_name);
+        if (entityUid && linkedEntityIds.has(entityUid)) return false;
+        if (entityName && linkedEntityNames.has(entityName)) return false;
+        return true;
+      })
+      .filter((entity) => thematicMatchesNeed(entity, [needLabel]))
+      .slice(0, 9);
+    return { needLabel, entities };
+  }).filter((item) => item.entities.length);
+}
+
 function normalizeGeographyText(value) {
   return normalizeText(String(value || '').replace(/[|;/]+/g, ', ').replace(/\s+/g, ' ').trim());
 }
@@ -511,6 +536,19 @@ function getPotentialPartnersForPlace(placeUid, options = {}) {
     })
     .filter((entity) => !options.requireThematicMatch || thematicMatchesNeed(entity, needKeywords))
     .slice(0, options.limit || 200);
+}
+
+function getRolePartnerSummary(placeUid) {
+  const partners = getPlacePartners(placeUid);
+  return placeState.placeRoleTypes
+    .filter((role) => role.slug !== 'others')
+    .map((role) => {
+      const matching = partners.filter((item) => item.role_slug === role.slug || normalizeText(item.role_label) === normalizeText(role.label));
+      return {
+        role,
+        matching,
+      };
+    });
 }
 
 function groupPartnersByType(entities) {
@@ -847,6 +885,7 @@ function addLocationFromSelection(item) {
   els.locationSuggestions.hidden = true;
   els.locationSuggestions.innerHTML = '';
   placeState.pendingLocationSuggestion = null;
+  placeState.pendingLocationSelectionKey = '';
 }
 
 function getLocationSuggestionMatches(query) {
@@ -903,7 +942,7 @@ function getLocationSuggestionMatches(query) {
 
 function renderLocationSuggestions(matches) {
   renderSuggestionBox(els.locationSuggestions, matches, (item, index) => {
-    return `<button type="button" class="place-suggestion-item" data-location-suggestion="${index}"><strong>${esc(item.location_name)}</strong><small>${esc(item.location_kind)} | ${esc(item.display_label)}</small></button>`;
+    return `<button type="button" class="place-suggestion-item" data-location-suggestion="${index}" data-location-selection-key="${esc(normalizeText(`${item.location_kind}|${item.display_label}`))}"><strong>${esc(item.display_label)}</strong><small>${esc(item.location_kind.toUpperCase())} | ${esc(item.location_name)}</small></button>`;
   });
 }
 
@@ -1220,8 +1259,7 @@ function renderDetail(placeUid) {
   const spiderSnapshots = getPlaceSpiderSnapshots(placeUid);
   const thematicNeeds = getPlaceTopThematicNeeds(placeUid);
   const spiderNeedSignals = getSpiderChartNeedIdentifiers(placeUid);
-  const needKeywords = extractNeedKeywords(placeUid);
-  const needAlignedPartners = getPotentialPartnersForPlace(placeUid, { requireThematicMatch: true, needKeywords, limit: 60 });
+  const needPartnerGroups = getNeedToPotentialPartnerGroups(placeUid);
   const potentialPartners = groupPartnersByType(getPotentialPartnersForPlace(placeUid, { limit: 180 }));
 
   els.detailStatus.textContent = `${place.initiative_name} covers ${locations.length} location${locations.length === 1 ? '' : 's'} across ${states.length || 1} state context${states.length === 1 ? '' : 's'}.`;
@@ -1272,8 +1310,8 @@ function renderDetail(placeUid) {
       </article>
       <article class="place-detail-card place-detail-card-compact">
         <h4>Potential Partners by Need</h4>
-        ${needAlignedPartners.length
-          ? `<div class="place-inline-list">${needAlignedPartners.slice(0, 12).map((entity) => `<span class="innovation-chip innovation-chip-muted">${esc(entity.entity_name)} | ${esc(entity.entity_type_label || entity.entity_type_slug || 'Entity')}</span>`).join('')}</div>`
+        ${needPartnerGroups.length
+          ? `<div class="place-need-groups">${needPartnerGroups.map((group) => `<div class="place-need-group"><strong>${esc(group.needLabel)}</strong><div class="place-inline-list">${group.entities.map((entity) => `<span class="innovation-chip innovation-chip-muted">${esc(entity.entity_name)} | ${esc(entity.entity_type_label || entity.entity_type_slug || 'Entity')}</span>`).join('')}</div></div>`).join('')}</div>`
           : '<p class="section-note">No geography-matched partners were found against the current thematic needs.</p>'}
       </article>
       <article class="place-detail-card place-detail-card-compact">
@@ -1301,108 +1339,33 @@ function renderRoleCallouts() {
     updateRoleBoxToggleLabel();
     return;
   }
-  const centroid = getPlaceCentroid(getPlaceLocations(placeUid));
-  const anchor = placeState.map.project([centroid.lng, centroid.lat]);
   const scale = getCalloutScale();
-  const roles = placeState.placeRoleTypes.filter((role) => role.slug !== 'others');
-  const partners = getPlacePartners(placeUid);
-  const cards = roles.map((role, index) => {
-    const matching = partners.filter((item) => item.role_slug === role.slug || normalizeText(item.role_label) === normalizeText(role.label));
-    const hasData = Boolean(matching.length);
-    const key = `${placeUid}:${role.slug}`;
-    const fallback = { x: 18 + ((index % 2) * 240), y: 24 + (Math.floor(index / 2) * 86) };
-    const pos = placeState.calloutPositions[key] || fallback;
-    const boxWidth = 220 * scale;
-    const boxHeight = 64 * scale;
-    const dx = anchor.x - (pos.x + (boxWidth / 2));
-    const dy = anchor.y - (pos.y + (boxHeight / 2));
-    const length = Math.max(Math.sqrt((dx * dx) + (dy * dy)), 20);
-    const angle = Math.atan2(dy, dx) * (180 / Math.PI);
-    return `
-      <div class="place-callout ${hasData ? 'is-filled' : 'is-empty'}" data-callout-key="${esc(key)}" style="left:${pos.x}px;top:${pos.y}px;transform:scale(${scale})">
-        <div class="place-callout-line" style="width:${length}px;transform:rotate(${angle}deg)"></div>
-        <div class="place-callout-body">
-          <strong>${esc(role.label)}</strong>
-          <div class="place-callout-scroll">${hasData ? matching.map((item) => `<span>${esc(item.partner_name)}</span>`).join('') : '<span>Role missing</span>'}</div>
+  const key = `${placeUid}:summary`;
+  const fallback = { x: 24, y: 24, manual: false };
+  const pos = placeState.calloutPositions[key] || fallback;
+  const roleSummary = getRolePartnerSummary(placeUid);
+  els.callouts.innerHTML = `
+    <div class="place-callout place-callout-summary" data-callout-key="${esc(key)}" style="left:${pos.x}px;top:${pos.y}px;transform:scale(${scale})">
+      <div class="place-callout-body">
+        <div class="place-callout-title-row">
+          <strong>${esc(place.initiative_name)}</strong>
+          <small>${esc(getPlaceStates(getPlaceLocations(placeUid)).join(', ') || 'India')}</small>
+        </div>
+        <div class="place-callout-scroll">
+          ${roleSummary.map(({ role, matching }) => {
+            const hasPartners = matching.length > 0;
+            return `
+              <div class="place-role-summary-row ${hasPartners ? 'is-present' : 'is-missing'}">
+                <strong>${esc(role.label)}</strong>
+                <span>${hasPartners ? esc(matching.map((item) => item.partner_name).join(', ')) : 'Partner to be Identified'}</span>
+              </div>
+            `;
+          }).join('')}
         </div>
       </div>
-    `;
-  }).join('');
-  els.callouts.innerHTML = cards;
+    </div>
+  `;
   updateRoleBoxToggleLabel();
-  rebalanceCallouts(placeUid);
-}
-
-function rebalanceCallouts(placeUid) {
-  if (placeState.isRebalancingCallouts || !placeUid) return;
-  placeState.isRebalancingCallouts = true;
-  requestAnimationFrame(() => {
-    try {
-      const container = els.callouts;
-      const cards = Array.from(container.querySelectorAll('[data-callout-key]'));
-      if (!cards.length) return;
-      const containerRect = container.getBoundingClientRect();
-      const gap = 14;
-      const margin = 18;
-      const scale = getCalloutScale();
-      const fallbackWidth = 220 * scale;
-      const leftCards = [];
-      const rightCards = [];
-
-      cards.forEach((card, index) => {
-        const key = card.dataset.calloutKey;
-        const existing = placeState.calloutPositions[key];
-        if (existing?.manual) return;
-        const roleIndex = cards.findIndex((item) => item.dataset.calloutKey === key);
-        if (roleIndex % 2 === 0) leftCards.push(card);
-        else rightCards.push(card);
-      });
-
-      let leftY = 24;
-      let rightY = 24;
-      const nextPositions = {};
-
-      leftCards.forEach((card) => {
-        const key = card.dataset.calloutKey;
-        const rect = card.getBoundingClientRect();
-        const width = rect.width || fallbackWidth;
-        nextPositions[key] = { x: margin, y: leftY, manual: false };
-        leftY += (rect.height || 72) + gap;
-        if (width > fallbackWidth) {
-          nextPositions[key].x = margin;
-        }
-      });
-
-      rightCards.forEach((card) => {
-        const key = card.dataset.calloutKey;
-        const rect = card.getBoundingClientRect();
-        const width = rect.width || fallbackWidth;
-        nextPositions[key] = {
-          x: Math.max(margin, containerRect.width - width - margin),
-          y: rightY,
-          manual: false,
-        };
-        rightY += (rect.height || 72) + gap;
-      });
-
-      let changed = false;
-      Object.entries(nextPositions).forEach(([key, value]) => {
-        const current = placeState.calloutPositions[key];
-        if (!current || current.manual || Math.abs((current.x || 0) - value.x) > 1 || Math.abs((current.y || 0) - value.y) > 1) {
-          placeState.calloutPositions[key] = value;
-          changed = true;
-        }
-      });
-
-      if (changed) {
-        placeState.isRebalancingCallouts = false;
-        renderRoleCallouts();
-        return;
-      }
-    } finally {
-      placeState.isRebalancingCallouts = false;
-    }
-  });
 }
 
 function fitToPlace(placeUid) {
@@ -1557,7 +1520,34 @@ async function loadLocationDatasets() {
     placeState.flatLocationEntries = dedupeBy(flat, (item) => normalizeText(item.display_label));
   }
   if (hierarchyResponse.status === 'fulfilled' && hierarchyResponse.value.ok) {
-    placeState.locationHierarchy = await hierarchyResponse.value.json();
+    const hierarchyJson = await hierarchyResponse.value.json();
+    placeState.locationHierarchy = hierarchyJson;
+    const flat = Array.isArray(placeState.flatLocationEntries) ? [...placeState.flatLocationEntries] : [];
+    for (const [stateName, districts] of Object.entries(hierarchyJson || {})) {
+      for (const [districtName, blocks] of Object.entries(districts || {})) {
+        for (const [blockName, villages] of Object.entries(blocks || {})) {
+          flat.push(buildLocationEntry('block', {
+            state_name: stateName,
+            district_name: districtName,
+            block_name: blockName,
+            location_name: blockName,
+            display_label: [blockName, districtName, stateName].filter(Boolean).join(', '),
+          }));
+          const villageNames = Array.isArray(villages) ? villages : Object.keys(villages || {});
+          villageNames.forEach((villageName) => {
+            flat.push(buildLocationEntry('village', {
+              state_name: stateName,
+              district_name: districtName,
+              block_name: blockName,
+              village_name: villageName,
+              location_name: villageName,
+              display_label: [villageName, blockName, districtName, stateName].filter(Boolean).join(', '),
+            }));
+          });
+        }
+      }
+    }
+    placeState.flatLocationEntries = dedupeBy(flat, (item) => normalizeText(`${item.location_kind}|${item.display_label}`));
   }
 }
 
@@ -1701,23 +1691,33 @@ function bindEvents() {
   els.locationSearch.addEventListener('input', () => {
     const matches = getLocationSuggestionMatches(els.locationSearch.value);
     placeState.pendingLocationSuggestion = matches;
+    placeState.pendingLocationSelectionKey = matches.length === 1 ? normalizeText(`${matches[0].location_kind}|${matches[0].display_label}`) : '';
     renderLocationSuggestions(matches);
   });
   els.locationSuggestions.addEventListener('click', (event) => {
     const button = event.target.closest('[data-location-suggestion]');
     if (!button) return;
     const item = placeState.pendingLocationSuggestion?.[Number(button.dataset.locationSuggestion)];
+    placeState.pendingLocationSelectionKey = button.dataset.locationSelectionKey || '';
     addLocationFromSelection(item);
+  });
+  els.locationSearch.addEventListener('keydown', (event) => {
+    if (event.key !== 'Enter') return;
+    event.preventDefault();
+    const item = placeState.pendingLocationSuggestion?.[0];
+    const selectionKey = item ? normalizeText(`${item.location_kind}|${item.display_label}`) : '';
+    if (item && selectionKey === placeState.pendingLocationSelectionKey) {
+      addLocationFromSelection(item);
+    }
   });
   document.getElementById('add-place-location').addEventListener('click', () => {
     const item = placeState.pendingLocationSuggestion?.[0];
-    if (item) {
+    const selectionKey = item ? normalizeText(`${item.location_kind}|${item.display_label}`) : '';
+    if (item && selectionKey === placeState.pendingLocationSelectionKey) {
       addLocationFromSelection(item);
       return;
     }
-    const raw = els.locationSearch.value.trim();
-    if (!raw) return;
-    addLocationFromSelection(buildLocationEntry('village', { village_name: raw, location_name: raw, display_label: raw }));
+    setStatus(els.saveStatus, 'Select an exact location from the suggestion list before adding it.', true);
   });
 
   els.locationList.addEventListener('click', (event) => {
@@ -1824,6 +1824,9 @@ function bindEvents() {
     renderRoleCallouts();
   });
   els.callouts.addEventListener('pointerup', () => {
+    placeState.roleDragState = null;
+  });
+  els.callouts.addEventListener('pointercancel', () => {
     placeState.roleDragState = null;
   });
 
