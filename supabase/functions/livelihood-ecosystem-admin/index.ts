@@ -203,10 +203,11 @@ function sanitizeFileName(value: string) {
     .toLowerCase() || "document";
 }
 
-function buildPlaceDocumentPath(placeName: string, recordedAt: string, fileName: string) {
+function buildPlaceDocumentPath(placeName: string, recordedAt: string, fileName: string, suffix = "") {
   const placeSlug = slugify(placeName) || "place";
   const stamp = recordedAt.replace(/[:.]/g, "-");
-  return `place-documents/${placeSlug}/${stamp}-${sanitizeFileName(fileName)}`;
+  const suffixPart = suffix ? `-${sanitizeFileName(suffix)}` : "";
+  return `place-documents/${placeSlug}/${stamp}${suffixPart}-${sanitizeFileName(fileName)}`;
 }
 
 function ensureGithubUploadConfigured() {
@@ -966,6 +967,17 @@ async function handleSubmitPlaceDocument(submission: Record<string, unknown>) {
   if ((!placeUid && !linkedPlaceSubmissionId) || !placeName || !submittedByName || !submittedByEmail || !fileName || !fileContentBase64) {
     return errorResponse("Place, submitter, and file fields are required.", 400);
   }
+  const uploadPath = buildPlaceDocumentPath(placeName, recordedAt, fileName, crypto.randomUUID().slice(0, 8));
+  let uploaded;
+  try {
+    uploaded = await uploadFileToGithub(
+      uploadPath,
+      fileContentBase64,
+      `Add place document for ${placeName}`,
+    );
+  } catch (error) {
+    return errorResponse(`Place document upload failed: ${error instanceof Error ? error.message : "Unknown upload error."}`, 500);
+  }
   const row = {
     place_uid: placeUid || null,
     linked_place_submission_id: linkedPlaceSubmissionId,
@@ -977,7 +989,10 @@ async function handleSubmitPlaceDocument(submission: Record<string, unknown>) {
     file_name: fileName,
     mime_type: requireString(submission.mime_type) || null,
     file_size_bytes: toNullableNumber(submission.file_size_bytes),
-    file_content_base64: fileContentBase64,
+    file_content_base64: null,
+    file_path: uploaded.filePath,
+    file_url: uploaded.fileUrl,
+    github_sha: uploaded.sha,
     submitted_by_name: submittedByName,
     submitted_by_email: submittedByEmail,
     status: "pending",
@@ -995,12 +1010,19 @@ async function handleApprovePlaceDocument(token: string, submissionId: string) {
   const { data, error } = await supabase.from("place_document_submissions").select("*").eq("id", submissionId).maybeSingle();
   if (error || !data) return errorResponse("Place document submission not found.", 404);
   const recordedAt = toIsoDateTime(data.recorded_at, new Date().toISOString());
-  const documentPath = buildPlaceDocumentPath(requireString(data.place_name), recordedAt, requireString(data.file_name));
-  const uploaded = await uploadFileToGithub(
-    documentPath,
-    requireString(data.file_content_base64),
-    `Add place document for ${requireString(data.place_name)}`
-  );
+  let uploaded = {
+    filePath: requireString(data.file_path),
+    fileUrl: requireString(data.file_url),
+    sha: requireString(data.github_sha) || null,
+  };
+  if (!uploaded.filePath || !uploaded.fileUrl) {
+    const documentPath = buildPlaceDocumentPath(requireString(data.place_name), recordedAt, requireString(data.file_name));
+    uploaded = await uploadFileToGithub(
+      documentPath,
+      requireString(data.file_content_base64),
+      `Add place document for ${requireString(data.place_name)}`,
+    );
+  }
   const payload = {
     document_uid: `place-doc-${slugify(requireString(data.place_name))}-${crypto.randomUUID().slice(0, 8)}`,
     place_uid: requireString(data.place_uid),
@@ -1103,12 +1125,19 @@ async function approveLinkedPlaceDocumentSubmissions(
   if (error) throw new Error(`Linked place document submissions could not be loaded: ${error.message}`);
   for (const item of data || []) {
     const recordedAt = toIsoDateTime(item.recorded_at, new Date().toISOString());
-    const documentPath = buildPlaceDocumentPath(placeName, recordedAt, requireString(item.file_name));
-    const uploaded = await uploadFileToGithub(
-      documentPath,
-      requireString(item.file_content_base64),
-      `Add place document for ${placeName}`
-    );
+    let uploaded = {
+      filePath: requireString(item.file_path),
+      fileUrl: requireString(item.file_url),
+      sha: requireString(item.github_sha) || null,
+    };
+    if (!uploaded.filePath || !uploaded.fileUrl) {
+      const documentPath = buildPlaceDocumentPath(placeName, recordedAt, requireString(item.file_name));
+      uploaded = await uploadFileToGithub(
+        documentPath,
+        requireString(item.file_content_base64),
+        `Add place document for ${placeName}`,
+      );
+    }
     const payload = {
       document_uid: `place-doc-${slugify(placeName)}-${crypto.randomUUID().slice(0, 8)}`,
       place_uid: placeUid,

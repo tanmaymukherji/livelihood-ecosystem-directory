@@ -72,6 +72,7 @@ const PLACE_SPIDER_METRICS = [
   { key: 'institution', label: 'Institution', defaultMax: 5 },
   { key: 'wash', label: 'Water / Sanitation / Hygiene', defaultMax: 5 },
 ];
+const PLACE_DOCUMENT_MAX_BYTES = 10 * 1024 * 1024;
 
 function normalizeText(value) {
   return String(value || '').trim().toLowerCase();
@@ -729,6 +730,9 @@ async function handleSubmission(event) {
       : null;
     if (isPlace && submissionAddPlaceDocumentEl?.checked && !placeDocumentFile) {
       throw new Error('Choose an initial place document file or untick the document option.');
+    }
+    if (isPlace && placeDocumentFile && placeDocumentFile.size > PLACE_DOCUMENT_MAX_BYTES) {
+      throw new Error('Please keep place document uploads under 10 MB.');
     }
     const entityResponse = await EcosystemStore.adminRequest('submitEntity', {
       submission: {
