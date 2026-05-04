@@ -383,21 +383,6 @@ function renderPlaceThematicNeeds(entity, placeThematicNeeds, isAdmin = false) {
           <summary><h3>Thematic Needs</h3></summary>
           <div class="section-collapsible-body">
             <p class="section-note">No thematic need updates have been recorded for this Place yet.</p>
-            ${isAdmin ? `
-              <details class="section-collapsible" open>
-                <summary><h3>Admin: Add Thematic Need Update</h3></summary>
-                <div class="section-collapsible-body">
-                  <div class="admin-form">
-                    <div class="form-group"><label for="admin-place-needs-thematics">Thematic Needs</label><textarea id="admin-place-needs-thematics" rows="4" placeholder="One thematic need per line"></textarea></div>
-                    <div class="form-group"><label for="admin-place-needs-org">Updated By Organisation</label><input id="admin-place-needs-org" type="text" /></div>
-                    <div class="form-group"><label for="admin-place-needs-recorded-at">Recorded At</label><input id="admin-place-needs-recorded-at" type="datetime-local" /></div>
-                    <div class="form-group"><label for="admin-place-needs-details">Details</label><textarea id="admin-place-needs-details" rows="3"></textarea></div>
-                    <button class="btn btn-success" type="button" id="admin-place-needs-save-button">Add Need Update</button>
-                    <p class="admin-status" id="admin-place-needs-status"></p>
-                  </div>
-                </div>
-              </details>
-            ` : ''}
           </div>
         </details>
       </section>
@@ -434,21 +419,6 @@ function renderPlaceThematicNeeds(entity, placeThematicNeeds, isAdmin = false) {
               </article>
             `).join('')}
           </div>
-          ${isAdmin ? `
-            <details class="section-collapsible" open>
-              <summary><h3>Admin: Add Thematic Need Update</h3></summary>
-              <div class="section-collapsible-body">
-                <div class="admin-form">
-                  <div class="form-group"><label for="admin-place-needs-thematics">Thematic Needs</label><textarea id="admin-place-needs-thematics" rows="4" placeholder="One thematic need per line"></textarea></div>
-                  <div class="form-group"><label for="admin-place-needs-org">Updated By Organisation</label><input id="admin-place-needs-org" type="text" /></div>
-                  <div class="form-group"><label for="admin-place-needs-recorded-at">Recorded At</label><input id="admin-place-needs-recorded-at" type="datetime-local" /></div>
-                  <div class="form-group"><label for="admin-place-needs-details">Details</label><textarea id="admin-place-needs-details" rows="3"></textarea></div>
-                  <button class="btn btn-success" type="button" id="admin-place-needs-save-button">Add Need Update</button>
-                  <p class="admin-status" id="admin-place-needs-status"></p>
-                </div>
-              </div>
-            </details>
-          ` : ''}
         </div>
       </details>
     </section>
@@ -507,6 +477,25 @@ function renderPlaceSubmissionSections(entity) {
             <div class="form-group"><label for="place-spider-submit-email">Your Email</label><input id="place-spider-submit-email" type="email" required /></div>
             <button class="btn btn-success" type="submit">Send Spider Chart for Approval</button>
             <p class="admin-status" id="place-spider-status"></p>
+          </form>
+        </div>
+      </details>
+    </section>
+    <section class="section">
+      <details class="section-collapsible">
+        <summary><h3>Submit a New Thematic Need</h3></summary>
+        <div class="section-collapsible-body">
+          <p class="section-note">New thematic need updates are sent for admin approval before they appear publicly.</p>
+          <form class="admin-form" id="place-thematic-need-form">
+            <input type="hidden" id="place-thematic-place-uid" value="${esc(entity.entity_uid)}" />
+            <div class="form-group"><label for="place-thematic-needs">Thematic Needs</label><textarea id="place-thematic-needs" rows="4" placeholder="One thematic need per line" required></textarea></div>
+            <div class="form-group"><label for="place-thematic-org">Updating Organisation</label><input id="place-thematic-org" type="text" required /></div>
+            <div class="form-group"><label for="place-thematic-recorded-at">Recorded At</label><input id="place-thematic-recorded-at" type="datetime-local" required /></div>
+            <div class="form-group"><label for="place-thematic-details">Details</label><textarea id="place-thematic-details" rows="4" placeholder="Context, observations, or evidence behind these needs"></textarea></div>
+            <div class="form-group"><label for="place-thematic-submit-name">Your Name</label><input id="place-thematic-submit-name" type="text" required /></div>
+            <div class="form-group"><label for="place-thematic-submit-email">Your Email</label><input id="place-thematic-submit-email" type="email" required /></div>
+            <button class="btn btn-success" type="submit">Send Thematic Need for Approval</button>
+            <p class="admin-status" id="place-thematic-status"></p>
           </form>
         </div>
       </details>
@@ -643,6 +632,45 @@ async function submitPlaceDocument(event, entity) {
     statusEl.textContent = 'Place document sent for admin approval.';
   } catch (error) {
     statusEl.textContent = error.message || 'Place document submission failed.';
+    statusEl.classList.add('error');
+  }
+}
+
+async function submitPlaceThematicNeed(event, entity) {
+  event.preventDefault();
+  const form = event.target;
+  const statusEl = document.getElementById('place-thematic-status');
+  const thematicNeeds = parseLineList(document.getElementById('place-thematic-needs')?.value);
+  const updatedByOrg = String(document.getElementById('place-thematic-org')?.value || '').trim();
+  if (!thematicNeeds.length) {
+    statusEl.textContent = 'Add at least one thematic need.';
+    statusEl.classList.add('error');
+    return;
+  }
+  if (!updatedByOrg) {
+    statusEl.textContent = 'Enter the organisation updating these needs.';
+    statusEl.classList.add('error');
+    return;
+  }
+  statusEl.textContent = 'Sending thematic need for approval...';
+  statusEl.classList.remove('error');
+  try {
+    await EcosystemStore.adminRequest('submitPlaceThematicNeed', {
+      submission: {
+        place_uid: entity.entity_uid,
+        place_name: entity.entity_name,
+        thematic_needs: thematicNeeds,
+        updated_by_org: updatedByOrg,
+        details: document.getElementById('place-thematic-details')?.value || '',
+        recorded_at: document.getElementById('place-thematic-recorded-at')?.value || new Date().toISOString().slice(0, 16),
+        submitted_by_name: document.getElementById('place-thematic-submit-name')?.value || '',
+        submitted_by_email: document.getElementById('place-thematic-submit-email')?.value || '',
+      },
+    });
+    form.reset();
+    statusEl.textContent = 'Thematic need sent for admin approval.';
+  } catch (error) {
+    statusEl.textContent = error.message || 'Thematic need submission failed.';
     statusEl.classList.add('error');
   }
 }
@@ -943,14 +971,12 @@ async function initEntityDetail() {
           button.addEventListener('click', () => deleteAdminPlaceNeedRecord(button.dataset.adminDeletePlaceNeeds, adminSession.token));
         });
         document.getElementById('admin-place-document-upload-button')?.addEventListener('click', () => uploadAdminPlaceDocument(entity, adminSession.token));
-        document.getElementById('admin-place-needs-save-button')?.addEventListener('click', () => createAdminPlaceNeedRecord(entity, adminSession.token));
         const recordedAtEl = document.getElementById('admin-place-document-recorded-at');
         if (recordedAtEl && !recordedAtEl.value) recordedAtEl.value = new Date().toISOString().slice(0, 16);
-        const needsRecordedAtEl = document.getElementById('admin-place-needs-recorded-at');
-        if (needsRecordedAtEl && !needsRecordedAtEl.value) needsRecordedAtEl.value = new Date().toISOString().slice(0, 16);
       }
       document.getElementById('place-document-form')?.addEventListener('submit', (event) => submitPlaceDocument(event, entity));
       document.getElementById('place-spider-form')?.addEventListener('submit', (event) => submitPlaceSpider(event, entity));
+      document.getElementById('place-thematic-need-form')?.addEventListener('submit', (event) => submitPlaceThematicNeed(event, entity));
       document.querySelectorAll('[data-open-spider-chart]').forEach((button) => {
         button.addEventListener('click', (event) => {
           event.preventDefault();
