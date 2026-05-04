@@ -456,6 +456,18 @@ function rerenderDynamicFieldsForSelectedType() {
   const selectedType = editEls.entityType.value;
   const existingValues = collectDynamicFieldValues(editDynamicFieldsEl);
   renderEditDynamicFields(selectedType, existingValues);
+  const selectedEntity = state.entities.find((item) => item.entity_uid === state.selectedEntityUid);
+  const shouldShowPlaceTools = selectedEntity?.entity_type_slug === 'place' && selectedType === 'place';
+  if (!shouldShowPlaceTools) {
+    if (placeAdminToolsEl) placeAdminToolsEl.hidden = true;
+    if (placeAdminNeedsListEl) placeAdminNeedsListEl.innerHTML = '';
+    if (placeAdminSpiderListEl) placeAdminSpiderListEl.innerHTML = '';
+    if (placeAdminDocumentListEl) placeAdminDocumentListEl.innerHTML = '';
+    setStatus(placeAdminNeedsStatusEl, '');
+    setStatus(placeAdminDocumentStatusEl, '');
+    return;
+  }
+  renderPlaceAdminCollections(selectedEntity);
 }
 
 async function verifySession() {
