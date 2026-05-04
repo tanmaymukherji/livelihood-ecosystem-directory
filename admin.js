@@ -742,8 +742,7 @@ async function deletePlaceDocumentRecord(documentUid) {
   }
 }
 
-async function uploadApprovedPlaceDocument(event) {
-  event.preventDefault();
+async function uploadApprovedPlaceDocument() {
   const entityUid = String(editEls.entityUid.value || '').trim();
   const entity = state.entities.find((item) => item.entity_uid === entityUid);
   const file = document.getElementById('placeAdminDocumentFile').files?.[0];
@@ -777,7 +776,11 @@ async function uploadApprovedPlaceDocument(event) {
         file_content_base64: fileContentBase64,
       },
     });
-    event.target.reset();
+    document.getElementById('placeAdminDocumentTitle').value = '';
+    document.getElementById('placeAdminDocumentDescription').value = '';
+    document.getElementById('placeAdminDocumentDate').value = '';
+    document.getElementById('placeAdminDocumentRecordedAt').value = new Date().toISOString().slice(0, 16);
+    document.getElementById('placeAdminDocumentFile').value = '';
     setStatus(placeAdminDocumentStatusEl, 'Approved document uploaded.');
     await loadAdminData();
   } catch (error) {
@@ -817,7 +820,7 @@ document.getElementById('adminEntityTypeFilter').addEventListener('change', () =
 editEls.entityType.addEventListener('change', rerenderDynamicFieldsForSelectedType);
 document.getElementById('adminEditForm').addEventListener('submit', saveEntity);
 document.getElementById('deleteEntityButton').addEventListener('click', deleteEntity);
-document.getElementById('placeAdminDocumentForm').addEventListener('submit', uploadApprovedPlaceDocument);
+document.getElementById('placeAdminDocumentUploadButton').addEventListener('click', uploadApprovedPlaceDocument);
 submissionQueue.addEventListener('click', (event) => {
   const approveButton = event.target.closest('[data-approve-submission]');
   if (approveButton) {
