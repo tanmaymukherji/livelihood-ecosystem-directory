@@ -412,7 +412,6 @@ function getEntityGeographyTokens(entity) {
     values.push(text);
   };
   push(entity.state);
-  push(entity.country);
   push(entity.location_label);
   asArray(entity.office_locations).forEach(push);
   if (entity.type_specific_data && typeof entity.type_specific_data === 'object') {
@@ -1248,7 +1247,7 @@ function renderDetail(placeUid) {
           : '<p class="section-note">No spider chart need signals are available yet.</p>'}
       </article>
       <article class="place-detail-card place-detail-card-compact">
-        <h4>Need-Aligned Potential Partners</h4>
+        <h4>Potential Partners by Need</h4>
         ${needAlignedPartners.length
           ? `<div class="place-inline-list">${needAlignedPartners.slice(0, 12).map((entity) => `<span class="innovation-chip innovation-chip-muted">${esc(entity.entity_name)} | ${esc(entity.entity_type_label || entity.entity_type_slug || 'Entity')}</span>`).join('')}</div>`
           : '<p class="section-note">No geography-matched partners were found against the current thematic needs.</p>'}
