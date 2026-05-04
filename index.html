@@ -6,8 +6,8 @@
   <link rel="icon" href="data:," />
   <title>Livelihood Ecosystem Directory</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="./config.js?v=20260504a"></script>
-  <link rel="stylesheet" href="./styles.css?v=20260504a" />
+  <script src="./config.js?v=20260504b"></script>
+  <link rel="stylesheet" href="./styles.css?v=20260504b" />
 </head>
 <body>
   <div class="vendor-shell">
@@ -53,39 +53,52 @@
               <label for="submission-entity-type">Entity Type</label>
               <select id="submission-entity-type" required></select>
             </div>
-            <div class="form-group">
+            <div class="form-group" id="submission-name-group">
               <label for="submission-name">Name</label>
               <input id="submission-name" type="text" required />
             </div>
-            <div class="form-group">
+            <div class="form-group" id="submission-location-group">
               <label for="submission-location">Place / Address</label>
               <input id="submission-location" type="text" required />
             </div>
-            <div class="form-group">
+            <div class="form-group" id="submission-email-group">
               <label for="submission-email">Email</label>
               <input id="submission-email" type="email" />
             </div>
-            <div class="form-group">
+            <div class="form-group" id="submission-phone-group">
               <label for="submission-phone">Phone</label>
               <input id="submission-phone" type="text" />
             </div>
-            <div class="form-group">
+            <div class="form-group" id="submission-website-group">
               <label for="submission-website">Website</label>
               <input id="submission-website" type="url" placeholder="https://..." />
             </div>
-            <div class="form-group">
+            <div class="form-group" id="submission-summary-group">
               <label for="submission-summary">Summary</label>
               <textarea id="submission-summary" rows="4" placeholder="What does this person or organisation do?"></textarea>
             </div>
-            <div class="form-group">
+            <div class="form-group" id="submission-social-links-group">
               <label for="submission-social-links">Social Media</label>
               <textarea id="submission-social-links" rows="3" placeholder="linkedin|https://...\ninstagram|https://..."></textarea>
             </div>
-            <div class="form-group">
+            <div class="form-group" id="submission-office-locations-group">
               <label for="submission-office-locations">Additional Office Locations</label>
               <textarea id="submission-office-locations" rows="3" placeholder="One location per line"></textarea>
             </div>
             <div id="submission-dynamic-fields"></div>
+            <div class="section" id="submission-place-tools" hidden>
+              <h4>Place Data Options</h4>
+              <p class="section-note">For a new place, submit only the place granularity fields below. For an approved place, use its detail page to add documents and spider chart records.</p>
+              <div class="form-group">
+                <label for="existing-place-select">Approved Place Records</label>
+                <select id="existing-place-select">
+                  <option value="">Choose an approved place</option>
+                </select>
+              </div>
+              <div class="btn-group">
+                <button class="btn btn-small" id="open-existing-place" type="button">Open Place Detail</button>
+              </div>
+            </div>
             <div class="form-group">
               <label for="submission-contact-name">Submitted By</label>
               <input id="submission-contact-name" type="text" required />
@@ -139,8 +152,8 @@
     </main>
   </div>
 
-  <script src="./ecosystem-form-fields.js?v=20260504a"></script>
-  <script src="./ecosystem-store.js?v=20260504a"></script>
-  <script src="./ecosystem-directory.js?v=20260504a"></script>
+  <script src="./ecosystem-form-fields.js?v=20260504b"></script>
+  <script src="./ecosystem-store.js?v=20260504b"></script>
+  <script src="./ecosystem-directory.js?v=20260504b"></script>
 </body>
 </html>

@@ -27,6 +27,18 @@ const resultsSummaryEl = document.getElementById('results-summary');
 const submissionStatusEl = document.getElementById('submission-status');
 const submissionDynamicFieldsEl = document.getElementById('submission-dynamic-fields');
 const submissionTypeEl = document.getElementById('submission-entity-type');
+const submissionFieldGroups = {
+  name: document.getElementById('submission-name-group'),
+  location: document.getElementById('submission-location-group'),
+  email: document.getElementById('submission-email-group'),
+  phone: document.getElementById('submission-phone-group'),
+  website: document.getElementById('submission-website-group'),
+  summary: document.getElementById('submission-summary-group'),
+  social: document.getElementById('submission-social-links-group'),
+  office: document.getElementById('submission-office-locations-group'),
+};
+const submissionPlaceToolsEl = document.getElementById('submission-place-tools');
+const existingPlaceSelectEl = document.getElementById('existing-place-select');
 const paginationEls = [
   document.getElementById('results-pagination-top'),
   document.getElementById('results-pagination-bottom'),
@@ -105,6 +117,65 @@ function renderSubmissionDynamicFields() {
     {},
     'submission-dynamic'
   );
+  syncSubmissionFormForType();
+}
+
+function isPlaceSubmissionType() {
+  return String(submissionTypeEl?.value || '') === 'place';
+}
+
+function updateRequiredState(input, required) {
+  if (!input) return;
+  if (required) input.setAttribute('required', 'required');
+  else input.removeAttribute('required');
+}
+
+function populateExistingPlaceOptions() {
+  if (!existingPlaceSelectEl) return;
+  const previous = existingPlaceSelectEl.value;
+  existingPlaceSelectEl.innerHTML = '<option value="">Choose an approved place</option>';
+  directoryState.entities
+    .filter((entity) => entity.entity_type_slug === 'place')
+    .sort((left, right) => String(left.entity_name || '').localeCompare(String(right.entity_name || '')))
+    .forEach((entity) => {
+      const option = document.createElement('option');
+      option.value = entity.entity_uid;
+      option.textContent = `${entity.entity_name}${getPrimaryLocationLabel(entity) ? ` | ${getPrimaryLocationLabel(entity)}` : ''}`;
+      existingPlaceSelectEl.appendChild(option);
+    });
+  existingPlaceSelectEl.value = previous;
+}
+
+function syncSubmissionFormForType() {
+  const isPlace = isPlaceSubmissionType();
+  Object.values(submissionFieldGroups).forEach((group) => {
+    if (group) group.hidden = isPlace;
+  });
+  if (submissionPlaceToolsEl) submissionPlaceToolsEl.hidden = !isPlace;
+  updateRequiredState(document.getElementById('submission-name'), !isPlace);
+  updateRequiredState(document.getElementById('submission-location'), !isPlace);
+  populateExistingPlaceOptions();
+}
+
+function buildPlaceSubmissionValues(typeSpecificData) {
+  const placeKind = String(typeSpecificData.place_kind || '').trim();
+  const villageName = String(typeSpecificData.village_name || '').trim();
+  const gramPanchayatName = String(typeSpecificData.gram_panchayat_name || '').trim();
+  const blockName = String(typeSpecificData.block_name || '').trim();
+  const districtName = String(typeSpecificData.district_name || '').trim();
+  const stateName = String(typeSpecificData.state_name || '').trim();
+  const baseName = villageName || gramPanchayatName || blockName || districtName || stateName;
+  return {
+    entity_name: baseName ? [baseName, placeKind].filter(Boolean).join(' | ') : '',
+    location_label: [baseName, placeKind].filter(Boolean).join(' | '),
+    primary_address: [villageName, gramPanchayatName, blockName, districtName, stateName, 'India'].filter(Boolean).join(', '),
+    contact_email: '',
+    contact_phone: '',
+    website_url: '',
+    summary: '',
+    social_media: {},
+    office_locations: [],
+  };
 }
 
 function getSelectedTypeSlugs() {
@@ -599,19 +670,25 @@ async function handleSubmission(event) {
   event.preventDefault();
   setStatus(submissionStatusEl, 'Sending submission...');
   try {
+    const typeSpecificData = collectDynamicFieldValues(submissionDynamicFieldsEl);
+    const isPlace = isPlaceSubmissionType();
+    const placeValues = isPlace ? buildPlaceSubmissionValues(typeSpecificData) : null;
+    if (isPlace && !placeValues?.entity_name) {
+      throw new Error('For a Place submission, please fill the place granularity fields first.');
+    }
     await EcosystemStore.adminRequest('submitEntity', {
       submission: {
         entity_type_slug: submissionTypeEl.value,
-        entity_name: document.getElementById('submission-name').value,
-        location_label: document.getElementById('submission-location').value,
-        primary_address: document.getElementById('submission-location').value,
-        contact_email: document.getElementById('submission-email').value,
-        contact_phone: document.getElementById('submission-phone').value,
-        website_url: document.getElementById('submission-website').value,
-        summary: document.getElementById('submission-summary').value,
-        social_media: parseSocialLinks(document.getElementById('submission-social-links').value),
-        office_locations: parseOfficeLocations(document.getElementById('submission-office-locations').value),
-        type_specific_data: collectDynamicFieldValues(submissionDynamicFieldsEl),
+        entity_name: placeValues?.entity_name || document.getElementById('submission-name').value,
+        location_label: placeValues?.location_label || document.getElementById('submission-location').value,
+        primary_address: placeValues?.primary_address || document.getElementById('submission-location').value,
+        contact_email: placeValues?.contact_email || document.getElementById('submission-email').value,
+        contact_phone: placeValues?.contact_phone || document.getElementById('submission-phone').value,
+        website_url: placeValues?.website_url || document.getElementById('submission-website').value,
+        summary: placeValues?.summary || document.getElementById('submission-summary').value,
+        social_media: placeValues?.social_media || parseSocialLinks(document.getElementById('submission-social-links').value),
+        office_locations: placeValues?.office_locations || parseOfficeLocations(document.getElementById('submission-office-locations').value),
+        type_specific_data: typeSpecificData,
         submitted_by_name: document.getElementById('submission-contact-name').value,
         submitted_by_email: document.getElementById('submission-contact-email').value,
       },
@@ -657,6 +734,14 @@ document.getElementById('run-search').addEventListener('click', applyFilters);
 document.getElementById('clear-search').addEventListener('click', clearFilters);
 document.getElementById('submission-form').addEventListener('submit', handleSubmission);
 submissionTypeEl.addEventListener('change', renderSubmissionDynamicFields);
+document.getElementById('open-existing-place')?.addEventListener('click', () => {
+  const entityUid = String(existingPlaceSelectEl?.value || '').trim();
+  if (!entityUid) {
+    setStatus(submissionStatusEl, 'Choose an approved place first.', true);
+    return;
+  }
+  window.location.href = `./entity-detail.html?entity=${encodeURIComponent(entityUid)}`;
+});
 Object.values(searchEls).forEach((input) => {
   input.addEventListener('keypress', (event) => { if (event.key === 'Enter') applyFilters(); });
   input.addEventListener('input', persistSearchState);
