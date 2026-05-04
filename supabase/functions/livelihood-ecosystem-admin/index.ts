@@ -18,6 +18,8 @@ const githubBranch = Deno.env.get("GITHUB_BRANCH") ?? "main";
 const githubToken = Deno.env.get("GITHUB_TOKEN") ?? Deno.env.get("GITHUB_ACTIONS_TOKEN") ?? "";
 const geminiApiKey = Deno.env.get("GEMINI_API_KEY") ?? Deno.env.get("GRE_MIS_GEMINI_API_KEY") ?? "";
 const geminiModel = Deno.env.get("GRE_MIS_GEMINI_MODEL") ?? "gemini-2.0-flash";
+const openAiApiKey = Deno.env.get("OPENAI_API_KEY") ?? Deno.env.get("GRE_MIS_OPENAI_API_KEY") ?? "";
+const openAiModel = Deno.env.get("GRE_MIS_OPENAI_MODEL") ?? "gpt-4.1-mini";
 let supabaseClient: ReturnType<typeof createClient> | null = null;
 
 const PLACE_SPIDER_METRIC_KEYS = [
@@ -189,6 +191,14 @@ type MatchContext = {
   locations: Array<Record<string, unknown>>;
   need_groups: Array<Record<string, unknown>>;
   candidate_entities: Array<Record<string, unknown>>;
+};
+
+type MatchOutputGroup = {
+  sourceName: string;
+  items: Array<{
+    needLabel: string;
+    entities: Array<Record<string, unknown>>;
+  }>;
 };
 
 function flattenTypeSpecificValues(value: unknown): string[] {
@@ -1970,6 +1980,159 @@ async function runGeminiNeedMatching(context: MatchContext) {
   return parsed && typeof parsed === "object" ? parsed as Record<string, unknown> : null;
 }
 
+async function runOpenAiNeedMatching(context: MatchContext) {
+  if (!openAiApiKey) return null;
+  const prompt = {
+    project_context: [
+      "This is a rural livelihoods and place-based ecosystem directory for India.",
+      "Interpret needs in the local livelihoods context, not in a generic global business context.",
+      "Treat semantically overlapping rural needs as the same need when appropriate.",
+      "Examples: 'Distress Migration' and 'Distress Migration Mitigation' should usually be grouped together.",
+      "'Export Import' in this project often means local economy, market linkages, local trade, producer aggregation, and market access, not only international exports.",
+      "Do not match candidates just because of word overlap if the actual service context is wrong.",
+      "Keep the geography guardrails already applied by the caller; only rank and normalize among the provided candidates.",
+    ],
+    required_output: {
+      groups: [
+        {
+          sourceName: "Common Across Covered Villages or a specific village/source label",
+          items: [
+            {
+              needLabel: "normalized need label in project context",
+              entities: [{ entity_uid: "candidate entity uid" }],
+            },
+          ],
+        },
+      ],
+    },
+    instructions: [
+      "Group needs semantically where they clearly refer to the same rural-livelihood challenge.",
+      "When a need is shared across more than one village/source, place it under a common group and mention the relevant villages in the need label if useful.",
+      "When a need is unique to one village/source, keep it under that village/source.",
+      "Return only candidates that are genuinely relevant to the normalized need in this project context.",
+      "Prefer precision over recall.",
+      "Return at most 6 entities per need item.",
+      "Return valid JSON only.",
+    ],
+    input: context,
+  };
+
+  const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${openAiApiKey}`,
+    },
+    body: JSON.stringify({
+      model: openAiModel,
+      temperature: 0.2,
+      response_format: { type: "json_object" },
+      messages: [
+        {
+          role: "user",
+          content: JSON.stringify(prompt),
+        },
+      ],
+    }),
+  });
+  if (!response.ok) {
+    throw new Error(`OpenAI request failed (${response.status})`);
+  }
+  const data = await response.json() as Record<string, unknown>;
+  const text = requireString((((data.choices as Array<Record<string, unknown>> | undefined)?.[0]?.message as Record<string, unknown> | undefined)?.content));
+  const parsed = JSON.parse(extractJsonBlock(text));
+  return parsed && typeof parsed === "object" ? parsed as Record<string, unknown> : null;
+}
+
+function normalizeNeedLabelForProject(value: string) {
+  const text = requireString(value);
+  const normalized = normalizeText(text);
+  if (!normalized) return "";
+  if (normalized.includes("distress migration")) return "Distress Migration Mitigation";
+  if (normalized.includes("migration mitigation")) return "Distress Migration Mitigation";
+  if (normalized.includes("export import") || normalized.includes("import export")) return "Local Economy, Trade and Market Linkages";
+  if (normalized.includes("local economy")) return "Local Economy, Trade and Market Linkages";
+  if (normalized.includes("market linkage")) return "Local Economy, Trade and Market Linkages";
+  if (normalized.includes("market access")) return "Local Economy, Trade and Market Linkages";
+  if (normalized.includes("livelihood basket")) return "Diversified Livelihood Basket";
+  if (normalized.includes("youth employment")) return "Youth Employment and Enterprise";
+  return text;
+}
+
+function projectNeedKeywords(label: string) {
+  const normalized = normalizeText(label);
+  const keywordMap: Record<string, string[]> = {
+    "distress migration mitigation": ["migration", "distress migration", "livelihood", "youth employment", "enterprise", "income", "skilling", "local economy"],
+    "local economy, trade and market linkages": ["market", "market access", "trade", "trader", "value chain", "aggregation", "enterprise", "livelihood", "fpo", "producer", "local economy", "business"],
+    "diversified livelihood basket": ["livelihood", "income", "enterprise", "market", "farmer", "value addition", "producer"],
+    "youth employment and enterprise": ["youth", "employment", "enterprise", "entrepreneurship", "skilling", "livelihood"],
+    "energy": ["energy", "solar", "renewable", "decentralized energy"],
+    "water": ["water", "watershed", "conservation", "irrigation"],
+    "soil": ["soil", "agro ecology", "agroecology", "regenerative", "natural farming"],
+    "nutrition": ["nutrition", "health", "food", "agri nutrition"],
+  };
+  return keywordMap[normalized] || [label];
+}
+
+function semanticRuleBasedNeedMatching(context: MatchContext) {
+  const normalizedGroups = new Map<string, Map<string, string>>();
+  context.need_groups.forEach((group) => {
+    const sourceName = requireString(group.sourceName);
+    const needs = toTextArray(group.needs);
+    needs.forEach((need) => {
+      const canonical = normalizeNeedLabelForProject(need);
+      if (!canonical) return;
+      if (!normalizedGroups.has(canonical)) normalizedGroups.set(canonical, new Map<string, string>());
+      normalizedGroups.get(canonical)?.set(sourceName, canonical);
+    });
+  });
+
+  const scoreEntityForNeed = (entity: Record<string, unknown>, needLabel: string) => {
+    const haystack = normalizeText([
+      requireString(entity.summary),
+      requireString(entity.description),
+      ...toTextArray(entity.themes),
+      ...toTextArray(entity.geography),
+      requireString(entity.entity_name),
+      requireString(entity.entity_type_label),
+    ].join(" | "));
+    const keywords = projectNeedKeywords(needLabel).map((item) => normalizeText(item));
+    return keywords.reduce((score, keyword) => score + (keyword && haystack.includes(keyword) ? 1 : 0), 0);
+  };
+
+  const commonItems: Array<{ needLabel: string; entities: Array<Record<string, unknown>> }> = [];
+  const uniqueGroups: MatchOutputGroup[] = [];
+
+  normalizedGroups.forEach((sourceMap, canonicalNeed) => {
+    const sources = Array.from(sourceMap.keys());
+    const entities = context.candidate_entities
+      .map((entity) => ({ entity, score: scoreEntityForNeed(entity, canonicalNeed) }))
+      .filter((item) => item.score > 0)
+      .sort((left, right) => right.score - left.score)
+      .slice(0, 6)
+      .map((item) => item.entity);
+    if (!entities.length) return;
+    if (sources.length > 1) {
+      commonItems.push({
+        needLabel: `${canonicalNeed} (${sources.join(", ")})`,
+        entities,
+      });
+      return;
+    }
+    uniqueGroups.push({
+      sourceName: sources[0],
+      items: [{ needLabel: canonicalNeed, entities }],
+    });
+  });
+
+  const groups: MatchOutputGroup[] = [];
+  if (commonItems.length) {
+    groups.push({ sourceName: "Common Across Covered Villages", items: commonItems });
+  }
+  groups.push(...uniqueGroups);
+  return groups;
+}
+
 async function handleMatchPlaceNeeds(contextInput: Record<string, unknown>) {
   const candidateEntities = toRecordArray(contextInput.candidate_entities).map((item) => ({
     entity_uid: requireString(item.entity_uid),
@@ -1999,8 +2162,7 @@ async function handleMatchPlaceNeeds(contextInput: Record<string, unknown>) {
     return jsonResponse({ groups: [], provider: "none" });
   }
 
-  const aiResult = await runGeminiNeedMatching(context).catch(() => null);
-  const aiGroups = toRecordArray(aiResult?.groups).map((group) => ({
+  const mapOutput = (raw: Record<string, unknown> | null) => toRecordArray(raw?.groups).map((group) => ({
     sourceName: requireString(group.sourceName),
     items: toRecordArray(group.items).map((item) => {
       const entityRefs = toRecordArray(item.entities).map((entity) => requireString(entity.entity_uid)).filter(Boolean);
@@ -2012,9 +2174,18 @@ async function handleMatchPlaceNeeds(contextInput: Record<string, unknown>) {
     }).filter((item) => item.needLabel && item.entities.length),
   })).filter((group) => group.sourceName && group.items.length);
 
+  const geminiResult = await runGeminiNeedMatching(context).catch(() => null);
+  const geminiGroups = mapOutput(geminiResult);
+  if (geminiGroups.length) return jsonResponse({ groups: geminiGroups, provider: "gemini" });
+
+  const openAiResult = await runOpenAiNeedMatching(context).catch(() => null);
+  const openAiGroups = mapOutput(openAiResult);
+  if (openAiGroups.length) return jsonResponse({ groups: openAiGroups, provider: "openai" });
+
+  const ruleGroups = semanticRuleBasedNeedMatching(context);
   return jsonResponse({
-    groups: aiGroups,
-    provider: aiGroups.length ? "gemini" : "none",
+    groups: ruleGroups,
+    provider: ruleGroups.length ? "rules" : "none",
   });
 }
 

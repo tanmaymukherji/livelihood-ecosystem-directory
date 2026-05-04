@@ -1629,8 +1629,10 @@ function renderDetail(placeUid) {
       </article>
       <article class="place-detail-card place-detail-card-compact">
         <h4>Current Needs</h4>
-        ${aiMatch?.provider === 'gemini'
+        ${aiMatch?.provider === 'gemini' || aiMatch?.provider === 'openai'
           ? `<p class="section-note">AI-assisted contextual need grouping is active for this place.</p>`
+          : aiMatch?.provider === 'rules'
+            ? '<p class="section-note">Project-context semantic grouping is active for this place.</p>'
           : aiMatch?.provider === 'none'
             ? '<p class="section-note">Initial deterministic grouping is shown for this place.</p>'
             : '<p class="section-note">Contextual AI review is loading. Initial grouping is shown until that completes.</p>'}
