@@ -43,6 +43,13 @@ function formatDate(value) {
   return new Intl.DateTimeFormat('en-IN', { dateStyle: 'medium' }).format(date);
 }
 
+function parseLineList(value) {
+  return String(value || '')
+    .split(/\r?\n/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
 function getStoredAdminToken() {
   return window.sessionStorage.getItem(ADMIN_SESSION_KEY) || window.localStorage.getItem(ADMIN_SESSION_KEY) || '';
 }
@@ -229,50 +236,63 @@ function renderPlaceSpiderHistory(entity, placeSpiderSnapshots, isAdmin = false)
     .filter((item) => item.place_uid === entity.entity_uid)
     .sort((left, right) => new Date(right.recorded_at || 0).getTime() - new Date(left.recorded_at || 0).getTime());
   if (!items.length) {
-    return `<section class="section"><h3>Spider Chart History</h3><p class="section-note">No approved spider chart snapshots have been added yet.</p></section>`;
+    return `
+      <section class="section">
+        <details class="section-collapsible">
+          <summary><h3>Spider Chart History</h3></summary>
+          <div class="section-collapsible-body">
+            <p class="section-note">No approved spider chart snapshots have been added yet.</p>
+          </div>
+        </details>
+      </section>
+    `;
   }
   return `
     <section class="section">
-      <h3>Spider Chart History</h3>
-      <div class="place-history-list">
-        ${items.map((item, index) => `
-          <article class="admin-card place-history-card">
-            <div class="admin-card-header">
-              <h4>${esc(item.title || entity.entity_name)}</h4>
-              <span class="admin-badge">${esc(formatDateTime(item.recorded_at))}</span>
-            </div>
-            <p>${esc(item.notes || 'No notes provided.')}</p>
-            <div class="btn-group">
-              <button class="btn btn-small" type="button" data-open-spider-chart="${esc(String(index))}">View Spider Chart</button>
-            </div>
-            ${isAdmin ? `
-              <div class="admin-form">
-                <div class="form-group"><label>Title</label><input type="text" data-admin-place-spider-title value="${esc(item.title || '')}" /></div>
-                <div class="form-group"><label>Recorded At</label><input type="datetime-local" data-admin-place-spider-recorded-at value="${esc(String(item.recorded_at || '').slice(0, 16))}" /></div>
-                <div class="form-group"><label>Notes</label><textarea rows="3" data-admin-place-spider-notes>${esc(item.notes || '')}</textarea></div>
-                <div class="place-metric-grid">
-                  ${PLACE_SPIDER_METRICS.map((metric) => {
-                    const data = item.metrics_json && typeof item.metrics_json === 'object' && item.metrics_json[metric.key] && typeof item.metrics_json[metric.key] === 'object'
-                      ? item.metrics_json[metric.key]
-                      : {};
-                    return `
-                      <div class="place-metric-row">
-                        <div>
-                          <strong>${esc(metric.label)}</strong>
-                          <small>Saved as score and max score.</small>
-                        </div>
-                        <input type="number" min="0" step="any" data-admin-place-score="${esc(metric.key)}" value="${esc(String(data.score ?? 0))}" />
-                        <input type="number" min="1" step="any" data-admin-place-max="${esc(metric.key)}" value="${esc(String(data.max_score ?? metric.defaultMax))}" />
-                      </div>
-                    `;
-                  }).join('')}
+      <details class="section-collapsible">
+        <summary><h3>Spider Chart History</h3></summary>
+        <div class="section-collapsible-body">
+          <div class="place-history-list">
+            ${items.map((item, index) => `
+              <article class="admin-card place-history-card">
+                <div class="admin-card-header">
+                  <h4>${esc(item.title || entity.entity_name)}</h4>
+                  <span class="admin-badge">${esc(formatDateTime(item.recorded_at))}</span>
                 </div>
-                <button class="btn btn-success btn-small" type="button" data-admin-save-place-spider="${esc(item.snapshot_uid)}">Save Spider Chart</button>
-              </div>
-            ` : ''}
-          </article>
-        `).join('')}
-      </div>
+                <p>${esc(item.notes || 'No notes provided.')}</p>
+                <div class="btn-group">
+                  <button class="btn btn-small" type="button" data-open-spider-chart="${esc(String(index))}">View Spider Chart</button>
+                </div>
+                ${isAdmin ? `
+                  <div class="admin-form">
+                    <div class="form-group"><label>Title</label><input type="text" data-admin-place-spider-title value="${esc(item.title || '')}" /></div>
+                    <div class="form-group"><label>Recorded At</label><input type="datetime-local" data-admin-place-spider-recorded-at value="${esc(String(item.recorded_at || '').slice(0, 16))}" /></div>
+                    <div class="form-group"><label>Notes</label><textarea rows="3" data-admin-place-spider-notes>${esc(item.notes || '')}</textarea></div>
+                    <div class="place-metric-grid">
+                      ${PLACE_SPIDER_METRICS.map((metric) => {
+                        const data = item.metrics_json && typeof item.metrics_json === 'object' && item.metrics_json[metric.key] && typeof item.metrics_json[metric.key] === 'object'
+                          ? item.metrics_json[metric.key]
+                          : {};
+                        return `
+                          <div class="place-metric-row">
+                            <div>
+                              <strong>${esc(metric.label)}</strong>
+                              <small>Saved as score and max score.</small>
+                            </div>
+                            <input type="number" min="0" step="any" data-admin-place-score="${esc(metric.key)}" value="${esc(String(data.score ?? 0))}" />
+                            <input type="number" min="1" step="any" data-admin-place-max="${esc(metric.key)}" value="${esc(String(data.max_score ?? metric.defaultMax))}" />
+                          </div>
+                        `;
+                      }).join('')}
+                    </div>
+                    <button class="btn btn-success btn-small" type="button" data-admin-save-place-spider="${esc(item.snapshot_uid)}">Save Spider Chart</button>
+                  </div>
+                ` : ''}
+              </article>
+            `).join('')}
+          </div>
+        </div>
+      </details>
     </section>
   `;
 }
