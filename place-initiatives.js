@@ -357,9 +357,32 @@ function buildSpiderChartSvg(placeName, recordedAt, metricsJson) {
   `;
 }
 
+function getPlaceIdentityTokens(place) {
+  if (!place) return [];
+  const base = [
+    place.place_uid,
+    place.slug,
+    place.initiative_name,
+  ].map((value) => normalizeText(value)).filter(Boolean);
+  const expanded = [];
+  base.forEach((token) => {
+    expanded.push(token);
+    token.split(/[^a-z0-9]+/).filter((part) => part.length >= 4).forEach((part) => expanded.push(part));
+  });
+  return Array.from(new Set(expanded));
+}
+
+function itemMatchesPlaceIdentity(place, values = []) {
+  const tokens = getPlaceIdentityTokens(place);
+  if (!tokens.length) return false;
+  const haystack = values.map((value) => normalizeText(value)).filter(Boolean).join(' | ');
+  return tokens.some((token) => haystack.includes(token));
+}
+
 function getPlaceTopThematicNeeds(placeUid) {
+  const place = getPlaceByUid(placeUid);
   const items = asArray(placeState.placeThematicNeeds)
-    .filter((item) => item.place_uid === placeUid)
+    .filter((item) => item.place_uid === placeUid || itemMatchesPlaceIdentity(place, [item.place_uid, ...(asArray(item.thematic_needs))]))
     .sort((left, right) => new Date(right.recorded_at || 0).getTime() - new Date(left.recorded_at || 0).getTime());
   const seen = new Set();
   const orderedNeeds = [];
@@ -380,8 +403,9 @@ function getPlaceTopThematicNeeds(placeUid) {
 }
 
 function getPlaceSpiderSnapshots(placeUid) {
+  const place = getPlaceByUid(placeUid);
   return asArray(placeState.placeSpiderSnapshots)
-    .filter((item) => item.place_uid === placeUid)
+    .filter((item) => item.place_uid === placeUid || itemMatchesPlaceIdentity(place, [item.place_uid, item.title, item.notes]))
     .sort((left, right) => new Date(right.recorded_at || 0).getTime() - new Date(left.recorded_at || 0).getTime());
 }
 
