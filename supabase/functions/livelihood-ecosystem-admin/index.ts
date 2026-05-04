@@ -23,6 +23,8 @@ const ENTITY_TABLES: Record<string, string> = {
   institute: "institute_entities",
   trader_association: "trader_association_entities",
   cso: "cso_entities",
+  csr_philanthropy: "csr_philanthropy_entities",
+  environmental_expert: "environmental_expert_entities",
 };
 
 const EDITABLE_FIELDS = [
@@ -203,6 +205,10 @@ function getThematicFieldKey(typeSlug: string) {
       return "key_services";
     case "cso":
       return "areas_of_work";
+    case "csr_philanthropy":
+      return "focus_areas";
+    case "environmental_expert":
+      return "domain_expertise";
     default:
       return "";
   }
@@ -220,6 +226,8 @@ function getGeographyFieldKey(typeSlug: string) {
     case "institute":
     case "trader_association":
     case "cso":
+    case "csr_philanthropy":
+    case "environmental_expert":
       return "geography_served";
     default:
       return "";
