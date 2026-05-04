@@ -38,12 +38,14 @@ window.EcosystemStore = (() => {
   }
 
   async function loadDirectory() {
-    const [entityTypes, entities, fieldDefinitions] = await Promise.all([
+    const [entityTypes, entities, fieldDefinitions, placeDocuments, placeSpiderSnapshots] = await Promise.all([
       fetchAllRows(ENTITY_TYPES_TABLE(), 'sort_order'),
       fetchAllRows(PUBLIC_ENTITIES_VIEW(), 'entity_name'),
       fetchAllRows(FIELD_DEFINITIONS_TABLE(), 'sort_order'),
+      fetchAllRows('place_document_records_public', 'recorded_at'),
+      fetchAllRows('place_spider_chart_snapshots_public', 'recorded_at'),
     ]);
-    return { entityTypes, entities, fieldDefinitions };
+    return { entityTypes, entities, fieldDefinitions, placeDocuments, placeSpiderSnapshots };
   }
 
   async function loadPlaceInitiativesData() {

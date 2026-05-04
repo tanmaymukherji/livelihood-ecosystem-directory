@@ -5,8 +5,12 @@ const adminSearchMeta = document.getElementById('adminSearchMeta');
 const adminEditStatus = document.getElementById('adminEditStatus');
 const submissionQueueMeta = document.getElementById('submissionQueueMeta');
 const contactRequestMeta = document.getElementById('contactRequestMeta');
+const placeDocumentQueueMeta = document.getElementById('placeDocumentQueueMeta');
+const placeSpiderQueueMeta = document.getElementById('placeSpiderQueueMeta');
 const submissionQueue = document.getElementById('submissionQueue');
 const contactRequestList = document.getElementById('contactRequestList');
+const placeDocumentQueue = document.getElementById('placeDocumentQueue');
+const placeSpiderQueue = document.getElementById('placeSpiderQueue');
 const adminSearchResults = document.getElementById('adminSearchResults');
 const adminEditorEmpty = document.getElementById('adminEditorEmpty');
 const adminEditorFields = document.getElementById('adminEditorFields');
@@ -31,6 +35,10 @@ const state = {
   filteredEntities: [],
   submissions: [],
   contactRequests: [],
+  placeDocumentSubmissions: [],
+  placeSpiderSubmissions: [],
+  placeDocuments: [],
+  placeSpiderSnapshots: [],
   selectedEntityUid: '',
 };
 
@@ -72,7 +80,7 @@ function setStoredToken(token) {
 }
 
 function togglePanels(isSignedIn) {
-  ['bulkUploadPanel', 'submissionQueuePanel', 'adminEditorPanel', 'contactRequestPanel'].forEach((id) => {
+  ['bulkUploadPanel', 'submissionQueuePanel', 'placeDocumentQueuePanel', 'placeSpiderQueuePanel', 'adminEditorPanel', 'contactRequestPanel'].forEach((id) => {
     document.getElementById(id).classList.toggle('active', Boolean(isSignedIn));
   });
 }
@@ -154,6 +162,59 @@ function renderContactRequests() {
     card.className = 'admin-card';
     card.innerHTML = `<div class="admin-card-header"><h4>${esc(item.entity_name || 'Unknown entity')}</h4><span class="admin-badge">${esc(item.request_type || 'request')}</span></div><p><strong>Requester:</strong> ${esc(item.requester_name || 'Unknown')} | ${esc(item.requester_email || 'No email')}</p><p><strong>Phone:</strong> ${esc(item.requester_phone || 'Not listed')}</p><p><strong>Status:</strong> ${esc(item.status || 'pending')}</p><p>${esc(item.message || 'No message')}</p>`;
     contactRequestList.appendChild(card);
+  });
+}
+
+function renderPlaceDocumentSubmissions() {
+  placeDocumentQueue.innerHTML = '';
+  if (!state.placeDocumentSubmissions.length) {
+    placeDocumentQueue.innerHTML = '<article class="admin-card"><p>No pending place documents.</p></article>';
+    placeDocumentQueueMeta.textContent = 'No pending place documents.';
+    return;
+  }
+  placeDocumentQueueMeta.textContent = `${state.placeDocumentSubmissions.length} pending place document${state.placeDocumentSubmissions.length === 1 ? '' : 's'}`;
+  state.placeDocumentSubmissions.forEach((item) => {
+    const card = document.createElement('article');
+    card.className = 'admin-card';
+    card.innerHTML = `
+      <div class="admin-card-header"><h4>${esc(item.title || item.file_name || 'Place document')}</h4><span class="admin-badge">${esc(item.place_name || 'Place')}</span></div>
+      <p><strong>File:</strong> ${esc(item.file_name || 'Unknown file')}</p>
+      <p><strong>Recorded:</strong> ${esc(item.recorded_at || 'Not recorded')}</p>
+      <p><strong>Submitted By:</strong> ${esc(item.submitted_by_name || 'Unknown')} | ${esc(item.submitted_by_email || 'No email')}</p>
+      <p>${esc(item.description || 'No description supplied')}</p>
+      <div class="btn-group">
+        <button class="btn btn-success btn-small" type="button" data-approve-place-document="${esc(item.id)}">Approve</button>
+        <button class="btn btn-danger btn-small" type="button" data-reject-place-document="${esc(item.id)}">Reject</button>
+      </div>
+    `;
+    placeDocumentQueue.appendChild(card);
+  });
+}
+
+function renderPlaceSpiderSubmissions() {
+  placeSpiderQueue.innerHTML = '';
+  if (!state.placeSpiderSubmissions.length) {
+    placeSpiderQueue.innerHTML = '<article class="admin-card"><p>No pending place spider charts.</p></article>';
+    placeSpiderQueueMeta.textContent = 'No pending place spider charts.';
+    return;
+  }
+  placeSpiderQueueMeta.textContent = `${state.placeSpiderSubmissions.length} pending place spider chart${state.placeSpiderSubmissions.length === 1 ? '' : 's'}`;
+  state.placeSpiderSubmissions.forEach((item) => {
+    const metricCount = item.metrics_json && typeof item.metrics_json === 'object' ? Object.keys(item.metrics_json).length : 0;
+    const card = document.createElement('article');
+    card.className = 'admin-card';
+    card.innerHTML = `
+      <div class="admin-card-header"><h4>${esc(item.title || item.place_name || 'Spider chart')}</h4><span class="admin-badge">${esc(item.place_name || 'Place')}</span></div>
+      <p><strong>Recorded:</strong> ${esc(item.recorded_at || 'Not recorded')}</p>
+      <p><strong>Metrics:</strong> ${esc(String(metricCount))}</p>
+      <p><strong>Submitted By:</strong> ${esc(item.submitted_by_name || 'Unknown')} | ${esc(item.submitted_by_email || 'No email')}</p>
+      <p>${esc(item.notes || 'No notes supplied')}</p>
+      <div class="btn-group">
+        <button class="btn btn-success btn-small" type="button" data-approve-place-spider="${esc(item.id)}">Approve</button>
+        <button class="btn btn-danger btn-small" type="button" data-reject-place-spider="${esc(item.id)}">Reject</button>
+      </div>
+    `;
+    placeSpiderQueue.appendChild(card);
   });
 }
 
@@ -240,6 +301,8 @@ async function verifySession() {
     setStoredToken('');
     togglePanels(false);
     submissionQueueMeta.textContent = 'Your admin session has expired. Please sign in again.';
+    placeDocumentQueueMeta.textContent = 'Your admin session has expired. Please sign in again.';
+    placeSpiderQueueMeta.textContent = 'Your admin session has expired. Please sign in again.';
     adminSearchMeta.textContent = 'Your admin session has expired. Please sign in again.';
     contactRequestMeta.textContent = 'Your admin session has expired. Please sign in again.';
     return false;
@@ -255,9 +318,15 @@ async function loadAdminData() {
   state.fieldDefinitions = Array.isArray(data.fieldDefinitions) ? data.fieldDefinitions : [];
   state.submissions = Array.isArray(data.submissions) ? data.submissions : [];
   state.contactRequests = Array.isArray(data.contactRequests) ? data.contactRequests : [];
+  state.placeDocumentSubmissions = Array.isArray(data.placeDocumentSubmissions) ? data.placeDocumentSubmissions : [];
+  state.placeSpiderSubmissions = Array.isArray(data.placeSpiderSubmissions) ? data.placeSpiderSubmissions : [];
+  state.placeDocuments = Array.isArray(data.placeDocuments) ? data.placeDocuments : [];
+  state.placeSpiderSnapshots = Array.isArray(data.placeSpiderSnapshots) ? data.placeSpiderSnapshots : [];
   populateTypeOptions();
   filterEntities();
   renderSubmissions();
+  renderPlaceDocumentSubmissions();
+  renderPlaceSpiderSubmissions();
   renderEntityResults();
   renderContactRequests();
   if (state.selectedEntityUid) selectEntity(state.selectedEntityUid);
@@ -413,6 +482,50 @@ async function rejectSubmission(submissionId) {
   }
 }
 
+async function approvePlaceDocument(placeSubmissionId) {
+  setStatus(sessionStatus, 'Approving place document...');
+  try {
+    await EcosystemStore.adminRequest('approvePlaceDocument', { token: getStoredToken(), placeSubmissionId });
+    setStatus(sessionStatus, 'Place document approved.');
+    await loadAdminData();
+  } catch (error) {
+    setStatus(sessionStatus, error.message || 'Place document approval failed.', true);
+  }
+}
+
+async function rejectPlaceDocument(placeSubmissionId) {
+  setStatus(sessionStatus, 'Rejecting place document...');
+  try {
+    await EcosystemStore.adminRequest('rejectPlaceDocument', { token: getStoredToken(), placeSubmissionId });
+    setStatus(sessionStatus, 'Place document rejected.');
+    await loadAdminData();
+  } catch (error) {
+    setStatus(sessionStatus, error.message || 'Place document rejection failed.', true);
+  }
+}
+
+async function approvePlaceSpider(placeSubmissionId) {
+  setStatus(sessionStatus, 'Approving place spider chart...');
+  try {
+    await EcosystemStore.adminRequest('approvePlaceSpider', { token: getStoredToken(), placeSubmissionId });
+    setStatus(sessionStatus, 'Place spider chart approved.');
+    await loadAdminData();
+  } catch (error) {
+    setStatus(sessionStatus, error.message || 'Place spider chart approval failed.', true);
+  }
+}
+
+async function rejectPlaceSpider(placeSubmissionId) {
+  setStatus(sessionStatus, 'Rejecting place spider chart...');
+  try {
+    await EcosystemStore.adminRequest('rejectPlaceSpider', { token: getStoredToken(), placeSubmissionId });
+    setStatus(sessionStatus, 'Place spider chart rejected.');
+    await loadAdminData();
+  } catch (error) {
+    setStatus(sessionStatus, error.message || 'Place spider chart rejection failed.', true);
+  }
+}
+
 async function saveEntity(event) {
   event.preventDefault();
   const entityUid = String(editEls.entityUid.value || '').trim();
@@ -495,6 +608,26 @@ submissionQueue.addEventListener('click', (event) => {
   }
   const rejectButton = event.target.closest('[data-reject-submission]');
   if (rejectButton) rejectSubmission(rejectButton.dataset.rejectSubmission);
+});
+
+placeDocumentQueue.addEventListener('click', (event) => {
+  const approveButton = event.target.closest('[data-approve-place-document]');
+  if (approveButton) {
+    approvePlaceDocument(approveButton.dataset.approvePlaceDocument);
+    return;
+  }
+  const rejectButton = event.target.closest('[data-reject-place-document]');
+  if (rejectButton) rejectPlaceDocument(rejectButton.dataset.rejectPlaceDocument);
+});
+
+placeSpiderQueue.addEventListener('click', (event) => {
+  const approveButton = event.target.closest('[data-approve-place-spider]');
+  if (approveButton) {
+    approvePlaceSpider(approveButton.dataset.approvePlaceSpider);
+    return;
+  }
+  const rejectButton = event.target.closest('[data-reject-place-spider]');
+  if (rejectButton) rejectPlaceSpider(rejectButton.dataset.rejectPlaceSpider);
 });
 
 (async function initAdmin() {

@@ -11,7 +11,29 @@ const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const adminEmail = Deno.env.get("ECOSYSTEM_ADMIN_EMAIL") ?? "tanmay@greenruraleconomy.in";
 const resendApiKey = Deno.env.get("RESEND_API_KEY") ?? "";
 const resendFromEmail = Deno.env.get("RESEND_FROM_EMAIL") ?? adminEmail;
+const githubRepoOwner = Deno.env.get("GITHUB_REPO_OWNER") ?? "tanmaymukherji";
+const githubRepoName = Deno.env.get("GITHUB_REPO_NAME") ?? "livelihood-ecosystem-directory";
+const githubRepo = Deno.env.get("GITHUB_REPO") ?? `${githubRepoOwner}/${githubRepoName}`;
+const githubBranch = Deno.env.get("GITHUB_BRANCH") ?? "main";
+const githubToken = Deno.env.get("GITHUB_TOKEN") ?? Deno.env.get("GITHUB_ACTIONS_TOKEN") ?? "";
 let supabaseClient: ReturnType<typeof createClient> | null = null;
+
+const PLACE_SPIDER_METRIC_KEYS = [
+  "arresting_distress_migration",
+  "export_import",
+  "income",
+  "livelihood_basket",
+  "youth_employment",
+  "agro_ecology",
+  "energy",
+  "forest",
+  "soil",
+  "water",
+  "gender_inclusion",
+  "nutrition",
+  "institution",
+  "wash",
+] as const;
 
 const ENTITY_TABLES: Record<string, string> = {
   mentor: "mentor_entities",
@@ -25,6 +47,7 @@ const ENTITY_TABLES: Record<string, string> = {
   cso: "cso_entities",
   csr_philanthropy: "csr_philanthropy_entities",
   environmental_expert: "environmental_expert_entities",
+  place: "place_entities",
 };
 
 const EDITABLE_FIELDS = [
@@ -106,6 +129,18 @@ function toNullableNumber(value: unknown) {
   return Number.isFinite(num) ? num : null;
 }
 
+function toIsoDateTime(value: unknown, fallback = "") {
+  const text = requireString(value);
+  if (!text) return fallback;
+  const parsed = new Date(text);
+  return Number.isNaN(parsed.getTime()) ? fallback : parsed.toISOString();
+}
+
+function toNullableDate(value: unknown) {
+  const iso = toIsoDateTime(value);
+  return iso ? iso.slice(0, 10) : null;
+}
+
 function hasUsableCoordinate(latitude: unknown, longitude: unknown) {
   const lat = toNullableNumber(latitude);
   const lng = toNullableNumber(longitude);
@@ -157,6 +192,69 @@ function mergeUniqueTextArrays(...arrays: string[][]) {
     }
   }
   return output;
+}
+
+function sanitizeFileName(value: string) {
+  return value
+    .normalize("NFKD")
+    .replace(/[^\w.\-]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+    .toLowerCase() || "document";
+}
+
+function buildPlaceDocumentPath(placeName: string, recordedAt: string, fileName: string) {
+  const placeSlug = slugify(placeName) || "place";
+  const stamp = recordedAt.replace(/[:.]/g, "-");
+  return `place-documents/${placeSlug}/${stamp}-${sanitizeFileName(fileName)}`;
+}
+
+function ensureGithubUploadConfigured() {
+  if (!githubToken) {
+    throw new Error("GITHUB_TOKEN is not configured for document uploads.");
+  }
+}
+
+async function uploadFileToGithub(path: string, contentBase64: string, message: string) {
+  ensureGithubUploadConfigured();
+  const response = await fetch(`https://api.github.com/repos/${githubRepo}/contents/${path.split("/").map(encodeURIComponent).join("/")}`, {
+    method: "PUT",
+    headers: {
+      Authorization: `Bearer ${githubToken}`,
+      Accept: "application/vnd.github+json",
+      "Content-Type": "application/json",
+      "User-Agent": "livelihood-ecosystem-directory",
+    },
+    body: JSON.stringify({
+      message,
+      branch: githubBranch,
+      content: contentBase64,
+    }),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(requireString(data?.message) || `GitHub upload failed (${response.status})`);
+  }
+  const encodedPath = path.split("/").map(encodeURIComponent).join("/");
+  return {
+    sha: requireString(data?.content?.sha) || null,
+    filePath: path,
+    fileUrl: `https://cdn.jsdelivr.net/gh/${githubRepo}@${githubBranch}/${encodedPath}`,
+  };
+}
+
+function normalizePlaceMetrics(value: unknown) {
+  const source = value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : {};
+  return Object.fromEntries(PLACE_SPIDER_METRIC_KEYS.map((key) => {
+    const raw = source[key] && typeof source[key] === "object" && !Array.isArray(source[key])
+      ? source[key] as Record<string, unknown>
+      : {};
+    const score = Math.max(0, toNullableNumber(raw.score) ?? 0);
+    const maxScore = Math.max(1, toNullableNumber(raw.max_score) ?? 5);
+    return [key, { score, max_score: maxScore }];
+  }));
 }
 
 function buildSearchText(input: Record<string, unknown>) {
@@ -442,12 +540,16 @@ async function fetchAllRows(table: string, orderColumn: string) {
 async function handleLoadAdminData(token: string) {
   const session = await validateSession(token);
   if (!session) return errorResponse("Invalid admin session.", 401);
-  const [entityTypes, entities, fieldDefinitions, submissions, contactRequests] = await Promise.all([
+  const [entityTypes, entities, fieldDefinitions, submissions, contactRequests, placeDocumentSubmissions, placeSpiderSubmissions, placeDocuments, placeSpiderSnapshots] = await Promise.all([
     fetchAllRows("ecosystem_entity_types", "sort_order"),
     fetchAllRows("ecosystem_directory_entities_all", "entity_name"),
     fetchAllRows("ecosystem_entity_field_definitions", "sort_order"),
     fetchAllRows("ecosystem_entity_submissions", "created_at"),
     fetchAllRows("ecosystem_contact_requests", "created_at"),
+    fetchAllRows("place_document_submissions", "created_at"),
+    fetchAllRows("place_spider_chart_submissions", "created_at"),
+    fetchAllRows("place_document_records", "recorded_at"),
+    fetchAllRows("place_spider_chart_snapshots", "recorded_at"),
   ]);
   return jsonResponse({
     entityTypes,
@@ -455,6 +557,10 @@ async function handleLoadAdminData(token: string) {
     fieldDefinitions,
     submissions: submissions.filter((item) => item.status === "pending"),
     contactRequests,
+    placeDocumentSubmissions: placeDocumentSubmissions.filter((item) => item.status === "pending"),
+    placeSpiderSubmissions: placeSpiderSubmissions.filter((item) => item.status === "pending"),
+    placeDocuments: placeDocuments.filter((item) => !item.is_deleted),
+    placeSpiderSnapshots: placeSpiderSnapshots.filter((item) => !item.is_deleted),
   });
 }
 
@@ -482,6 +588,7 @@ async function buildApprovedEntityPayload(typeSlug: string, input: EntityInput, 
   const entityName = requireString(input.entity_name);
   if (!entityName) throw new Error("Entity name is required.");
   const entityUid = requireString(input.entity_uid) || `${typeSlug}-${slugify(entityName)}-${crypto.randomUUID().slice(0, 8)}`;
+  const typeSpecificData = toJsonObject(input.type_specific_data);
 
   const payload: Record<string, unknown> = {
     entity_uid: entityUid,
@@ -504,7 +611,7 @@ async function buildApprovedEntityPayload(typeSlug: string, input: EntityInput, 
     longitude: toNullableNumber(input.longitude),
     source_label: requireString(input.source_label) || null,
     source_url: requireString(input.source_url) || null,
-    type_specific_data: toJsonObject(input.type_specific_data),
+    type_specific_data: typeSpecificData,
     created_by_name: requireString(input.created_by_name) || adminUsername || null,
     created_by_email: requireString(input.created_by_email) || null,
     admin_notes: requireString(input.admin_notes) || null,
@@ -514,6 +621,21 @@ async function buildApprovedEntityPayload(typeSlug: string, input: EntityInput, 
     is_deleted: false,
     updated_at: new Date().toISOString(),
   };
+
+  if (typeSlug === "place") {
+    const placeKind = requireString(typeSpecificData.place_kind);
+    const blockName = requireString(typeSpecificData.block_name);
+    const districtName = requireString(typeSpecificData.district_name);
+    const stateName = requireString(typeSpecificData.state_name);
+    payload.district = requireString(payload.district) || districtName || null;
+    payload.state = requireString(payload.state) || stateName || null;
+    payload.location_label = requireString(payload.location_label) || [entityName, placeKind].filter(Boolean).join(" | ") || entityName;
+    payload.primary_address = requireString(payload.primary_address) || [blockName, districtName, stateName, "India"].filter(Boolean).join(", ");
+    payload.keywords = mergeUniqueTextArrays(
+      toTextArray(payload.keywords),
+      [placeKind, blockName, districtName, stateName],
+    );
+  }
 
   if (!hasUsableCoordinate(payload.latitude, payload.longitude)) {
     const geocoded = await geocodeEntityFallback(payload);
@@ -717,6 +839,171 @@ async function handleSubmitContactRequest(request: Record<string, unknown>) {
     }).eq("id", data.id);
   }
   return jsonResponse({ ok: true, item: data });
+}
+
+async function handleSubmitPlaceSpider(submission: Record<string, unknown>) {
+  const supabase = getSupabaseAdmin();
+  const placeUid = requireString(submission.place_uid);
+  const placeName = requireString(submission.place_name);
+  const submittedByName = requireString(submission.submitted_by_name);
+  const submittedByEmail = requireString(submission.submitted_by_email);
+  const recordedAt = toIsoDateTime(submission.recorded_at, new Date().toISOString());
+  if (!placeUid || !placeName || !submittedByName || !submittedByEmail) {
+    return errorResponse("Place, submitter name, and submitter email are required.", 400);
+  }
+  const row = {
+    place_uid: placeUid,
+    place_name: placeName,
+    recorded_at: recordedAt,
+    title: requireString(submission.title) || null,
+    notes: requireString(submission.notes) || null,
+    metrics_json: normalizePlaceMetrics(submission.metrics_json),
+    submitted_by_name: submittedByName,
+    submitted_by_email: submittedByEmail,
+    status: "pending",
+    updated_at: new Date().toISOString(),
+  };
+  const { data, error } = await supabase.from("place_spider_chart_submissions").insert(row).select("*").single();
+  if (error) return errorResponse(`Place spider chart submission failed: ${error.message}`, 500);
+  return jsonResponse({ ok: true, item: data });
+}
+
+async function handleApprovePlaceSpider(token: string, submissionId: string) {
+  const supabase = getSupabaseAdmin();
+  const session = await validateSession(token);
+  if (!session) return errorResponse("Invalid admin session.", 401);
+  const { data, error } = await supabase.from("place_spider_chart_submissions").select("*").eq("id", submissionId).maybeSingle();
+  if (error || !data) return errorResponse("Place spider chart submission not found.", 404);
+  const snapshotUid = `place-spider-${slugify(requireString(data.place_name))}-${crypto.randomUUID().slice(0, 8)}`;
+  const payload = {
+    snapshot_uid: snapshotUid,
+    place_uid: requireString(data.place_uid),
+    place_name: requireString(data.place_name),
+    recorded_at: toIsoDateTime(data.recorded_at, new Date().toISOString()),
+    title: requireString(data.title) || null,
+    notes: requireString(data.notes) || null,
+    metrics_json: normalizePlaceMetrics(data.metrics_json),
+    created_by_name: requireString(data.submitted_by_name) || session.username,
+    created_by_email: requireString(data.submitted_by_email) || null,
+    admin_notes: requireString(data.admin_notes) || null,
+    approval_status: "approved",
+    approved_at: new Date().toISOString(),
+    approved_by: session.username,
+    is_deleted: false,
+    updated_at: new Date().toISOString(),
+  };
+  const { error: insertError } = await supabase.from("place_spider_chart_snapshots").insert(payload);
+  if (insertError) return errorResponse(`Place spider chart approval failed: ${insertError.message}`, 500);
+  await supabase.from("place_spider_chart_submissions").update({
+    status: "approved",
+    admin_notes: `Approved by ${session.username} on ${new Date().toISOString()}`,
+    updated_at: new Date().toISOString(),
+  }).eq("id", submissionId);
+  return jsonResponse({ ok: true });
+}
+
+async function handleRejectPlaceSpider(token: string, submissionId: string) {
+  const supabase = getSupabaseAdmin();
+  const session = await validateSession(token);
+  if (!session) return errorResponse("Invalid admin session.", 401);
+  const { error } = await supabase.from("place_spider_chart_submissions").update({
+    status: "rejected",
+    admin_notes: `Rejected by ${session.username} on ${new Date().toISOString()}`,
+    updated_at: new Date().toISOString(),
+  }).eq("id", submissionId);
+  if (error) return errorResponse(`Place spider chart rejection failed: ${error.message}`, 500);
+  return jsonResponse({ ok: true });
+}
+
+async function handleSubmitPlaceDocument(submission: Record<string, unknown>) {
+  const supabase = getSupabaseAdmin();
+  const placeUid = requireString(submission.place_uid);
+  const placeName = requireString(submission.place_name);
+  const submittedByName = requireString(submission.submitted_by_name);
+  const submittedByEmail = requireString(submission.submitted_by_email);
+  const fileName = requireString(submission.file_name);
+  const fileContentBase64 = requireString(submission.file_content_base64);
+  const recordedAt = toIsoDateTime(submission.recorded_at, new Date().toISOString());
+  if (!placeUid || !placeName || !submittedByName || !submittedByEmail || !fileName || !fileContentBase64) {
+    return errorResponse("Place, submitter, and file fields are required.", 400);
+  }
+  const row = {
+    place_uid: placeUid,
+    place_name: placeName,
+    title: requireString(submission.title) || fileName,
+    description: requireString(submission.description) || null,
+    recorded_at: recordedAt,
+    document_date: toNullableDate(submission.document_date),
+    file_name: fileName,
+    mime_type: requireString(submission.mime_type) || null,
+    file_size_bytes: toNullableNumber(submission.file_size_bytes),
+    file_content_base64: fileContentBase64,
+    submitted_by_name: submittedByName,
+    submitted_by_email: submittedByEmail,
+    status: "pending",
+    updated_at: new Date().toISOString(),
+  };
+  const { data, error } = await supabase.from("place_document_submissions").insert(row).select("*").single();
+  if (error) return errorResponse(`Place document submission failed: ${error.message}`, 500);
+  return jsonResponse({ ok: true, item: data });
+}
+
+async function handleApprovePlaceDocument(token: string, submissionId: string) {
+  const supabase = getSupabaseAdmin();
+  const session = await validateSession(token);
+  if (!session) return errorResponse("Invalid admin session.", 401);
+  const { data, error } = await supabase.from("place_document_submissions").select("*").eq("id", submissionId).maybeSingle();
+  if (error || !data) return errorResponse("Place document submission not found.", 404);
+  const recordedAt = toIsoDateTime(data.recorded_at, new Date().toISOString());
+  const documentPath = buildPlaceDocumentPath(requireString(data.place_name), recordedAt, requireString(data.file_name));
+  const uploaded = await uploadFileToGithub(
+    documentPath,
+    requireString(data.file_content_base64),
+    `Add place document for ${requireString(data.place_name)}`
+  );
+  const payload = {
+    document_uid: `place-doc-${slugify(requireString(data.place_name))}-${crypto.randomUUID().slice(0, 8)}`,
+    place_uid: requireString(data.place_uid),
+    place_name: requireString(data.place_name),
+    title: requireString(data.title) || requireString(data.file_name),
+    description: requireString(data.description) || null,
+    recorded_at: recordedAt,
+    document_date: toNullableDate(data.document_date),
+    file_name: requireString(data.file_name),
+    file_path: uploaded.filePath,
+    file_url: uploaded.fileUrl,
+    mime_type: requireString(data.mime_type) || null,
+    github_sha: uploaded.sha,
+    created_by_name: requireString(data.submitted_by_name) || session.username,
+    created_by_email: requireString(data.submitted_by_email) || null,
+    admin_notes: requireString(data.admin_notes) || null,
+    approval_status: "approved",
+    approved_at: new Date().toISOString(),
+    approved_by: session.username,
+    is_deleted: false,
+    updated_at: new Date().toISOString(),
+  };
+  const { error: insertError } = await supabase.from("place_document_records").insert(payload);
+  if (insertError) return errorResponse(`Place document approval failed: ${insertError.message}`, 500);
+  await supabase.from("place_document_submissions").update({
+    status: "approved",
+    admin_notes: `Approved by ${session.username} on ${new Date().toISOString()}`,
+    updated_at: new Date().toISOString(),
+  }).eq("id", submissionId);
+  return jsonResponse({ ok: true });
+}
+
+async function handleRejectPlaceDocument(token: string, submissionId: string) {
+  const supabase = getSupabaseAdmin();
+  const session = await validateSession(token);
+  if (!session) return errorResponse("Invalid admin session.", 401);
+  const { error } = await supabase.from("place_document_submissions").update({
+    status: "rejected",
+    admin_notes: `Rejected by ${session.username} on ${new Date().toISOString()}`,
+    updated_at: new Date().toISOString(),
+  }).eq("id", submissionId);
+  if (error) return errorResponse(`Place document rejection failed: ${error.message}`, 500);
+  return jsonResponse({ ok: true });
 }
 
 function buildPlaceLocationTags(locations: Record<string, unknown>[]) {
@@ -1035,6 +1322,7 @@ Deno.serve(async (request) => {
   const token = requireString(body.token);
   const password = requireString(body.password);
   const submissionId = requireString(body.submissionId);
+  const placeSubmissionId = requireString(body.placeSubmissionId);
   const entityUid = requireString(body.entityUid);
   const placeUid = requireString(body.placeUid);
   const submission = body.submission && typeof body.submission === "object" && !Array.isArray(body.submission)
@@ -1075,6 +1363,18 @@ Deno.serve(async (request) => {
         return await handleBulkUploadEntities(token, rows);
       case "submitContactRequest":
         return await handleSubmitContactRequest(contactRequest);
+      case "submitPlaceSpider":
+        return await handleSubmitPlaceSpider(submission);
+      case "approvePlaceSpider":
+        return await handleApprovePlaceSpider(token, placeSubmissionId);
+      case "rejectPlaceSpider":
+        return await handleRejectPlaceSpider(token, placeSubmissionId);
+      case "submitPlaceDocument":
+        return await handleSubmitPlaceDocument(submission);
+      case "approvePlaceDocument":
+        return await handleApprovePlaceDocument(token, placeSubmissionId);
+      case "rejectPlaceDocument":
+        return await handleRejectPlaceDocument(token, placeSubmissionId);
       case "upsertPlaceInitiative":
         return await handleUpsertPlaceInitiative(token, place);
       case "deletePlaceInitiative":
