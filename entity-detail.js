@@ -3,6 +3,8 @@ const {
   formatDynamicValue,
 } = window.EcosystemForms;
 
+const ADMIN_SESSION_KEY = 'livelihood-ecosystem-admin-session';
+
 const PLACE_SPIDER_METRICS = [
   { key: 'arresting_distress_migration', label: 'Arresting Distress Migration', defaultMax: 5 },
   { key: 'export_import', label: 'Export Import', defaultMax: 5 },
@@ -39,6 +41,20 @@ function formatDate(value) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return String(value);
   return new Intl.DateTimeFormat('en-IN', { dateStyle: 'medium' }).format(date);
+}
+
+function getStoredAdminToken() {
+  return window.sessionStorage.getItem(ADMIN_SESSION_KEY) || window.localStorage.getItem(ADMIN_SESSION_KEY) || '';
+}
+
+async function verifyAdminSession() {
+  const token = getStoredAdminToken();
+  if (!token) return { valid: false, token: '' };
+  try {
+    const response = await window.EcosystemStore.adminRequest('verify', { token });
+    if (response?.valid) return { valid: true, token };
+  } catch {}
+  return { valid: false, token: '' };
 }
 
 function normalizePlaceMetricSet(metricsJson) {
@@ -160,7 +176,7 @@ function buildSpiderChartSvg(placeName, recordedAt, metricsJson) {
   `;
 }
 
-function renderPlaceDocuments(entity, placeDocuments) {
+function renderPlaceDocuments(entity, placeDocuments, isAdmin = false) {
   const items = asArray(placeDocuments)
     .filter((item) => item.place_uid === entity.entity_uid)
     .sort((left, right) => new Date(right.recorded_at || 0).getTime() - new Date(left.recorded_at || 0).getTime());
@@ -183,15 +199,32 @@ function renderPlaceDocuments(entity, placeDocuments) {
             <div class="btn-group">
               <a class="btn btn-small" href="${esc(item.file_url)}" target="_blank" rel="noreferrer">Open Document</a>
               <a class="btn btn-small" href="${esc(item.file_url)}" target="_blank" rel="noreferrer" download="${esc(item.file_name || 'place-document')}">Download</a>
+              ${isAdmin ? `<button class="btn btn-danger btn-small" type="button" data-admin-delete-place-document="${esc(item.document_uid)}">Delete Document</button>` : ''}
             </div>
           </article>
         `).join('')}
       </div>
+      ${isAdmin ? `
+        <details class="section-collapsible" open>
+          <summary><h3>Admin: Upload Updated Document</h3></summary>
+          <div class="section-collapsible-body">
+            <div class="admin-form">
+              <div class="form-group"><label for="admin-place-document-title">Title</label><input id="admin-place-document-title" type="text" required /></div>
+              <div class="form-group"><label for="admin-place-document-description">Description</label><textarea id="admin-place-document-description" rows="3"></textarea></div>
+              <div class="form-group"><label for="admin-place-document-date">Document Date</label><input id="admin-place-document-date" type="date" /></div>
+              <div class="form-group"><label for="admin-place-document-recorded-at">Recorded At</label><input id="admin-place-document-recorded-at" type="datetime-local" required /></div>
+              <div class="form-group"><label for="admin-place-document-file">Replacement / New File</label><input id="admin-place-document-file" type="file" required /></div>
+              <button class="btn btn-success" type="button" id="admin-place-document-upload-button">Upload Approved Document</button>
+              <p class="admin-status" id="admin-place-document-status"></p>
+            </div>
+          </div>
+        </details>
+      ` : ''}
     </section>
   `;
 }
 
-function renderPlaceSpiderHistory(entity, placeSpiderSnapshots) {
+function renderPlaceSpiderHistory(entity, placeSpiderSnapshots, isAdmin = false) {
   const items = asArray(placeSpiderSnapshots)
     .filter((item) => item.place_uid === entity.entity_uid)
     .sort((left, right) => new Date(right.recorded_at || 0).getTime() - new Date(left.recorded_at || 0).getTime());
@@ -212,6 +245,31 @@ function renderPlaceSpiderHistory(entity, placeSpiderSnapshots) {
             <div class="btn-group">
               <button class="btn btn-small" type="button" data-open-spider-chart="${esc(String(index))}">View Spider Chart</button>
             </div>
+            ${isAdmin ? `
+              <div class="admin-form">
+                <div class="form-group"><label>Title</label><input type="text" data-admin-place-spider-title value="${esc(item.title || '')}" /></div>
+                <div class="form-group"><label>Recorded At</label><input type="datetime-local" data-admin-place-spider-recorded-at value="${esc(String(item.recorded_at || '').slice(0, 16))}" /></div>
+                <div class="form-group"><label>Notes</label><textarea rows="3" data-admin-place-spider-notes>${esc(item.notes || '')}</textarea></div>
+                <div class="place-metric-grid">
+                  ${PLACE_SPIDER_METRICS.map((metric) => {
+                    const data = item.metrics_json && typeof item.metrics_json === 'object' && item.metrics_json[metric.key] && typeof item.metrics_json[metric.key] === 'object'
+                      ? item.metrics_json[metric.key]
+                      : {};
+                    return `
+                      <div class="place-metric-row">
+                        <div>
+                          <strong>${esc(metric.label)}</strong>
+                          <small>Saved as score and max score.</small>
+                        </div>
+                        <input type="number" min="0" step="any" data-admin-place-score="${esc(metric.key)}" value="${esc(String(data.score ?? 0))}" />
+                        <input type="number" min="1" step="any" data-admin-place-max="${esc(metric.key)}" value="${esc(String(data.max_score ?? metric.defaultMax))}" />
+                      </div>
+                    `;
+                  }).join('')}
+                </div>
+                <button class="btn btn-success btn-small" type="button" data-admin-save-place-spider="${esc(item.snapshot_uid)}">Save Spider Chart</button>
+              </div>
+            ` : ''}
           </article>
         `).join('')}
       </div>
@@ -411,6 +469,88 @@ async function submitPlaceDocument(event, entity) {
   }
 }
 
+function collectAdminPlaceSpiderMetrics(card) {
+  return Object.fromEntries(PLACE_SPIDER_METRICS.map((metric) => {
+    const scoreEl = card.querySelector(`[data-admin-place-score="${metric.key}"]`);
+    const maxEl = card.querySelector(`[data-admin-place-max="${metric.key}"]`);
+    return [metric.key, {
+      score: Number(scoreEl?.value || 0),
+      max_score: Number(maxEl?.value || metric.defaultMax || 5),
+    }];
+  }));
+}
+
+async function saveAdminPlaceSpiderSnapshot(entity, snapshotUid, triggerButton, adminToken) {
+  const card = triggerButton.closest('.place-history-card');
+  if (!card) return;
+  try {
+    await EcosystemStore.adminRequest('updatePlaceSpiderSnapshot', {
+      token: adminToken,
+      snapshotUid,
+      updates: {
+        title: card.querySelector('[data-admin-place-spider-title]')?.value || '',
+        recorded_at: card.querySelector('[data-admin-place-spider-recorded-at]')?.value || '',
+        notes: card.querySelector('[data-admin-place-spider-notes]')?.value || '',
+        metrics_json: collectAdminPlaceSpiderMetrics(card),
+      },
+    });
+    window.location.reload();
+  } catch (error) {
+    alert(error.message || 'Spider chart update failed.');
+  }
+}
+
+async function deleteAdminPlaceDocument(documentUid, adminToken) {
+  try {
+    await EcosystemStore.adminRequest('deletePlaceDocumentRecord', {
+      token: adminToken,
+      documentUid,
+    });
+    window.location.reload();
+  } catch (error) {
+    alert(error.message || 'Document delete failed.');
+  }
+}
+
+async function uploadAdminPlaceDocument(entity, adminToken) {
+  const statusEl = document.getElementById('admin-place-document-status');
+  const file = document.getElementById('admin-place-document-file').files?.[0];
+  if (!file) {
+    statusEl.textContent = 'Choose a file first.';
+    statusEl.classList.add('error');
+    return;
+  }
+  if (file.size > (10 * 1024 * 1024)) {
+    statusEl.textContent = 'Please keep uploaded documents under 10 MB.';
+    statusEl.classList.add('error');
+    return;
+  }
+  statusEl.textContent = 'Uploading approved document...';
+  statusEl.classList.remove('error');
+  try {
+    const fileContentBase64 = await readFileAsBase64(file);
+    await EcosystemStore.adminRequest('createPlaceDocumentRecord', {
+      token: adminToken,
+      submission: {
+        place_uid: entity.entity_uid,
+        place_name: entity.entity_name,
+        title: document.getElementById('admin-place-document-title').value || file.name,
+        description: document.getElementById('admin-place-document-description').value,
+        document_date: document.getElementById('admin-place-document-date').value,
+        recorded_at: document.getElementById('admin-place-document-recorded-at').value || new Date().toISOString().slice(0, 16),
+        file_name: file.name,
+        mime_type: file.type,
+        file_size_bytes: file.size,
+        file_content_base64: fileContentBase64,
+      },
+    });
+    window.location.reload();
+  } catch (error) {
+    statusEl.textContent = error.message || 'Document upload failed.';
+    statusEl.classList.add('error');
+  }
+}
+
 function openPlaceSpiderModal(entity, snapshot) {
   const modal = document.getElementById('place-spider-modal');
   const body = document.getElementById('place-spider-modal-body');
@@ -452,6 +592,7 @@ async function initEntityDetail() {
   }
 
   try {
+    const adminSession = await verifyAdminSession();
     const { entityTypes, entities, fieldDefinitions, placeDocuments, placeSpiderSnapshots } = await EcosystemStore.loadDirectory();
     const entity = entities.find((item) => item.entity_uid === entityUid);
     if (!entity) {
@@ -504,8 +645,8 @@ async function initEntityDetail() {
         ${socialMedia.length ? `<div class="vendor-inline-list"><strong>Social Media</strong>${socialMedia.map(([label, value]) => `<div>${esc(label)}: <a href="${esc(value)}" target="_blank" rel="noreferrer">${esc(value)}</a></div>`).join('')}</div>` : ''}
         ${renderTypeSpecificDetails(entity, fieldDefinitions)}
       </section>
-      ${isPlace ? renderPlaceDocuments(entity, placeDocuments) : ''}
-      ${isPlace ? renderPlaceSpiderHistory(entity, placeSpiderSnapshots) : ''}
+      ${isPlace ? renderPlaceDocuments(entity, placeDocuments, adminSession.valid) : ''}
+      ${isPlace ? renderPlaceSpiderHistory(entity, placeSpiderSnapshots, adminSession.valid) : ''}
       ${isPlace ? renderPlaceSubmissionSections(entity) : ''}
       <section class="section">
         <details class="section-collapsible">
@@ -535,6 +676,17 @@ async function initEntityDetail() {
 
     document.getElementById('contact-request-form').addEventListener('submit', submitContactRequest);
     if (isPlace) {
+      if (adminSession.valid) {
+        document.querySelectorAll('[data-admin-save-place-spider]').forEach((button) => {
+          button.addEventListener('click', () => saveAdminPlaceSpiderSnapshot(entity, button.dataset.adminSavePlaceSpider, button, adminSession.token));
+        });
+        document.querySelectorAll('[data-admin-delete-place-document]').forEach((button) => {
+          button.addEventListener('click', () => deleteAdminPlaceDocument(button.dataset.adminDeletePlaceDocument, adminSession.token));
+        });
+        document.getElementById('admin-place-document-upload-button')?.addEventListener('click', () => uploadAdminPlaceDocument(entity, adminSession.token));
+        const recordedAtEl = document.getElementById('admin-place-document-recorded-at');
+        if (recordedAtEl && !recordedAtEl.value) recordedAtEl.value = new Date().toISOString().slice(0, 16);
+      }
       document.getElementById('place-document-form')?.addEventListener('submit', (event) => submitPlaceDocument(event, entity));
       document.getElementById('place-spider-form')?.addEventListener('submit', (event) => submitPlaceSpider(event, entity));
       document.querySelectorAll('[data-open-spider-chart]').forEach((button) => {

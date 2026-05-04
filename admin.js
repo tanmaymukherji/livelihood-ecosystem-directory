@@ -110,12 +110,17 @@ async function readFileAsBase64(file) {
 }
 
 function getStoredToken() {
-  return window.sessionStorage.getItem(ADMIN_SESSION_KEY) || '';
+  return window.sessionStorage.getItem(ADMIN_SESSION_KEY) || window.localStorage.getItem(ADMIN_SESSION_KEY) || '';
 }
 
 function setStoredToken(token) {
-  if (token) window.sessionStorage.setItem(ADMIN_SESSION_KEY, token);
-  else window.sessionStorage.removeItem(ADMIN_SESSION_KEY);
+  if (token) {
+    window.sessionStorage.setItem(ADMIN_SESSION_KEY, token);
+    window.localStorage.setItem(ADMIN_SESSION_KEY, token);
+  } else {
+    window.sessionStorage.removeItem(ADMIN_SESSION_KEY);
+    window.localStorage.removeItem(ADMIN_SESSION_KEY);
+  }
 }
 
 function togglePanels(isSignedIn) {
