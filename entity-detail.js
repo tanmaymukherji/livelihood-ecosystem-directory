@@ -277,12 +277,32 @@ function renderPlaceSpiderHistory(entity, placeSpiderSnapshots, isAdmin = false)
   `;
 }
 
-function renderPlaceThematicNeeds(entity, placeThematicNeeds) {
+function renderPlaceThematicNeeds(entity, placeThematicNeeds, isAdmin = false) {
   const items = asArray(placeThematicNeeds)
     .filter((item) => item.place_uid === entity.entity_uid)
     .sort((left, right) => new Date(right.recorded_at || 0).getTime() - new Date(left.recorded_at || 0).getTime());
   if (!items.length) {
-    return `<section class="section"><h3>Thematic Needs</h3><p class="section-note">No thematic need updates have been recorded for this Place yet.</p></section>`;
+    return `
+      <section class="section">
+        <h3>Thematic Needs</h3>
+        <p class="section-note">No thematic need updates have been recorded for this Place yet.</p>
+        ${isAdmin ? `
+          <details class="section-collapsible" open>
+            <summary><h3>Admin: Add Thematic Need Update</h3></summary>
+            <div class="section-collapsible-body">
+              <div class="admin-form">
+                <div class="form-group"><label for="admin-place-needs-thematics">Thematic Needs</label><textarea id="admin-place-needs-thematics" rows="4" placeholder="One thematic need per line"></textarea></div>
+                <div class="form-group"><label for="admin-place-needs-org">Updated By Organisation</label><input id="admin-place-needs-org" type="text" /></div>
+                <div class="form-group"><label for="admin-place-needs-recorded-at">Recorded At</label><input id="admin-place-needs-recorded-at" type="datetime-local" /></div>
+                <div class="form-group"><label for="admin-place-needs-details">Details</label><textarea id="admin-place-needs-details" rows="3"></textarea></div>
+                <button class="btn btn-success" type="button" id="admin-place-needs-save-button">Add Need Update</button>
+                <p class="admin-status" id="admin-place-needs-status"></p>
+              </div>
+            </div>
+          </details>
+        ` : ''}
+      </section>
+    `;
   }
   return `
     <section class="section">
@@ -298,9 +318,36 @@ function renderPlaceThematicNeeds(entity, placeThematicNeeds) {
             <p><strong>Updated By:</strong> ${esc(item.updated_by_name || item.updated_by_email || 'Not listed')}</p>
             <p><strong>Thematic Needs:</strong> ${esc((item.thematic_needs || []).join(', ') || 'Not listed')}</p>
             <p>${esc(item.details || 'No extra details provided.')}</p>
+            ${isAdmin ? `
+              <div class="admin-form">
+                <div class="form-group"><label>Thematic Needs</label><textarea rows="3" data-admin-place-needs-thematics>${esc((item.thematic_needs || []).join('\n'))}</textarea></div>
+                <div class="form-group"><label>Updated By Organisation</label><input type="text" data-admin-place-needs-org value="${esc(item.updated_by_org || '')}" /></div>
+                <div class="form-group"><label>Recorded At</label><input type="datetime-local" data-admin-place-needs-recorded-at value="${esc(String(item.recorded_at || '').slice(0, 16))}" /></div>
+                <div class="form-group"><label>Details</label><textarea rows="3" data-admin-place-needs-details>${esc(item.details || '')}</textarea></div>
+                <div class="btn-group">
+                  <button class="btn btn-success btn-small" type="button" data-admin-save-place-needs="${esc(item.need_uid)}">Save Need Update</button>
+                  <button class="btn btn-danger btn-small" type="button" data-admin-delete-place-needs="${esc(item.need_uid)}">Delete Need Update</button>
+                </div>
+              </div>
+            ` : ''}
           </article>
         `).join('')}
       </div>
+      ${isAdmin ? `
+        <details class="section-collapsible" open>
+          <summary><h3>Admin: Add Thematic Need Update</h3></summary>
+          <div class="section-collapsible-body">
+            <div class="admin-form">
+              <div class="form-group"><label for="admin-place-needs-thematics">Thematic Needs</label><textarea id="admin-place-needs-thematics" rows="4" placeholder="One thematic need per line"></textarea></div>
+              <div class="form-group"><label for="admin-place-needs-org">Updated By Organisation</label><input id="admin-place-needs-org" type="text" /></div>
+              <div class="form-group"><label for="admin-place-needs-recorded-at">Recorded At</label><input id="admin-place-needs-recorded-at" type="datetime-local" /></div>
+              <div class="form-group"><label for="admin-place-needs-details">Details</label><textarea id="admin-place-needs-details" rows="3"></textarea></div>
+              <button class="btn btn-success" type="button" id="admin-place-needs-save-button">Add Need Update</button>
+              <p class="admin-status" id="admin-place-needs-status"></p>
+            </div>
+          </div>
+        </details>
+      ` : ''}
     </section>
   `;
 }
@@ -579,6 +626,75 @@ async function uploadAdminPlaceDocument(entity, adminToken) {
   }
 }
 
+async function createAdminPlaceNeedRecord(entity, adminToken) {
+  const statusEl = document.getElementById('admin-place-needs-status');
+  const thematicNeeds = parseLineList(document.getElementById('admin-place-needs-thematics')?.value);
+  const updatedByOrg = String(document.getElementById('admin-place-needs-org')?.value || '').trim();
+  if (!thematicNeeds.length) {
+    statusEl.textContent = 'Add at least one thematic need.';
+    statusEl.classList.add('error');
+    return;
+  }
+  if (!updatedByOrg) {
+    statusEl.textContent = 'Organisation name is required.';
+    statusEl.classList.add('error');
+    return;
+  }
+  statusEl.textContent = 'Saving thematic need update...';
+  statusEl.classList.remove('error');
+  try {
+    await EcosystemStore.adminRequest('createPlaceThematicNeedRecord', {
+      token: adminToken,
+      submission: {
+        place_uid: entity.entity_uid,
+        place_name: entity.entity_name,
+        thematic_needs: thematicNeeds,
+        details: document.getElementById('admin-place-needs-details')?.value || '',
+        updated_by_org: updatedByOrg,
+        updated_by_name: 'Admin',
+        updated_by_email: '',
+        recorded_at: document.getElementById('admin-place-needs-recorded-at')?.value || new Date().toISOString().slice(0, 16),
+      },
+    });
+    window.location.reload();
+  } catch (error) {
+    statusEl.textContent = error.message || 'Thematic need create failed.';
+    statusEl.classList.add('error');
+  }
+}
+
+async function saveAdminPlaceNeedRecord(needUid, triggerButton, adminToken) {
+  const card = triggerButton.closest('.place-history-card');
+  if (!card) return;
+  try {
+    await EcosystemStore.adminRequest('updatePlaceThematicNeedRecord', {
+      token: adminToken,
+      needUid,
+      updates: {
+        thematic_needs: parseLineList(card.querySelector('[data-admin-place-needs-thematics]')?.value),
+        updated_by_org: card.querySelector('[data-admin-place-needs-org]')?.value || '',
+        recorded_at: card.querySelector('[data-admin-place-needs-recorded-at]')?.value || '',
+        details: card.querySelector('[data-admin-place-needs-details]')?.value || '',
+      },
+    });
+    window.location.reload();
+  } catch (error) {
+    alert(error.message || 'Thematic need update failed.');
+  }
+}
+
+async function deleteAdminPlaceNeedRecord(needUid, adminToken) {
+  try {
+    await EcosystemStore.adminRequest('deletePlaceThematicNeedRecord', {
+      token: adminToken,
+      needUid,
+    });
+    window.location.reload();
+  } catch (error) {
+    alert(error.message || 'Thematic need delete failed.');
+  }
+}
+
 function openPlaceSpiderModal(entity, snapshot) {
   const modal = document.getElementById('place-spider-modal');
   const body = document.getElementById('place-spider-modal-body');
@@ -675,7 +791,7 @@ async function initEntityDetail() {
       </section>
       ${isPlace ? renderPlaceDocuments(entity, placeDocuments, adminSession.valid) : ''}
       ${isPlace ? renderPlaceSpiderHistory(entity, placeSpiderSnapshots, adminSession.valid) : ''}
-      ${isPlace ? renderPlaceThematicNeeds(entity, placeThematicNeeds) : ''}
+      ${isPlace ? renderPlaceThematicNeeds(entity, placeThematicNeeds, adminSession.valid) : ''}
       ${isPlace ? renderPlaceSubmissionSections(entity) : ''}
       <section class="section">
         <details class="section-collapsible">
@@ -712,9 +828,18 @@ async function initEntityDetail() {
         document.querySelectorAll('[data-admin-delete-place-document]').forEach((button) => {
           button.addEventListener('click', () => deleteAdminPlaceDocument(button.dataset.adminDeletePlaceDocument, adminSession.token));
         });
+        document.querySelectorAll('[data-admin-save-place-needs]').forEach((button) => {
+          button.addEventListener('click', () => saveAdminPlaceNeedRecord(button.dataset.adminSavePlaceNeeds, button, adminSession.token));
+        });
+        document.querySelectorAll('[data-admin-delete-place-needs]').forEach((button) => {
+          button.addEventListener('click', () => deleteAdminPlaceNeedRecord(button.dataset.adminDeletePlaceNeeds, adminSession.token));
+        });
         document.getElementById('admin-place-document-upload-button')?.addEventListener('click', () => uploadAdminPlaceDocument(entity, adminSession.token));
+        document.getElementById('admin-place-needs-save-button')?.addEventListener('click', () => createAdminPlaceNeedRecord(entity, adminSession.token));
         const recordedAtEl = document.getElementById('admin-place-document-recorded-at');
         if (recordedAtEl && !recordedAtEl.value) recordedAtEl.value = new Date().toISOString().slice(0, 16);
+        const needsRecordedAtEl = document.getElementById('admin-place-needs-recorded-at');
+        if (needsRecordedAtEl && !needsRecordedAtEl.value) needsRecordedAtEl.value = new Date().toISOString().slice(0, 16);
       }
       document.getElementById('place-document-form')?.addEventListener('submit', (event) => submitPlaceDocument(event, entity));
       document.getElementById('place-spider-form')?.addEventListener('submit', (event) => submitPlaceSpider(event, entity));

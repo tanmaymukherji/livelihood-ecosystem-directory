@@ -6,8 +6,8 @@
   <link rel="icon" href="data:," />
   <title>Livelihood Ecosystem Admin</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="./config.js?v=20260504j"></script>
-  <link rel="stylesheet" href="./styles.css?v=20260504j" />
+  <script src="./config.js?v=20260504k"></script>
+  <link rel="stylesheet" href="./styles.css?v=20260504k" />
 </head>
 <body>
   <div class="admin-shell">
@@ -133,9 +133,13 @@
                   </div>
                 </section>
                 <section class="section">
-                  <h4>Place Spider Chart Records</h4>
-                  <p class="section-note">Edit approved spider chart snapshots for this Place and save the updated metrics directly.</p>
-                  <div id="placeAdminSpiderList" class="admin-card-list"></div>
+                  <details class="section-collapsible">
+                    <summary><h4>Place Spider Chart Records</h4></summary>
+                    <div class="section-collapsible-body">
+                      <p class="section-note">Edit approved spider chart snapshots for this Place and save the updated metrics directly.</p>
+                      <div id="placeAdminSpiderList" class="admin-card-list"></div>
+                    </div>
+                  </details>
                 </section>
                 <section class="section">
                   <h4>Place Documents</h4>
@@ -164,8 +168,8 @@
       </section>
     </main>
   </div>
-  <script src="./ecosystem-form-fields.js?v=20260504j"></script>
-  <script src="./ecosystem-store.js?v=20260504j"></script>
-  <script src="./admin.js?v=20260504j"></script>
+  <script src="./ecosystem-form-fields.js?v=20260504k"></script>
+  <script src="./ecosystem-store.js?v=20260504k"></script>
+  <script src="./admin.js?v=20260504k"></script>
 </body>
 </html>
