@@ -38,7 +38,11 @@ const submissionFieldGroups = {
   office: document.getElementById('submission-office-locations-group'),
 };
 const submissionPlaceToolsEl = document.getElementById('submission-place-tools');
-const existingPlaceSelectEl = document.getElementById('existing-place-select');
+const submissionAddPlaceDocumentEl = document.getElementById('submission-add-place-document');
+const submissionPlaceDocumentBlockEl = document.getElementById('submission-place-document-block');
+const submissionAddPlaceSpiderEl = document.getElementById('submission-add-place-spider');
+const submissionPlaceSpiderBlockEl = document.getElementById('submission-place-spider-block');
+const submissionPlaceMetricGridEl = document.getElementById('submission-place-metric-grid');
 const paginationEls = [
   document.getElementById('results-pagination-top'),
   document.getElementById('results-pagination-bottom'),
@@ -51,6 +55,23 @@ const {
   renderDynamicFields,
   collectDynamicFieldValues,
 } = window.EcosystemForms;
+
+const PLACE_SPIDER_METRICS = [
+  { key: 'arresting_distress_migration', label: 'Arresting Distress Migration', defaultMax: 5 },
+  { key: 'export_import', label: 'Export Import', defaultMax: 5 },
+  { key: 'income', label: 'Income', defaultMax: 5 },
+  { key: 'livelihood_basket', label: 'Livelihood Basket', defaultMax: 5 },
+  { key: 'youth_employment', label: 'Youth Employment', defaultMax: 5 },
+  { key: 'agro_ecology', label: 'Agro Ecology', defaultMax: 5 },
+  { key: 'energy', label: 'Energy', defaultMax: 5 },
+  { key: 'forest', label: 'Forest', defaultMax: 5 },
+  { key: 'soil', label: 'Soil', defaultMax: 5 },
+  { key: 'water', label: 'Water', defaultMax: 5 },
+  { key: 'gender_inclusion', label: 'Gender Inclusion', defaultMax: 5 },
+  { key: 'nutrition', label: 'Nutrition', defaultMax: 5 },
+  { key: 'institution', label: 'Institution', defaultMax: 5 },
+  { key: 'wash', label: 'Water / Sanitation / Hygiene', defaultMax: 5 },
+];
 
 function normalizeText(value) {
   return String(value || '').trim().toLowerCase();
@@ -130,20 +151,18 @@ function updateRequiredState(input, required) {
   else input.removeAttribute('required');
 }
 
-function populateExistingPlaceOptions() {
-  if (!existingPlaceSelectEl) return;
-  const previous = existingPlaceSelectEl.value;
-  existingPlaceSelectEl.innerHTML = '<option value="">Choose an approved place</option>';
-  directoryState.entities
-    .filter((entity) => entity.entity_type_slug === 'place')
-    .sort((left, right) => String(left.entity_name || '').localeCompare(String(right.entity_name || '')))
-    .forEach((entity) => {
-      const option = document.createElement('option');
-      option.value = entity.entity_uid;
-      option.textContent = `${entity.entity_name}${getPrimaryLocationLabel(entity) ? ` | ${getPrimaryLocationLabel(entity)}` : ''}`;
-      existingPlaceSelectEl.appendChild(option);
-    });
-  existingPlaceSelectEl.value = previous;
+function renderPlaceMetricInputs() {
+  if (!submissionPlaceMetricGridEl) return;
+  submissionPlaceMetricGridEl.innerHTML = PLACE_SPIDER_METRICS.map((metric) => `
+    <div class="place-metric-row">
+      <div>
+        <strong>${esc(metric.label)}</strong>
+        <small>Normalized later to 100 using score / max score.</small>
+      </div>
+      <input type="number" min="0" step="any" data-submission-place-score="${esc(metric.key)}" placeholder="Score" />
+      <input type="number" min="1" step="any" data-submission-place-max="${esc(metric.key)}" value="${esc(metric.defaultMax)}" placeholder="Max score" />
+    </div>
+  `).join('');
 }
 
 function syncSubmissionFormForType() {
@@ -154,7 +173,12 @@ function syncSubmissionFormForType() {
   if (submissionPlaceToolsEl) submissionPlaceToolsEl.hidden = !isPlace;
   updateRequiredState(document.getElementById('submission-name'), !isPlace);
   updateRequiredState(document.getElementById('submission-location'), !isPlace);
-  populateExistingPlaceOptions();
+  if (!isPlace) {
+    if (submissionAddPlaceDocumentEl) submissionAddPlaceDocumentEl.checked = false;
+    if (submissionAddPlaceSpiderEl) submissionAddPlaceSpiderEl.checked = false;
+  }
+  if (submissionPlaceDocumentBlockEl) submissionPlaceDocumentBlockEl.hidden = !isPlace || !submissionAddPlaceDocumentEl?.checked;
+  if (submissionPlaceSpiderBlockEl) submissionPlaceSpiderBlockEl.hidden = !isPlace || !submissionAddPlaceSpiderEl?.checked;
 }
 
 function buildPlaceSubmissionValues(typeSpecificData) {
@@ -176,6 +200,28 @@ function buildPlaceSubmissionValues(typeSpecificData) {
     social_media: {},
     office_locations: [],
   };
+}
+
+function collectPlaceSpiderMetricsFromSubmission() {
+  return Object.fromEntries(PLACE_SPIDER_METRICS.map((metric) => {
+    const scoreInput = document.querySelector(`[data-submission-place-score="${metric.key}"]`);
+    const maxInput = document.querySelector(`[data-submission-place-max="${metric.key}"]`);
+    return [metric.key, {
+      score: Number(scoreInput?.value || 0),
+      max_score: Number(maxInput?.value || metric.defaultMax || 5),
+    }];
+  }));
+}
+
+async function readFileAsBase64(file) {
+  const buffer = await file.arrayBuffer();
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  const chunkSize = 0x8000;
+  for (let index = 0; index < bytes.length; index += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(index, index + chunkSize));
+  }
+  return window.btoa(binary);
 }
 
 function getSelectedTypeSlugs() {
@@ -676,7 +722,15 @@ async function handleSubmission(event) {
     if (isPlace && !placeValues?.entity_name) {
       throw new Error('For a Place submission, please fill the place granularity fields first.');
     }
-    await EcosystemStore.adminRequest('submitEntity', {
+    const submitterName = document.getElementById('submission-contact-name').value;
+    const submitterEmail = document.getElementById('submission-contact-email').value;
+    const placeDocumentFile = submissionAddPlaceDocumentEl?.checked
+      ? document.getElementById('submission-place-document-file').files?.[0]
+      : null;
+    if (isPlace && submissionAddPlaceDocumentEl?.checked && !placeDocumentFile) {
+      throw new Error('Choose an initial place document file or untick the document option.');
+    }
+    const entityResponse = await EcosystemStore.adminRequest('submitEntity', {
       submission: {
         entity_type_slug: submissionTypeEl.value,
         entity_name: placeValues?.entity_name || document.getElementById('submission-name').value,
@@ -689,11 +743,46 @@ async function handleSubmission(event) {
         social_media: placeValues?.social_media || parseSocialLinks(document.getElementById('submission-social-links').value),
         office_locations: placeValues?.office_locations || parseOfficeLocations(document.getElementById('submission-office-locations').value),
         type_specific_data: typeSpecificData,
-        submitted_by_name: document.getElementById('submission-contact-name').value,
-        submitted_by_email: document.getElementById('submission-contact-email').value,
+        submitted_by_name: submitterName,
+        submitted_by_email: submitterEmail,
       },
     });
+    const linkedPlaceSubmissionId = entityResponse?.item?.id || '';
+    if (isPlace && submissionAddPlaceDocumentEl?.checked && placeDocumentFile) {
+      const fileContentBase64 = await readFileAsBase64(placeDocumentFile);
+      await EcosystemStore.adminRequest('submitPlaceDocument', {
+        submission: {
+          linked_place_submission_id: linkedPlaceSubmissionId,
+          place_name: placeValues?.entity_name || '',
+          title: document.getElementById('submission-place-document-title').value || placeDocumentFile.name,
+          description: document.getElementById('submission-place-document-description').value,
+          document_date: document.getElementById('submission-place-document-date').value,
+          recorded_at: document.getElementById('submission-place-document-recorded-at').value || new Date().toISOString().slice(0, 16),
+          file_name: placeDocumentFile.name,
+          mime_type: placeDocumentFile.type,
+          file_size_bytes: placeDocumentFile.size,
+          file_content_base64: fileContentBase64,
+          submitted_by_name: submitterName,
+          submitted_by_email: submitterEmail,
+        },
+      });
+    }
+    if (isPlace && submissionAddPlaceSpiderEl?.checked) {
+      await EcosystemStore.adminRequest('submitPlaceSpider', {
+        submission: {
+          linked_place_submission_id: linkedPlaceSubmissionId,
+          place_name: placeValues?.entity_name || '',
+          title: document.getElementById('submission-place-spider-title').value || `${placeValues?.entity_name || 'Place'} Spider Chart`,
+          recorded_at: document.getElementById('submission-place-spider-recorded-at').value || new Date().toISOString().slice(0, 16),
+          notes: document.getElementById('submission-place-spider-notes').value,
+          metrics_json: collectPlaceSpiderMetricsFromSubmission(),
+          submitted_by_name: submitterName,
+          submitted_by_email: submitterEmail,
+        },
+      });
+    }
     event.target.reset();
+    renderPlaceMetricInputs();
     renderSubmissionDynamicFields();
     setStatus(submissionStatusEl, 'Submission received. It will appear after admin approval.');
   } catch (error) {
@@ -734,14 +823,9 @@ document.getElementById('run-search').addEventListener('click', applyFilters);
 document.getElementById('clear-search').addEventListener('click', clearFilters);
 document.getElementById('submission-form').addEventListener('submit', handleSubmission);
 submissionTypeEl.addEventListener('change', renderSubmissionDynamicFields);
-document.getElementById('open-existing-place')?.addEventListener('click', () => {
-  const entityUid = String(existingPlaceSelectEl?.value || '').trim();
-  if (!entityUid) {
-    setStatus(submissionStatusEl, 'Choose an approved place first.', true);
-    return;
-  }
-  window.location.href = `./entity-detail.html?entity=${encodeURIComponent(entityUid)}`;
-});
+submissionAddPlaceDocumentEl?.addEventListener('change', syncSubmissionFormForType);
+submissionAddPlaceSpiderEl?.addEventListener('change', syncSubmissionFormForType);
+renderPlaceMetricInputs();
 Object.values(searchEls).forEach((input) => {
   input.addEventListener('keypress', (event) => { if (event.key === 'Enter') applyFilters(); });
   input.addEventListener('input', persistSearchState);

@@ -557,8 +557,8 @@ async function handleLoadAdminData(token: string) {
     fieldDefinitions,
     submissions: submissions.filter((item) => item.status === "pending"),
     contactRequests,
-    placeDocumentSubmissions: placeDocumentSubmissions.filter((item) => item.status === "pending"),
-    placeSpiderSubmissions: placeSpiderSubmissions.filter((item) => item.status === "pending"),
+    placeDocumentSubmissions: placeDocumentSubmissions.filter((item) => item.status === "pending" && !item.linked_place_submission_id),
+    placeSpiderSubmissions: placeSpiderSubmissions.filter((item) => item.status === "pending" && !item.linked_place_submission_id),
     placeDocuments: placeDocuments.filter((item) => !item.is_deleted),
     placeSpiderSnapshots: placeSpiderSnapshots.filter((item) => !item.is_deleted),
   });
@@ -711,11 +711,25 @@ async function handleApproveSubmission(token: string, submissionId: string) {
   if (!session) return errorResponse("Invalid admin session.", 401);
   const { data, error } = await supabase.from("ecosystem_entity_submissions").select("*").eq("id", submissionId).maybeSingle();
   if (error || !data) return errorResponse("Submission not found.", 404);
-  await upsertEntity(requireString(data.entity_type_slug), {
+  const approvedEntity = await upsertEntity(requireString(data.entity_type_slug), {
     ...data,
     created_by_name: data.submitted_by_name,
     created_by_email: data.submitted_by_email,
   }, session.username);
+  if (requireString(data.entity_type_slug) === "place") {
+    await approveLinkedPlaceDocumentSubmissions(
+      submissionId,
+      requireString(approvedEntity?.entity_uid),
+      requireString(approvedEntity?.entity_name) || requireString(data.entity_name),
+      session.username,
+    );
+    await approveLinkedPlaceSpiderSubmissions(
+      submissionId,
+      requireString(approvedEntity?.entity_uid),
+      requireString(approvedEntity?.entity_name) || requireString(data.entity_name),
+      session.username,
+    );
+  }
   await supabase.from("ecosystem_entity_submissions").update({
     status: "approved",
     reviewed_by: session.username,
@@ -729,6 +743,7 @@ async function handleRejectSubmission(token: string, submissionId: string) {
   const supabase = getSupabaseAdmin();
   const session = await validateSession(token);
   if (!session) return errorResponse("Invalid admin session.", 401);
+  const { data } = await supabase.from("ecosystem_entity_submissions").select("entity_type_slug").eq("id", submissionId).maybeSingle();
   const { error } = await supabase.from("ecosystem_entity_submissions").update({
     status: "rejected",
     reviewed_by: session.username,
@@ -736,6 +751,18 @@ async function handleRejectSubmission(token: string, submissionId: string) {
     updated_at: new Date().toISOString(),
   }).eq("id", submissionId);
   if (error) return errorResponse(`Submission rejection failed: ${error.message}`, 500);
+  if (requireString(data?.entity_type_slug) === "place") {
+    await supabase.from("place_document_submissions").update({
+      status: "rejected",
+      admin_notes: `Rejected with parent place by ${session.username} on ${new Date().toISOString()}`,
+      updated_at: new Date().toISOString(),
+    }).eq("linked_place_submission_id", submissionId).eq("status", "pending");
+    await supabase.from("place_spider_chart_submissions").update({
+      status: "rejected",
+      admin_notes: `Rejected with parent place by ${session.username} on ${new Date().toISOString()}`,
+      updated_at: new Date().toISOString(),
+    }).eq("linked_place_submission_id", submissionId).eq("status", "pending");
+  }
   return jsonResponse({ ok: true });
 }
 
@@ -853,15 +880,17 @@ async function handleSubmitContactRequest(request: Record<string, unknown>) {
 async function handleSubmitPlaceSpider(submission: Record<string, unknown>) {
   const supabase = getSupabaseAdmin();
   const placeUid = requireString(submission.place_uid);
+  const linkedPlaceSubmissionId = requireString(submission.linked_place_submission_id) || null;
   const placeName = requireString(submission.place_name);
   const submittedByName = requireString(submission.submitted_by_name);
   const submittedByEmail = requireString(submission.submitted_by_email);
   const recordedAt = toIsoDateTime(submission.recorded_at, new Date().toISOString());
-  if (!placeUid || !placeName || !submittedByName || !submittedByEmail) {
+  if ((!placeUid && !linkedPlaceSubmissionId) || !placeName || !submittedByName || !submittedByEmail) {
     return errorResponse("Place, submitter name, and submitter email are required.", 400);
   }
   const row = {
-    place_uid: placeUid,
+    place_uid: placeUid || null,
+    linked_place_submission_id: linkedPlaceSubmissionId,
     place_name: placeName,
     recorded_at: recordedAt,
     title: requireString(submission.title) || null,
@@ -927,17 +956,19 @@ async function handleRejectPlaceSpider(token: string, submissionId: string) {
 async function handleSubmitPlaceDocument(submission: Record<string, unknown>) {
   const supabase = getSupabaseAdmin();
   const placeUid = requireString(submission.place_uid);
+  const linkedPlaceSubmissionId = requireString(submission.linked_place_submission_id) || null;
   const placeName = requireString(submission.place_name);
   const submittedByName = requireString(submission.submitted_by_name);
   const submittedByEmail = requireString(submission.submitted_by_email);
   const fileName = requireString(submission.file_name);
   const fileContentBase64 = requireString(submission.file_content_base64);
   const recordedAt = toIsoDateTime(submission.recorded_at, new Date().toISOString());
-  if (!placeUid || !placeName || !submittedByName || !submittedByEmail || !fileName || !fileContentBase64) {
+  if ((!placeUid && !linkedPlaceSubmissionId) || !placeName || !submittedByName || !submittedByEmail || !fileName || !fileContentBase64) {
     return errorResponse("Place, submitter, and file fields are required.", 400);
   }
   const row = {
-    place_uid: placeUid,
+    place_uid: placeUid || null,
+    linked_place_submission_id: linkedPlaceSubmissionId,
     place_name: placeName,
     title: requireString(submission.title) || fileName,
     description: requireString(submission.description) || null,
@@ -1013,6 +1044,102 @@ async function handleRejectPlaceDocument(token: string, submissionId: string) {
   }).eq("id", submissionId);
   if (error) return errorResponse(`Place document rejection failed: ${error.message}`, 500);
   return jsonResponse({ ok: true });
+}
+
+async function approveLinkedPlaceSpiderSubmissions(
+  parentSubmissionId: string,
+  placeUid: string,
+  placeName: string,
+  sessionUsername: string
+) {
+  const supabase = getSupabaseAdmin();
+  const { data, error } = await supabase
+    .from("place_spider_chart_submissions")
+    .select("*")
+    .eq("linked_place_submission_id", parentSubmissionId)
+    .eq("status", "pending");
+  if (error) throw new Error(`Linked place spider submissions could not be loaded: ${error.message}`);
+  for (const item of data || []) {
+    const payload = {
+      snapshot_uid: `place-spider-${slugify(placeName)}-${crypto.randomUUID().slice(0, 8)}`,
+      place_uid: placeUid,
+      place_name: placeName,
+      recorded_at: toIsoDateTime(item.recorded_at, new Date().toISOString()),
+      title: requireString(item.title) || null,
+      notes: requireString(item.notes) || null,
+      metrics_json: normalizePlaceMetrics(item.metrics_json),
+      created_by_name: requireString(item.submitted_by_name) || sessionUsername,
+      created_by_email: requireString(item.submitted_by_email) || null,
+      admin_notes: requireString(item.admin_notes) || null,
+      approval_status: "approved",
+      approved_at: new Date().toISOString(),
+      approved_by: sessionUsername,
+      is_deleted: false,
+      updated_at: new Date().toISOString(),
+    };
+    const { error: insertError } = await supabase.from("place_spider_chart_snapshots").insert(payload);
+    if (insertError) throw new Error(`Linked place spider approval failed: ${insertError.message}`);
+    await supabase.from("place_spider_chart_submissions").update({
+      place_uid: placeUid,
+      status: "approved",
+      admin_notes: `Approved with parent place by ${sessionUsername} on ${new Date().toISOString()}`,
+      updated_at: new Date().toISOString(),
+    }).eq("id", item.id);
+  }
+}
+
+async function approveLinkedPlaceDocumentSubmissions(
+  parentSubmissionId: string,
+  placeUid: string,
+  placeName: string,
+  sessionUsername: string
+) {
+  const supabase = getSupabaseAdmin();
+  const { data, error } = await supabase
+    .from("place_document_submissions")
+    .select("*")
+    .eq("linked_place_submission_id", parentSubmissionId)
+    .eq("status", "pending");
+  if (error) throw new Error(`Linked place document submissions could not be loaded: ${error.message}`);
+  for (const item of data || []) {
+    const recordedAt = toIsoDateTime(item.recorded_at, new Date().toISOString());
+    const documentPath = buildPlaceDocumentPath(placeName, recordedAt, requireString(item.file_name));
+    const uploaded = await uploadFileToGithub(
+      documentPath,
+      requireString(item.file_content_base64),
+      `Add place document for ${placeName}`
+    );
+    const payload = {
+      document_uid: `place-doc-${slugify(placeName)}-${crypto.randomUUID().slice(0, 8)}`,
+      place_uid: placeUid,
+      place_name: placeName,
+      title: requireString(item.title) || requireString(item.file_name),
+      description: requireString(item.description) || null,
+      recorded_at: recordedAt,
+      document_date: toNullableDate(item.document_date),
+      file_name: requireString(item.file_name),
+      file_path: uploaded.filePath,
+      file_url: uploaded.fileUrl,
+      mime_type: requireString(item.mime_type) || null,
+      github_sha: uploaded.sha,
+      created_by_name: requireString(item.submitted_by_name) || sessionUsername,
+      created_by_email: requireString(item.submitted_by_email) || null,
+      admin_notes: requireString(item.admin_notes) || null,
+      approval_status: "approved",
+      approved_at: new Date().toISOString(),
+      approved_by: sessionUsername,
+      is_deleted: false,
+      updated_at: new Date().toISOString(),
+    };
+    const { error: insertError } = await supabase.from("place_document_records").insert(payload);
+    if (insertError) throw new Error(`Linked place document approval failed: ${insertError.message}`);
+    await supabase.from("place_document_submissions").update({
+      place_uid: placeUid,
+      status: "approved",
+      admin_notes: `Approved with parent place by ${sessionUsername} on ${new Date().toISOString()}`,
+      updated_at: new Date().toISOString(),
+    }).eq("id", item.id);
+  }
 }
 
 function buildPlaceLocationTags(locations: Record<string, unknown>[]) {

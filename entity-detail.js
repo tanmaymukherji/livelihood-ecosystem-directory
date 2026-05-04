@@ -485,15 +485,21 @@ async function initEntityDetail() {
     if (isPlace) {
       document.getElementById('place-document-form')?.addEventListener('submit', (event) => submitPlaceDocument(event, entity));
       document.getElementById('place-spider-form')?.addEventListener('submit', (event) => submitPlaceSpider(event, entity));
-      root.addEventListener('click', (event) => {
-        const openButton = event.target.closest('[data-open-spider-chart]');
-        if (openButton) {
-          const snapshot = placeSnapshotItems[Number(openButton.dataset.openSpiderChart)];
+      document.querySelectorAll('[data-open-spider-chart]').forEach((button) => {
+        button.addEventListener('click', (event) => {
+          event.preventDefault();
+          const snapshot = placeSnapshotItems[Number(button.dataset.openSpiderChart)];
           if (snapshot) openPlaceSpiderModal(entity, snapshot);
-        }
-        if (event.target.closest('[data-close-place-modal]')) {
+        });
+      });
+      document.querySelectorAll('[data-close-place-modal]').forEach((button) => {
+        button.addEventListener('click', (event) => {
+          event.preventDefault();
           closePlaceSpiderModal();
-        }
+        });
+      });
+      window.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') closePlaceSpiderModal();
       });
     }
   } catch (error) {
