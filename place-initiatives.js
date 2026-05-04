@@ -359,19 +359,11 @@ function buildSpiderChartSvg(placeName, recordedAt, metricsJson) {
 
 function getPlaceIdentityTokens(place) {
   if (!place) return [];
-  const exact = [normalizeText(place.place_uid)].filter(Boolean);
-  const semantic = [
+  return [
+    normalizeText(place.place_uid),
     place.slug,
     place.initiative_name,
   ].map((value) => normalizeText(value)).filter(Boolean);
-  const expanded = [];
-  semantic.forEach((token) => {
-    expanded.push(token);
-    token.split(/[^a-z0-9]+/)
-      .filter((part) => part.length >= 4 && !['place', 'block', 'village', 'district', 'state', 'initiative'].includes(part))
-      .forEach((part) => expanded.push(part));
-  });
-  return Array.from(new Set([...exact, ...expanded]));
 }
 
 function itemMatchesPlaceIdentity(place, values = []) {
