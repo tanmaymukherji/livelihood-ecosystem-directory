@@ -16,6 +16,8 @@ const githubRepoName = Deno.env.get("GITHUB_REPO_NAME") ?? "livelihood-ecosystem
 const githubRepo = Deno.env.get("GITHUB_REPO") ?? `${githubRepoOwner}/${githubRepoName}`;
 const githubBranch = Deno.env.get("GITHUB_BRANCH") ?? "main";
 const githubToken = Deno.env.get("GITHUB_TOKEN") ?? Deno.env.get("GITHUB_ACTIONS_TOKEN") ?? "";
+const geminiApiKey = Deno.env.get("GEMINI_API_KEY") ?? Deno.env.get("GRE_MIS_GEMINI_API_KEY") ?? "";
+const geminiModel = Deno.env.get("GRE_MIS_GEMINI_MODEL") ?? "gemini-2.0-flash";
 let supabaseClient: ReturnType<typeof createClient> | null = null;
 
 const PLACE_SPIDER_METRIC_KEYS = [
@@ -111,6 +113,17 @@ function errorResponse(message: string, status = 400) {
   return jsonResponse({ error: message }, status);
 }
 
+function extractJsonBlock(text: string) {
+  const trimmed = requireString(text);
+  if (!trimmed) return "";
+  const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (fenced?.[1]) return fenced[1].trim();
+  const firstBrace = trimmed.indexOf("{");
+  const lastBrace = trimmed.lastIndexOf("}");
+  if (firstBrace >= 0 && lastBrace > firstBrace) return trimmed.slice(firstBrace, lastBrace + 1);
+  return trimmed;
+}
+
 function requireString(value: unknown) {
   return typeof value === "string" ? value.trim() : "";
 }
@@ -169,6 +182,14 @@ function toRecordArray(value: unknown) {
     ? value.filter((item) => item && typeof item === "object" && !Array.isArray(item)) as Record<string, unknown>[]
     : [];
 }
+
+type MatchContext = {
+  place_uid: string;
+  initiative_name: string;
+  locations: Array<Record<string, unknown>>;
+  need_groups: Array<Record<string, unknown>>;
+  candidate_entities: Array<Record<string, unknown>>;
+};
 
 function flattenTypeSpecificValues(value: unknown): string[] {
   if (Array.isArray(value)) return value.flatMap((item) => flattenTypeSpecificValues(item));
@@ -1888,6 +1909,115 @@ async function handleDeletePlaceInitiative(token: string, placeUid: string) {
   return jsonResponse({ ok: true });
 }
 
+async function runGeminiNeedMatching(context: MatchContext) {
+  if (!geminiApiKey) return null;
+  const prompt = {
+    project_context: [
+      "This is a rural livelihoods and place-based ecosystem directory for India.",
+      "Interpret needs in the local livelihoods context, not in a generic global business context.",
+      "Treat semantically overlapping rural needs as the same need when appropriate.",
+      "Examples: 'Distress Migration' and 'Distress Migration Mitigation' should usually be grouped together.",
+      "'Export Import' in this project often means local economy, market linkages, local trade, producer aggregation, and market access, not only international exports.",
+      "Do not match candidates just because of word overlap if the actual service context is wrong.",
+      "Keep the geography guardrails already applied by the caller; only rank and normalize among the provided candidates.",
+    ],
+    required_output: {
+      groups: [
+        {
+          sourceName: "Common Across Covered Villages or a specific village/source label",
+          items: [
+            {
+              needLabel: "normalized need label in project context",
+              entities: [
+                {
+                  entity_uid: "candidate entity uid",
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    },
+    instructions: [
+      "Group needs semantically where they clearly refer to the same rural-livelihood challenge.",
+      "When a need is shared across more than one village/source, place it under a common group and mention the relevant villages in the need label if useful.",
+      "When a need is unique to one village/source, keep it under that village/source.",
+      "Return only candidates that are genuinely relevant to the normalized need in this project context.",
+      "Prefer precision over recall.",
+      "Return at most 6 entities per need item.",
+      "Return valid JSON only.",
+    ],
+    input: context,
+  };
+
+  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(geminiModel)}:generateContent?key=${encodeURIComponent(geminiApiKey)}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contents: [{ role: "user", parts: [{ text: JSON.stringify(prompt) }] }],
+      generationConfig: {
+        responseMimeType: "application/json",
+        temperature: 0.2,
+      },
+    }),
+  });
+  if (!response.ok) {
+    throw new Error(`Gemini request failed (${response.status})`);
+  }
+  const data = await response.json() as Record<string, unknown>;
+  const text = requireString((((data.candidates as Array<Record<string, unknown>> | undefined)?.[0]?.content as Record<string, unknown> | undefined)?.parts as Array<Record<string, unknown>> | undefined)?.map((part) => requireString(part.text)).join("\n"));
+  const parsed = JSON.parse(extractJsonBlock(text));
+  return parsed && typeof parsed === "object" ? parsed as Record<string, unknown> : null;
+}
+
+async function handleMatchPlaceNeeds(contextInput: Record<string, unknown>) {
+  const candidateEntities = toRecordArray(contextInput.candidate_entities).map((item) => ({
+    entity_uid: requireString(item.entity_uid),
+    entity_name: requireString(item.entity_name),
+    entity_type_slug: requireString(item.entity_type_slug),
+    entity_type_label: requireString(item.entity_type_label),
+    summary: requireString(item.summary),
+    description: requireString(item.description),
+    location_label: requireString(item.location_label),
+    state: requireString(item.state),
+    themes: toTextArray(item.themes),
+    geography: toTextArray(item.geography),
+  })).filter((item) => item.entity_uid && item.entity_name);
+  const needGroups = toRecordArray(contextInput.need_groups).map((item) => ({
+    sourceName: requireString(item.sourceName),
+    needs: toTextArray(item.needs),
+  })).filter((item) => item.sourceName && item.needs.length);
+  const locations = toRecordArray(contextInput.locations);
+  const context: MatchContext = {
+    place_uid: requireString(contextInput.place_uid),
+    initiative_name: requireString(contextInput.initiative_name),
+    locations,
+    need_groups: needGroups,
+    candidate_entities: candidateEntities,
+  };
+  if (!context.place_uid || !needGroups.length || !candidateEntities.length) {
+    return jsonResponse({ groups: [], provider: "none" });
+  }
+
+  const aiResult = await runGeminiNeedMatching(context).catch(() => null);
+  const aiGroups = toRecordArray(aiResult?.groups).map((group) => ({
+    sourceName: requireString(group.sourceName),
+    items: toRecordArray(group.items).map((item) => {
+      const entityRefs = toRecordArray(item.entities).map((entity) => requireString(entity.entity_uid)).filter(Boolean);
+      const entities = entityRefs.map((uid) => candidateEntities.find((entity) => entity.entity_uid === uid)).filter(Boolean);
+      return {
+        needLabel: requireString(item.needLabel),
+        entities,
+      };
+    }).filter((item) => item.needLabel && item.entities.length),
+  })).filter((group) => group.sourceName && group.items.length);
+
+  return jsonResponse({
+    groups: aiGroups,
+    provider: aiGroups.length ? "gemini" : "none",
+  });
+}
+
 Deno.serve(async (request) => {
   if (request.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (request.method !== "POST") return errorResponse("Method not allowed.", 405);
@@ -1975,6 +2105,8 @@ Deno.serve(async (request) => {
         return await handleUpsertPlaceInitiative(token, place);
       case "deletePlaceInitiative":
         return await handleDeletePlaceInitiative(token, placeUid);
+      case "matchPlaceNeeds":
+        return await handleMatchPlaceNeeds(body.context && typeof body.context === "object" && !Array.isArray(body.context) ? body.context as Record<string, unknown> : {});
       default:
         return errorResponse("Unknown admin action.", 400);
     }

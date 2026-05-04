@@ -29,6 +29,8 @@ const placeState = {
   roleBoxesVisible: false,
   calloutPlaceUid: '',
   isRebalancingCallouts: false,
+  aiNeedMatchCache: new Map(),
+  aiNeedMatchInFlight: new Set(),
 };
 
 const INDIA_CENTER = { lat: 22.9734, lng: 78.6569 };
@@ -551,6 +553,8 @@ function extractNeedKeywords(placeUid, options = {}) {
 }
 
 function getVillageNeedPartnerGroups(placeUid) {
+  const aiMatch = placeState.aiNeedMatchCache.get(placeUid);
+  if (aiMatch?.groups?.length) return aiMatch.groups;
   const records = getPlaceTopThematicNeeds(placeUid).records;
   if (!records.length) return [];
   const locations = getPlaceLocations(placeUid);
@@ -846,6 +850,92 @@ function dedupeBy(values, keyFn) {
     seen.add(key);
     return true;
   });
+}
+
+function getRawVillageNeedGroups(placeUid) {
+  const records = getPlaceTopThematicNeeds(placeUid).records;
+  const groups = new Map();
+  records.forEach((record) => {
+    const sourceName = String(record.place_name || record.place_uid || 'Place').trim();
+    if (!groups.has(sourceName)) groups.set(sourceName, new Set());
+    asArray(record.thematic_needs).forEach((need) => {
+      const text = String(need || '').trim();
+      if (text) groups.get(sourceName).add(text);
+    });
+  });
+  return Array.from(groups.entries()).map(([sourceName, needSet]) => ({
+    sourceName,
+    needs: Array.from(needSet),
+  })).filter((group) => group.needs.length);
+}
+
+function buildCandidateEntityPool(placeUid) {
+  const locations = getPlaceLocations(placeUid);
+  const partners = getPlacePartners(placeUid);
+  const linkedEntityIds = new Set(partners.map((item) => String(item.entity_uid || '').trim()).filter(Boolean));
+  const linkedEntityNames = new Set(partners.map((item) => normalizeText(item.partner_name)).filter(Boolean));
+  return placeState.entities
+    .filter((entity) => entity.entity_type_slug !== 'place')
+    .filter((entity) => geographyMatchesPlace(entity, locations))
+    .filter((entity) => {
+      const entityUid = String(entity.entity_uid || '').trim();
+      const entityName = normalizeText(entity.entity_name);
+      if (entityUid && linkedEntityIds.has(entityUid)) return false;
+      if (entityName && linkedEntityNames.has(entityName)) return false;
+      return true;
+    })
+    .slice(0, 120);
+}
+
+function buildAiNeedMatchPayload(placeUid) {
+  const place = getPlaceByUid(placeUid);
+  const locations = getPlaceLocations(placeUid);
+  const rawGroups = getRawVillageNeedGroups(placeUid);
+  const candidates = buildCandidateEntityPool(placeUid).map((entity) => ({
+    entity_uid: entity.entity_uid || '',
+    entity_name: entity.entity_name || '',
+    entity_type_slug: entity.entity_type_slug || '',
+    entity_type_label: entity.entity_type_label || entity.entity_type_slug || 'Entity',
+    summary: entity.summary || '',
+    description: entity.description || '',
+    location_label: entity.location_label || '',
+    state: entity.state || '',
+    themes: getEntityThematicTokens(entity).slice(0, 30),
+    geography: getEntityGeographyTokens(entity).slice(0, 20),
+  }));
+  return {
+    place_uid: placeUid,
+    initiative_name: place?.initiative_name || '',
+    locations: locations.map((item) => ({
+      display_label: locationDisplayLabel(item),
+      state_name: item.state_name || null,
+      district_name: item.district_name || null,
+      block_name: item.block_name || null,
+      village_name: item.village_name || null,
+    })),
+    need_groups: rawGroups,
+    candidate_entities: candidates,
+  };
+}
+
+async function ensureAiNeedMatch(placeUid) {
+  if (!placeUid || placeState.aiNeedMatchCache.has(placeUid) || placeState.aiNeedMatchInFlight.has(placeUid)) return;
+  const payload = buildAiNeedMatchPayload(placeUid);
+  if (!payload.need_groups.length || !payload.candidate_entities.length) {
+    placeState.aiNeedMatchCache.set(placeUid, { groups: [], provider: 'none' });
+    return;
+  }
+  placeState.aiNeedMatchInFlight.add(placeUid);
+  try {
+    const data = await window.EcosystemStore.adminRequest('matchPlaceNeeds', { context: payload });
+    placeState.aiNeedMatchCache.set(placeUid, data || { groups: [], provider: 'none' });
+    if (placeState.selectedPlaceUid === placeUid) renderDetail(placeUid);
+  } catch {
+    placeState.aiNeedMatchCache.set(placeUid, { groups: [], provider: 'none' });
+  }
+  finally {
+    placeState.aiNeedMatchInFlight.delete(placeUid);
+  }
 }
 
 function ensureRoleOptions() {
@@ -1495,8 +1585,10 @@ function renderDetail(placeUid) {
   const documents = getPlaceDocuments(placeUid);
   const spiderSnapshots = getPlaceSpiderSnapshots(placeUid);
   const thematicNeeds = getPlaceTopThematicNeeds(placeUid);
+  const aiMatch = placeState.aiNeedMatchCache.get(placeUid);
   const needPartnerGroups = getNeedToPotentialPartnerGroups(placeUid);
   const potentialPartners = groupPartnersByType(getPotentialPartnersForPlace(placeUid, { limit: 180 }));
+  ensureAiNeedMatch(placeUid);
 
   els.detailStatus.textContent = `${place.initiative_name} covers ${locations.length} location${locations.length === 1 ? '' : 's'} across ${states.length || 1} state context${states.length === 1 ? '' : 's'}.`;
   els.detailContent.innerHTML = `
@@ -1537,6 +1629,11 @@ function renderDetail(placeUid) {
       </article>
       <article class="place-detail-card place-detail-card-compact">
         <h4>Current Needs</h4>
+        ${aiMatch?.provider === 'gemini'
+          ? `<p class="section-note">AI-assisted contextual need grouping is active for this place.</p>`
+          : aiMatch?.provider === 'none'
+            ? '<p class="section-note">Initial deterministic grouping is shown for this place.</p>'
+            : '<p class="section-note">Contextual AI review is loading. Initial grouping is shown until that completes.</p>'}
         ${thematicNeeds.records.length
           ? `<div class="place-need-groups">${dedupeBy(thematicNeeds.records, (item) => normalizeText(`${item.place_name}|${item.recorded_at}`)).map((record) => `<div class="place-need-group"><strong>${esc(record.place_name || place.initiative_name)}</strong><p>${esc(asArray(record.thematic_needs).join(', '))}</p><p class="section-note">Updated: ${esc(formatDateTime(record.recorded_at))}</p></div>`).join('')}</div>`
           : '<p class="section-note">No thematic need updates have been recorded yet.</p>'}
