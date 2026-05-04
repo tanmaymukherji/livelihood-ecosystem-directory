@@ -404,9 +404,12 @@ function getPlaceTopThematicNeeds(placeUid) {
 
 function getPlaceSpiderSnapshots(placeUid) {
   const place = getPlaceByUid(placeUid);
-  return asArray(placeState.placeSpiderSnapshots)
-    .filter((item) => item.place_uid === placeUid || itemMatchesPlaceIdentity(place, [item.place_uid, item.title, item.notes]))
-    .sort((left, right) => new Date(right.recorded_at || 0).getTime() - new Date(left.recorded_at || 0).getTime());
+  return dedupeBy(
+    asArray(placeState.placeSpiderSnapshots)
+      .filter((item) => item.place_uid === placeUid || itemMatchesPlaceIdentity(place, [item.place_uid, item.title, item.notes]))
+      .sort((left, right) => new Date(right.recorded_at || 0).getTime() - new Date(left.recorded_at || 0).getTime()),
+    (item) => normalizeText([item.place_uid, item.title, item.recorded_at].join('|'))
+  );
 }
 
 function getSpiderChartNeedIdentifiers(placeUid) {
