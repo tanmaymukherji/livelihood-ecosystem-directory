@@ -188,45 +188,58 @@ function renderPlaceDocuments(entity, placeDocuments, isAdmin = false) {
     .filter((item) => item.place_uid === entity.entity_uid)
     .sort((left, right) => new Date(right.recorded_at || 0).getTime() - new Date(left.recorded_at || 0).getTime());
   if (!items.length) {
-    return `<section class="section"><h3>Documents</h3><p class="section-note">No approved place documents have been added yet.</p></section>`;
+    return `
+      <section class="section">
+        <details class="section-collapsible">
+          <summary><h3>Documents</h3></summary>
+          <div class="section-collapsible-body">
+            <p class="section-note">No approved place documents have been added yet.</p>
+          </div>
+        </details>
+      </section>
+    `;
   }
   return `
     <section class="section">
-      <h3>Documents</h3>
-      <div class="place-history-list">
-        ${items.map((item) => `
-          <article class="admin-card place-history-card">
-            <div class="admin-card-header">
-              <h4>${esc(item.title || item.file_name || 'Document')}</h4>
-              <span class="admin-badge">${esc(formatDate(item.document_date || item.recorded_at))}</span>
-            </div>
-            <p>${esc(item.description || 'No description provided.')}</p>
-            <p><strong>Recorded:</strong> ${esc(formatDateTime(item.recorded_at))}</p>
-            <p><strong>File:</strong> ${esc(item.file_name || 'Document')}</p>
-            <div class="btn-group">
-              <a class="btn btn-small" href="${esc(item.file_url)}" target="_blank" rel="noreferrer">Open Document</a>
-              <a class="btn btn-small" href="${esc(item.file_url)}" target="_blank" rel="noreferrer" download="${esc(item.file_name || 'place-document')}">Download</a>
-              ${isAdmin ? `<button class="btn btn-danger btn-small" type="button" data-admin-delete-place-document="${esc(item.document_uid)}">Delete Document</button>` : ''}
-            </div>
-          </article>
-        `).join('')}
-      </div>
-      ${isAdmin ? `
-        <details class="section-collapsible" open>
-          <summary><h3>Admin: Upload Updated Document</h3></summary>
-          <div class="section-collapsible-body">
-            <div class="admin-form">
-              <div class="form-group"><label for="admin-place-document-title">Title</label><input id="admin-place-document-title" type="text" required /></div>
-              <div class="form-group"><label for="admin-place-document-description">Description</label><textarea id="admin-place-document-description" rows="3"></textarea></div>
-              <div class="form-group"><label for="admin-place-document-date">Document Date</label><input id="admin-place-document-date" type="date" /></div>
-              <div class="form-group"><label for="admin-place-document-recorded-at">Recorded At</label><input id="admin-place-document-recorded-at" type="datetime-local" required /></div>
-              <div class="form-group"><label for="admin-place-document-file">Replacement / New File</label><input id="admin-place-document-file" type="file" required /></div>
-              <button class="btn btn-success" type="button" id="admin-place-document-upload-button">Upload Approved Document</button>
-              <p class="admin-status" id="admin-place-document-status"></p>
-            </div>
+      <details class="section-collapsible">
+        <summary><h3>Documents</h3></summary>
+        <div class="section-collapsible-body">
+          <div class="place-history-list">
+            ${items.map((item) => `
+              <article class="admin-card place-history-card">
+                <div class="admin-card-header">
+                  <h4>${esc(item.title || item.file_name || 'Document')}</h4>
+                  <span class="admin-badge">${esc(formatDate(item.document_date || item.recorded_at))}</span>
+                </div>
+                <p>${esc(item.description || 'No description provided.')}</p>
+                <p><strong>Recorded:</strong> ${esc(formatDateTime(item.recorded_at))}</p>
+                <p><strong>File:</strong> ${esc(item.file_name || 'Document')}</p>
+                <div class="btn-group">
+                  <a class="btn btn-small" href="${esc(item.file_url)}" target="_blank" rel="noreferrer">Open Document</a>
+                  <a class="btn btn-small" href="${esc(item.file_url)}" target="_blank" rel="noreferrer" download="${esc(item.file_name || 'place-document')}">Download</a>
+                  ${isAdmin ? `<button class="btn btn-danger btn-small" type="button" data-admin-delete-place-document="${esc(item.document_uid)}">Delete Document</button>` : ''}
+                </div>
+              </article>
+            `).join('')}
           </div>
-        </details>
-      ` : ''}
+          ${isAdmin ? `
+            <details class="section-collapsible" open>
+              <summary><h3>Admin: Upload Updated Document</h3></summary>
+              <div class="section-collapsible-body">
+                <div class="admin-form">
+                  <div class="form-group"><label for="admin-place-document-title">Title</label><input id="admin-place-document-title" type="text" required /></div>
+                  <div class="form-group"><label for="admin-place-document-description">Description</label><textarea id="admin-place-document-description" rows="3"></textarea></div>
+                  <div class="form-group"><label for="admin-place-document-date">Document Date</label><input id="admin-place-document-date" type="date" /></div>
+                  <div class="form-group"><label for="admin-place-document-recorded-at">Recorded At</label><input id="admin-place-document-recorded-at" type="datetime-local" required /></div>
+                  <div class="form-group"><label for="admin-place-document-file">Replacement / New File</label><input id="admin-place-document-file" type="file" required /></div>
+                  <button class="btn btn-success" type="button" id="admin-place-document-upload-button">Upload Approved Document</button>
+                  <p class="admin-status" id="admin-place-document-status"></p>
+                </div>
+              </div>
+            </details>
+          ` : ''}
+        </div>
+      </details>
     </section>
   `;
 }
@@ -304,70 +317,78 @@ function renderPlaceThematicNeeds(entity, placeThematicNeeds, isAdmin = false) {
   if (!items.length) {
     return `
       <section class="section">
-        <h3>Thematic Needs</h3>
-        <p class="section-note">No thematic need updates have been recorded for this Place yet.</p>
-        ${isAdmin ? `
-          <details class="section-collapsible" open>
-            <summary><h3>Admin: Add Thematic Need Update</h3></summary>
-            <div class="section-collapsible-body">
-              <div class="admin-form">
-                <div class="form-group"><label for="admin-place-needs-thematics">Thematic Needs</label><textarea id="admin-place-needs-thematics" rows="4" placeholder="One thematic need per line"></textarea></div>
-                <div class="form-group"><label for="admin-place-needs-org">Updated By Organisation</label><input id="admin-place-needs-org" type="text" /></div>
-                <div class="form-group"><label for="admin-place-needs-recorded-at">Recorded At</label><input id="admin-place-needs-recorded-at" type="datetime-local" /></div>
-                <div class="form-group"><label for="admin-place-needs-details">Details</label><textarea id="admin-place-needs-details" rows="3"></textarea></div>
-                <button class="btn btn-success" type="button" id="admin-place-needs-save-button">Add Need Update</button>
-                <p class="admin-status" id="admin-place-needs-status"></p>
-              </div>
-            </div>
-          </details>
-        ` : ''}
+        <details class="section-collapsible">
+          <summary><h3>Thematic Needs</h3></summary>
+          <div class="section-collapsible-body">
+            <p class="section-note">No thematic need updates have been recorded for this Place yet.</p>
+            ${isAdmin ? `
+              <details class="section-collapsible" open>
+                <summary><h3>Admin: Add Thematic Need Update</h3></summary>
+                <div class="section-collapsible-body">
+                  <div class="admin-form">
+                    <div class="form-group"><label for="admin-place-needs-thematics">Thematic Needs</label><textarea id="admin-place-needs-thematics" rows="4" placeholder="One thematic need per line"></textarea></div>
+                    <div class="form-group"><label for="admin-place-needs-org">Updated By Organisation</label><input id="admin-place-needs-org" type="text" /></div>
+                    <div class="form-group"><label for="admin-place-needs-recorded-at">Recorded At</label><input id="admin-place-needs-recorded-at" type="datetime-local" /></div>
+                    <div class="form-group"><label for="admin-place-needs-details">Details</label><textarea id="admin-place-needs-details" rows="3"></textarea></div>
+                    <button class="btn btn-success" type="button" id="admin-place-needs-save-button">Add Need Update</button>
+                    <p class="admin-status" id="admin-place-needs-status"></p>
+                  </div>
+                </div>
+              </details>
+            ` : ''}
+          </div>
+        </details>
       </section>
     `;
   }
   return `
     <section class="section">
-      <h3>Thematic Needs</h3>
-      <div class="place-history-list">
-        ${items.map((item) => `
-          <article class="admin-card place-history-card">
-            <div class="admin-card-header">
-              <h4>${esc((item.thematic_needs || []).join(', ') || 'Thematic needs update')}</h4>
-              <span class="admin-badge">${esc(formatDateTime(item.recorded_at))}</span>
-            </div>
-            <p><strong>Updated By Organisation:</strong> ${esc(item.updated_by_org || 'Not listed')}</p>
-            <p><strong>Updated By:</strong> ${esc(item.updated_by_name || item.updated_by_email || 'Not listed')}</p>
-            <p><strong>Thematic Needs:</strong> ${esc((item.thematic_needs || []).join(', ') || 'Not listed')}</p>
-            <p>${esc(item.details || 'No extra details provided.')}</p>
-            ${isAdmin ? `
-              <div class="admin-form">
-                <div class="form-group"><label>Thematic Needs</label><textarea rows="3" data-admin-place-needs-thematics>${esc((item.thematic_needs || []).join('\n'))}</textarea></div>
-                <div class="form-group"><label>Updated By Organisation</label><input type="text" data-admin-place-needs-org value="${esc(item.updated_by_org || '')}" /></div>
-                <div class="form-group"><label>Recorded At</label><input type="datetime-local" data-admin-place-needs-recorded-at value="${esc(String(item.recorded_at || '').slice(0, 16))}" /></div>
-                <div class="form-group"><label>Details</label><textarea rows="3" data-admin-place-needs-details>${esc(item.details || '')}</textarea></div>
-                <div class="btn-group">
-                  <button class="btn btn-success btn-small" type="button" data-admin-save-place-needs="${esc(item.need_uid)}">Save Need Update</button>
-                  <button class="btn btn-danger btn-small" type="button" data-admin-delete-place-needs="${esc(item.need_uid)}">Delete Need Update</button>
+      <details class="section-collapsible">
+        <summary><h3>Thematic Needs</h3></summary>
+        <div class="section-collapsible-body">
+          <div class="place-history-list">
+            ${items.map((item) => `
+              <article class="admin-card place-history-card">
+                <div class="admin-card-header">
+                  <h4>${esc((item.thematic_needs || []).join(', ') || 'Thematic needs update')}</h4>
+                  <span class="admin-badge">${esc(formatDateTime(item.recorded_at))}</span>
+                </div>
+                <p><strong>Updated By Organisation:</strong> ${esc(item.updated_by_org || 'Not listed')}</p>
+                <p><strong>Updated By:</strong> ${esc(item.updated_by_name || item.updated_by_email || 'Not listed')}</p>
+                <p><strong>Thematic Needs:</strong> ${esc((item.thematic_needs || []).join(', ') || 'Not listed')}</p>
+                <p>${esc(item.details || 'No extra details provided.')}</p>
+                ${isAdmin ? `
+                  <div class="admin-form">
+                    <div class="form-group"><label>Thematic Needs</label><textarea rows="3" data-admin-place-needs-thematics>${esc((item.thematic_needs || []).join('\n'))}</textarea></div>
+                    <div class="form-group"><label>Updated By Organisation</label><input type="text" data-admin-place-needs-org value="${esc(item.updated_by_org || '')}" /></div>
+                    <div class="form-group"><label>Recorded At</label><input type="datetime-local" data-admin-place-needs-recorded-at value="${esc(String(item.recorded_at || '').slice(0, 16))}" /></div>
+                    <div class="form-group"><label>Details</label><textarea rows="3" data-admin-place-needs-details>${esc(item.details || '')}</textarea></div>
+                    <div class="btn-group">
+                      <button class="btn btn-success btn-small" type="button" data-admin-save-place-needs="${esc(item.need_uid)}">Save Need Update</button>
+                      <button class="btn btn-danger btn-small" type="button" data-admin-delete-place-needs="${esc(item.need_uid)}">Delete Need Update</button>
+                    </div>
+                  </div>
+                ` : ''}
+              </article>
+            `).join('')}
+          </div>
+          ${isAdmin ? `
+            <details class="section-collapsible" open>
+              <summary><h3>Admin: Add Thematic Need Update</h3></summary>
+              <div class="section-collapsible-body">
+                <div class="admin-form">
+                  <div class="form-group"><label for="admin-place-needs-thematics">Thematic Needs</label><textarea id="admin-place-needs-thematics" rows="4" placeholder="One thematic need per line"></textarea></div>
+                  <div class="form-group"><label for="admin-place-needs-org">Updated By Organisation</label><input id="admin-place-needs-org" type="text" /></div>
+                  <div class="form-group"><label for="admin-place-needs-recorded-at">Recorded At</label><input id="admin-place-needs-recorded-at" type="datetime-local" /></div>
+                  <div class="form-group"><label for="admin-place-needs-details">Details</label><textarea id="admin-place-needs-details" rows="3"></textarea></div>
+                  <button class="btn btn-success" type="button" id="admin-place-needs-save-button">Add Need Update</button>
+                  <p class="admin-status" id="admin-place-needs-status"></p>
                 </div>
               </div>
-            ` : ''}
-          </article>
-        `).join('')}
-      </div>
-      ${isAdmin ? `
-        <details class="section-collapsible" open>
-          <summary><h3>Admin: Add Thematic Need Update</h3></summary>
-          <div class="section-collapsible-body">
-            <div class="admin-form">
-              <div class="form-group"><label for="admin-place-needs-thematics">Thematic Needs</label><textarea id="admin-place-needs-thematics" rows="4" placeholder="One thematic need per line"></textarea></div>
-              <div class="form-group"><label for="admin-place-needs-org">Updated By Organisation</label><input id="admin-place-needs-org" type="text" /></div>
-              <div class="form-group"><label for="admin-place-needs-recorded-at">Recorded At</label><input id="admin-place-needs-recorded-at" type="datetime-local" /></div>
-              <div class="form-group"><label for="admin-place-needs-details">Details</label><textarea id="admin-place-needs-details" rows="3"></textarea></div>
-              <button class="btn btn-success" type="button" id="admin-place-needs-save-button">Add Need Update</button>
-              <p class="admin-status" id="admin-place-needs-status"></p>
-            </div>
-          </div>
-        </details>
-      ` : ''}
+            </details>
+          ` : ''}
+        </div>
+      </details>
     </section>
   `;
 }
