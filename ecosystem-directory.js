@@ -727,6 +727,26 @@ function clearFilters() {
   applyFilters();
 }
 
+function initializeSidebarTabs() {
+  const buttons = Array.from(document.querySelectorAll('[data-sidebar-tab]'));
+  const panels = Array.from(document.querySelectorAll('[data-sidebar-panel]'));
+  if (!buttons.length || !panels.length) return;
+  const activate = (tabName) => {
+    buttons.forEach((button) => {
+      const active = button.dataset.sidebarTab === tabName;
+      button.classList.toggle('is-active', active);
+      button.setAttribute('aria-selected', active ? 'true' : 'false');
+    });
+    panels.forEach((panel) => {
+      panel.hidden = panel.dataset.sidebarPanel !== tabName;
+    });
+  };
+  buttons.forEach((button) => {
+    button.addEventListener('click', () => activate(button.dataset.sidebarTab));
+  });
+  activate(buttons.find((button) => button.classList.contains('is-active'))?.dataset.sidebarTab || buttons[0].dataset.sidebarTab);
+}
+
 async function handleSubmission(event) {
   event.preventDefault();
   setStatus(submissionStatusEl, 'Sending submission...');
@@ -919,4 +939,5 @@ paginationEls.forEach((container) => container?.addEventListener('click', (event
   renderResults();
 }));
 
+initializeSidebarTabs();
 initializeDirectory();

@@ -6,8 +6,8 @@
   <link rel="icon" href="data:," />
   <title>Livelihood Ecosystem Directory</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="./config.js?v=20260505a"></script>
-  <link rel="stylesheet" href="./styles.css?v=20260505a" />
+  <script src="./config.js?v=20260505b"></script>
+  <link rel="stylesheet" href="./styles.css?v=20260505b" />
 </head>
 <body>
   <div class="vendor-shell">
@@ -32,32 +32,37 @@
 
     <main class="vendor-layout">
       <aside class="vendor-sidebar">
-        <div class="vendor-sidebar-top">
-          <section class="section">
+        <section class="section vendor-workspace-shell">
+          <div class="vendor-tab-bar" role="tablist" aria-label="Directory tools">
+            <button class="vendor-tab-button is-active" type="button" data-sidebar-tab="search" role="tab" aria-selected="true">Search Filters</button>
+            <button class="vendor-tab-button" type="button" data-sidebar-tab="submit" role="tab" aria-selected="false">Submit New Entry</button>
+          </div>
+          <div class="vendor-tab-panel" data-sidebar-panel="search">
             <h3>Search Filters</h3>
-            <div class="form-group">
-              <label for="search-keyword">Keyword</label>
-              <input id="search-keyword" type="search" placeholder="Mentor, accelerator, livelihoods, incubation, market access..." />
+            <div class="vendor-two-col-form">
+              <div class="form-group">
+                <label for="search-keyword">Keyword</label>
+                <input id="search-keyword" type="search" placeholder="Mentor, accelerator, livelihoods, incubation, market access..." />
+              </div>
+              <div class="form-group">
+                <label for="search-location">Place</label>
+                <input id="search-location" type="search" placeholder="Village, district, city, state, or address" />
+              </div>
+              <div class="form-group form-span-2">
+                <label>Entity Types</label>
+                <div id="entity-type-filters" class="checkbox-grid"></div>
+              </div>
+              <div class="btn-group form-span-2">
+                <button class="btn" id="run-search" type="button">Search</button>
+                <button class="btn btn-danger btn-small" id="clear-search" type="button">Clear</button>
+              </div>
             </div>
-            <div class="form-group">
-              <label for="search-location">Place</label>
-              <input id="search-location" type="search" placeholder="Village, district, city, state, or address" />
-            </div>
-            <div class="form-group">
-              <label>Entity Types</label>
-              <div id="entity-type-filters" class="checkbox-grid"></div>
-            </div>
-            <div class="btn-group">
-              <button class="btn" id="run-search" type="button">Search</button>
-              <button class="btn btn-danger btn-small" id="clear-search" type="button">Clear</button>
-            </div>
-          </section>
-
-          <section class="section">
+          </div>
+          <div class="vendor-tab-panel" data-sidebar-panel="submit" hidden>
             <h3>Submit a New Entry</h3>
             <p class="section-note">New submissions go into an admin approval queue before they appear publicly.</p>
-            <form class="admin-form" id="submission-form">
-              <div class="form-group">
+            <form class="admin-form vendor-two-col-form" id="submission-form">
+              <div class="form-group form-span-2">
                 <label for="submission-entity-type">Entity Type</label>
                 <select id="submission-entity-type" required></select>
               </div>
@@ -93,8 +98,8 @@
                 <label for="submission-office-locations">Additional Office Locations</label>
                 <textarea id="submission-office-locations" rows="3" placeholder="One location per line"></textarea>
               </div>
-              <div id="submission-dynamic-fields"></div>
-              <div class="section" id="submission-place-tools" hidden>
+              <div id="submission-dynamic-fields" class="form-span-2"></div>
+              <div class="section form-span-2" id="submission-place-tools" hidden>
                 <h4>Place Data</h4>
                 <p class="section-note">You can optionally attach one initial document and one initial spider chart snapshot while creating a new place. They will move with the place into admin review.</p>
                 <div class="form-group">
@@ -170,11 +175,11 @@
                 <label for="submission-contact-email">Submitter Email</label>
                 <input id="submission-contact-email" type="email" required />
               </div>
-              <button class="btn btn-success" type="submit">Send for Approval</button>
-              <p class="admin-status" id="submission-status"></p>
+              <button class="btn btn-success form-span-2" type="submit">Send for Approval</button>
+              <p class="admin-status form-span-2" id="submission-status"></p>
             </form>
-          </section>
-        </div>
+          </div>
+        </section>
       </aside>
 
       <section class="vendor-results-shell">
@@ -209,8 +214,8 @@
     </footer>
   </div>
 
-  <script src="./ecosystem-form-fields.js?v=20260505a"></script>
-  <script src="./ecosystem-store.js?v=20260505a"></script>
-  <script src="./ecosystem-directory.js?v=20260505a"></script>
+  <script src="./ecosystem-form-fields.js?v=20260505b"></script>
+  <script src="./ecosystem-store.js?v=20260505b"></script>
+  <script src="./ecosystem-directory.js?v=20260505b"></script>
 </body>
 </html>
