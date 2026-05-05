@@ -66,6 +66,7 @@ const SOTH_STAGES = ['Initiate', 'Engage', 'Action', 'Auto Pilot'];
 const GRAMEEE_STAGES = ['Triggering', 'Incubating', 'Sustaining'];
 const LGD_MANIFEST_URL = './data/lgd/manifest.json';
 const LGD_BUCKET_BASE_URL = './data/lgd/buckets';
+const SPIDER_SERIES_COLORS = ['#2f7d73', '#d97a2b', '#405de6', '#b23a48', '#6a4c93', '#0081a7'];
 const INDIA_STATE_CENTERS = {
   'andaman and nicobar islands': { lat: 11.7401, lng: 92.6586 },
   'andhra pradesh': { lat: 15.9129, lng: 79.74 },
@@ -387,20 +388,15 @@ function splitSpiderLabel(label, maxChars = 16, maxLines = 3) {
   return compact;
 }
 
-function buildSpiderChartSvg(placeName, recordedAt, metricsJson) {
-  const metrics = normalizePlaceMetricSet(metricsJson);
+function buildSpiderChartSvgBase(placeName, subtitle, series) {
+  const metrics = normalizePlaceMetricSet(series?.[0]?.metricsJson || {});
   const width = 980;
-  const height = 900;
+  const height = 760;
   const centerX = width / 2;
-  const centerY = 470;
-  const radius = 250;
-  const labelRadius = 356;
+  const centerY = 390;
+  const radius = 210;
+  const labelRadius = 300;
   const lineHeight = 18;
-  const polygonPoints = metrics.map((metric, index) => {
-    const angle = (-Math.PI / 2) + ((Math.PI * 2 * index) / metrics.length);
-    const pointRadius = radius * (metric.normalized / 100);
-    return [centerX + Math.cos(angle) * pointRadius, centerY + Math.sin(angle) * pointRadius];
-  });
   const labelPoints = metrics.map((metric, index) => {
     const angle = (-Math.PI / 2) + ((Math.PI * 2 * index) / metrics.length);
     const lines = splitSpiderLabel(metric.label);
@@ -427,27 +423,67 @@ function buildSpiderChartSvg(placeName, recordedAt, metricsJson) {
     const y = centerY + Math.sin(angle) * radius;
     return `<line x1="${centerX}" y1="${centerY}" x2="${x}" y2="${y}" stroke="#d7dfeb" stroke-width="1"></line>`;
   }).join('');
-  const dataPolygon = polygonPoints.map((point) => point.join(',')).join(' ');
-  const dataDots = polygonPoints.map((point) => `<circle cx="${point[0]}" cy="${point[1]}" r="4" fill="#2f7d73" stroke="#ffffff" stroke-width="2"></circle>`).join('');
+  const polygons = (Array.isArray(series) ? series : []).map((entry, seriesIndex) => {
+    const entryMetrics = normalizePlaceMetricSet(entry.metricsJson);
+    const color = entry.color || SPIDER_SERIES_COLORS[seriesIndex % SPIDER_SERIES_COLORS.length];
+    const polygonPoints = entryMetrics.map((metric, index) => {
+      const angle = (-Math.PI / 2) + ((Math.PI * 2 * index) / metrics.length);
+      const pointRadius = radius * (metric.normalized / 100);
+      return [centerX + Math.cos(angle) * pointRadius, centerY + Math.sin(angle) * pointRadius];
+    });
+    const dataPolygon = polygonPoints.map((point) => point.join(',')).join(' ');
+    const dataDots = polygonPoints.map((point) => `<circle cx="${point[0]}" cy="${point[1]}" r="4" fill="${esc(color)}" stroke="#ffffff" stroke-width="2"></circle>`).join('');
+    return `<polygon points="${dataPolygon}" fill="${esc(color)}22" stroke="${esc(color)}" stroke-width="3"></polygon>${dataDots}`;
+  }).join('');
   const labels = labelPoints.map((metric) => {
     const startY = metric.y - (((metric.lines.length - 1) * lineHeight) / 2);
     const tspans = metric.lines.map((line, index) => `<tspan x="${metric.x}" dy="${index === 0 ? 0 : lineHeight}">${esc(line)}</tspan>`).join('');
     return `<text x="${metric.x}" y="${startY}" font-size="14" font-weight="600" text-anchor="${metric.textAnchor}" fill="#28435c">${tspans}</text>`;
   }).join('');
   const ringLabels = rings.map((ring) => `<text x="${centerX + 12}" y="${centerY - ((radius * ring) / 100) + 5}" font-size="12" font-weight="600" fill="#688099">${ring}</text>`).join('');
+  const legend = (Array.isArray(series) ? series : []).length > 1
+    ? `<g transform="translate(116, 94)">${series.map((entry, index) => {
+      const color = entry.color || SPIDER_SERIES_COLORS[index % SPIDER_SERIES_COLORS.length];
+      const y = index * 24;
+      return `<rect x="0" y="${y}" width="14" height="14" rx="4" fill="${esc(color)}"></rect><text x="22" y="${y + 12}" font-size="13" font-weight="600" fill="#385064">${esc(entry.legend)}</text>`;
+    }).join('')}</g>`
+    : '';
   return `
     <svg viewBox="0 0 ${width} ${height}" class="place-radar-svg" role="img" aria-label="Spider chart for ${esc(placeName)}" preserveAspectRatio="xMidYMid meet">
       <rect x="0" y="0" width="${width}" height="${height}" fill="#fbfcfe"></rect>
       <text x="${centerX}" y="48" text-anchor="middle" font-size="28" font-weight="700" fill="#16324f">${esc(placeName)}</text>
-      <text x="${centerX}" y="78" text-anchor="middle" font-size="15" fill="#5f7388">${esc(formatDateTime(recordedAt))}</text>
+      <text x="${centerX}" y="78" text-anchor="middle" font-size="15" fill="#5f7388">${esc(subtitle)}</text>
       ${ringPolygons}
       ${axisLines}
       ${ringLabels}
-      <polygon points="${dataPolygon}" fill="rgba(47,125,115,0.22)" stroke="#2f7d73" stroke-width="3"></polygon>
-      ${dataDots}
+      ${polygons}
       ${labels}
+      ${legend}
     </svg>
   `;
+}
+
+function buildSpiderChartSvg(placeName, recordedAt, metricsJson) {
+  return buildSpiderChartSvgBase(placeName, formatDateTime(recordedAt), [{
+    metricsJson,
+    color: SPIDER_SERIES_COLORS[0],
+    legend: formatCompactDate(recordedAt),
+  }]);
+}
+
+function buildSpiderChartOverlaySvg(placeName, snapshots) {
+  const series = asArray(snapshots)
+    .slice()
+    .sort((left, right) => new Date(right.recorded_at || 0).getTime() - new Date(left.recorded_at || 0).getTime())
+    .map((snapshot, index) => ({
+      metricsJson: snapshot.metrics_json,
+      color: SPIDER_SERIES_COLORS[index % SPIDER_SERIES_COLORS.length],
+      legend: `${formatCompactDate(snapshot.recorded_at)}${snapshot.place_name ? ` | ${snapshot.place_name}` : ''}`,
+    }));
+  const subtitle = series.length > 1
+    ? `${series.length} spider chart snapshots overlaid`
+    : formatDateTime(snapshots?.[0]?.recorded_at || '');
+  return buildSpiderChartSvgBase(placeName, subtitle, series);
 }
 
 function getPlaceIdentityTokens(place) {
@@ -808,16 +844,25 @@ function groupPartnersByType(entities) {
   }, {});
 }
 
-function openSpiderChartModal(place, snapshot) {
-  if (!els.spiderModal || !els.spiderModalBody || !snapshot) return;
-  const titleName = snapshot.place_name || place.initiative_name;
-  els.spiderModalTitle.textContent = `${titleName} | ${formatCompactDate(snapshot.recorded_at)}`;
+function openSpiderChartModal(place, snapshotOrSnapshots) {
+  if (!els.spiderModal || !els.spiderModalBody || !snapshotOrSnapshots) return;
+  const snapshots = Array.isArray(snapshotOrSnapshots) ? snapshotOrSnapshots.filter(Boolean) : [snapshotOrSnapshots];
+  if (!snapshots.length) return;
+  const latest = snapshots[0];
+  const titleName = latest.place_name || place.initiative_name;
+  const isOverlay = snapshots.length > 1;
+  els.spiderModalTitle.textContent = isOverlay
+    ? `${titleName} | Combined Spider Charts`
+    : `${titleName} | ${formatCompactDate(latest.recorded_at)}`;
   els.spiderModalBody.innerHTML = `
-    <div class="place-modal-chart">${buildSpiderChartSvg(titleName, snapshot.recorded_at, snapshot.metrics_json)}</div>
+    <div class="place-modal-chart">${isOverlay ? buildSpiderChartOverlaySvg(titleName, snapshots) : buildSpiderChartSvg(titleName, latest.recorded_at, latest.metrics_json)}</div>
     <div class="place-modal-summary">
-      <p><strong>Recorded:</strong> ${esc(formatDateTime(snapshot.recorded_at))}</p>
-      <p><strong>Title:</strong> ${esc(snapshot.title || `${titleName} Spider Chart`)}</p>
-      <p>${esc(snapshot.notes || 'No notes provided.')}</p>
+      ${isOverlay
+        ? `<p><strong>Overlay:</strong> ${esc(String(snapshots.length))} spider chart snapshots are shown on the same radar map.</p>
+           <div class="place-spider-legend-list">${snapshots.map((snapshot, index) => `<div class="place-spider-legend-item"><span class="place-spider-legend-swatch" style="background:${esc(SPIDER_SERIES_COLORS[index % SPIDER_SERIES_COLORS.length])}"></span><span>${esc(formatDateTime(snapshot.recorded_at))}${snapshot.place_name ? ` | ${esc(snapshot.place_name)}` : ''}</span></div>`).join('')}</div>`
+        : `<p><strong>Recorded:</strong> ${esc(formatDateTime(latest.recorded_at))}</p>
+           <p><strong>Title:</strong> ${esc(latest.title || `${titleName} Spider Chart`)}</p>
+           <p>${esc(latest.notes || 'No notes provided.')}</p>`}
     </div>
   `;
   els.spiderModal.hidden = false;
@@ -1866,7 +1911,10 @@ function renderDetail(placeUid) {
       <article class="place-detail-card place-detail-card-compact">
         <h4>Spider Charts</h4>
         ${spiderSnapshots.length
-          ? `<div class="vendor-inline-list">${spiderSnapshots.map((snapshot, index) => `<button class="btn btn-small" type="button" data-open-place-spider="${esc(String(index))}">${esc(snapshot.place_name || place.initiative_name)} - ${esc(formatCompactDate(snapshot.recorded_at))}</button>`).join('')}</div>`
+          ? `<div class="vendor-inline-list">
+              ${spiderSnapshots.length > 1 ? `<button class="btn btn-small" type="button" data-open-place-spider-combined="true">View Combined Spider Chart</button>` : ''}
+              ${spiderSnapshots.map((snapshot, index) => `<button class="btn btn-small" type="button" data-open-place-spider="${esc(String(index))}">${esc(snapshot.place_name || place.initiative_name)} - ${esc(formatCompactDate(snapshot.recorded_at))}</button>`).join('')}
+            </div>`
           : '<p class="section-note">No approved spider charts are available for this Place yet.</p>'}
       </article>
     </section>
@@ -2345,6 +2393,14 @@ function bindEvents() {
   });
 
   els.detailContent.addEventListener('click', (event) => {
+    const combinedSpiderButton = event.target.closest('[data-open-place-spider-combined]');
+    if (combinedSpiderButton) {
+      const placeUid = placeState.selectedPlaceUid;
+      const place = getPlaceByUid(placeUid);
+      const snapshots = getPlaceSpiderSnapshots(placeUid);
+      if (place && snapshots.length) openSpiderChartModal(place, snapshots);
+      return;
+    }
     const spiderButton = event.target.closest('[data-open-place-spider]');
     if (spiderButton) {
       const placeUid = placeState.selectedPlaceUid;

@@ -269,11 +269,11 @@ function splitSpiderLabel(label, maxChars = 16, maxLines = 3) {
 function buildSpiderChartSvg(placeName, recordedAt, metricsJson) {
   const metrics = normalizePlaceMetricSet(metricsJson);
   const width = 980;
-  const height = 900;
+  const height = 760;
   const centerX = width / 2;
-  const centerY = 470;
-  const radius = 250;
-  const labelRadius = 356;
+  const centerY = 390;
+  const radius = 210;
+  const labelRadius = 300;
   const lineHeight = 18;
   const polygonPoints = metrics.map((metric, index) => {
     const angle = (-Math.PI / 2) + ((Math.PI * 2 * index) / metrics.length);
