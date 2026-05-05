@@ -30,8 +30,13 @@ const placeState = {
   roleBoxesVisible: false,
   calloutPlaceUid: '',
   isRebalancingCallouts: false,
+  detailHydrationInFlight: new Set(),
+  needPartnerCache: new Map(),
+  potentialPartnerCache: new Map(),
   aiNeedMatchCache: new Map(),
   aiNeedMatchInFlight: new Set(),
+  locationLookupMode: 'unknown',
+  partnerMatchCache: new Map(),
 };
 
 const INDIA_CENTER = { lat: 22.9734, lng: 78.6569 };
@@ -132,6 +137,7 @@ const els = {
   adminPanel: document.getElementById('admin-sync-panel'),
   adminStatus: document.getElementById('place-admin-status'),
   adminPassword: document.getElementById('place-admin-password'),
+  matchSyncStatus: document.getElementById('place-match-sync-status'),
   callouts: document.getElementById('place-role-callouts'),
   toggleRoleBoxes: document.getElementById('toggle-role-boxes'),
   spiderModal: document.getElementById('place-spider-modal'),
@@ -637,6 +643,44 @@ function getVillageNeedPartnerGroups(placeUid) {
 
 function getNeedToPotentialPartnerGroups(placeUid) {
   return getVillageNeedPartnerGroups(placeUid);
+}
+
+function getStoredPartnerMatchCache(placeUid) {
+  return placeState.partnerMatchCache.get(placeUid) || null;
+}
+
+function getCachedNeedPartnerGroups(placeUid) {
+  const cached = getStoredPartnerMatchCache(placeUid);
+  return Array.isArray(cached?.need_groups) ? cached.need_groups : [];
+}
+
+function getCachedPotentialPartnerGroups(placeUid) {
+  const cached = getStoredPartnerMatchCache(placeUid);
+  const groups = cached?.potential_partner_groups;
+  return groups && typeof groups === 'object' && !Array.isArray(groups) ? groups : {};
+}
+
+function hydratePlaceDetailCaches(placeUid) {
+  if (!placeUid) return;
+  const needGroups = getNeedToPotentialPartnerGroups(placeUid);
+  const potentialPartners = groupPartnersByType(getPotentialPartnersForPlace(placeUid, { limit: 180 }));
+  placeState.needPartnerCache.set(placeUid, needGroups);
+  placeState.potentialPartnerCache.set(placeUid, potentialPartners);
+}
+
+function schedulePlaceDetailHydration(placeUid) {
+  if (!placeUid || placeState.detailHydrationInFlight.has(placeUid)) return;
+  placeState.detailHydrationInFlight.add(placeUid);
+  window.setTimeout(async () => {
+    try {
+      hydratePlaceDetailCaches(placeUid);
+      await ensureAiNeedMatch(placeUid);
+      hydratePlaceDetailCaches(placeUid);
+      if (placeState.selectedPlaceUid === placeUid) renderDetail(placeUid);
+    } finally {
+      placeState.detailHydrationInFlight.delete(placeUid);
+    }
+  }, 0);
 }
 
 function normalizeGeographyText(value) {
@@ -1214,6 +1258,24 @@ function buildLocationEntry(kind, names) {
   };
 }
 
+function buildLocationEntryFromSupabase(row) {
+  return buildLocationEntry(row.location_kind || 'state', {
+    state_name: row.state_name || '',
+    district_name: row.district_name || '',
+    block_name: row.block_name || '',
+    gram_panchayat_name: row.gram_panchayat_name || '',
+    village_name: row.village_name || '',
+    location_name: row.village_name || row.gram_panchayat_name || row.block_name || row.district_name || row.state_name || '',
+    display_label: row.display_label || '',
+    lgd_entry_uid: row.entry_uid || null,
+    lgd_state_code: row.state_code || null,
+    lgd_district_code: row.district_code || null,
+    lgd_subdistrict_code: row.subdistrict_code || null,
+    lgd_local_body_code: row.local_body_code || null,
+    lgd_village_code: row.village_code || null,
+  });
+}
+
 function normalizeLocationBucketKey(value) {
   const cleaned = normalizeText(value).replace(/[^a-z0-9]/g, '');
   return cleaned[0] || '_';
@@ -1311,6 +1373,32 @@ async function ensureLocationBucket(bucketKey) {
   return entries;
 }
 
+function cacheLocationEntries(entries) {
+  placeState.flatLocationEntries = dedupeBy(
+    [...placeState.flatLocationEntries, ...(Array.isArray(entries) ? entries : [])],
+    (item) => normalizeText(item.lgd_entry_uid || `${item.location_kind}|${item.display_label}`),
+  );
+}
+
+async function useLocalLocationFallback() {
+  const manifest = await ensureLocationManifest();
+  if (!manifest?.bucket_files?.length) {
+    throw new Error('Official LGD place dataset could not be loaded from Supabase or local fallback.');
+  }
+  placeState.locationLookupMode = 'fallback';
+  return manifest;
+}
+
+async function probeSupabaseLocationSearch() {
+  const probeRows = await window.EcosystemStore.searchLgdGeography('a', 1);
+  if (probeRows.length) {
+    placeState.locationLookupMode = 'supabase';
+    cacheLocationEntries(probeRows.map(buildLocationEntryFromSupabase));
+    return true;
+  }
+  return false;
+}
+
 function addLocationFromSelection(item) {
   if (!item) return;
   const current = getEditorLocations();
@@ -1326,8 +1414,26 @@ function addLocationFromSelection(item) {
 async function getLocationSuggestionMatches(query) {
   const normalized = normalizeText(query);
   if (!normalized) return [];
-  await ensureLocationManifest();
-  const bucketEntries = await ensureLocationBucket(normalizeLocationBucketKey(normalized));
+  const bucketKey = normalizeLocationBucketKey(normalized);
+  let bucketEntries = [];
+  if (placeState.locationLookupMode !== 'fallback') {
+    try {
+      const remoteRows = await window.EcosystemStore.searchLgdGeography(query, 12);
+      bucketEntries = remoteRows.map(buildLocationEntryFromSupabase);
+      cacheLocationEntries(bucketEntries);
+      if (bucketEntries.length) {
+        placeState.locationLookupMode = 'supabase';
+      } else if (placeState.locationLookupMode === 'unknown') {
+        await useLocalLocationFallback();
+        bucketEntries = await ensureLocationBucket(bucketKey);
+      }
+    } catch {
+      await useLocalLocationFallback();
+      bucketEntries = await ensureLocationBucket(bucketKey);
+    }
+  } else {
+    bucketEntries = await ensureLocationBucket(bucketKey);
+  }
   const matches = [];
   const matchKeys = new Set();
   const pushMatch = (item) => {
@@ -1681,10 +1787,17 @@ function renderDetail(placeUid) {
   const documents = getPlaceDocuments(placeUid);
   const spiderSnapshots = getPlaceSpiderSnapshots(placeUid);
   const thematicNeeds = getPlaceTopThematicNeeds(placeUid);
-  const aiMatch = placeState.aiNeedMatchCache.get(placeUid);
-  const needPartnerGroups = getNeedToPotentialPartnerGroups(placeUid);
-  const potentialPartners = groupPartnersByType(getPotentialPartnersForPlace(placeUid, { limit: 180 }));
-  ensureAiNeedMatch(placeUid);
+  const cachedMatch = getStoredPartnerMatchCache(placeUid);
+  const aiMatch = cachedMatch
+    ? { provider: cachedMatch.ai_provider || 'none', groups: getCachedNeedPartnerGroups(placeUid) }
+    : placeState.aiNeedMatchCache.get(placeUid);
+  const needPartnerGroups = getCachedNeedPartnerGroups(placeUid).length
+    ? getCachedNeedPartnerGroups(placeUid)
+    : placeState.needPartnerCache.get(placeUid) || [];
+  const potentialPartners = Object.keys(getCachedPotentialPartnerGroups(placeUid)).length
+    ? getCachedPotentialPartnerGroups(placeUid)
+    : placeState.potentialPartnerCache.get(placeUid) || {};
+  const isHydrating = !cachedMatch && placeState.detailHydrationInFlight.has(placeUid);
 
   els.detailStatus.textContent = `${place.initiative_name} covers ${locations.length} location${locations.length === 1 ? '' : 's'} across ${states.length || 1} state context${states.length === 1 ? '' : 's'}.`;
   els.detailContent.innerHTML = `
@@ -1730,7 +1843,7 @@ function renderDetail(placeUid) {
           : aiMatch?.provider === 'rules'
             ? '<p class="section-note">Project-context semantic grouping is active for this place.</p>'
           : aiMatch?.provider === 'none'
-            ? '<p class="section-note">Initial deterministic grouping is shown for this place.</p>'
+            ? `<p class="section-note">${cachedMatch ? 'Precomputed matching is available for this place.' : 'Initial deterministic grouping is shown for this place.'}</p>`
             : '<p class="section-note">Contextual AI review is loading. Initial grouping is shown until that completes.</p>'}
         ${thematicNeeds.records.length
           ? `<div class="place-need-groups">${dedupeBy(thematicNeeds.records, (item) => normalizeText(`${item.place_name}|${item.recorded_at}`)).map((record) => `<div class="place-need-group"><strong>${esc(record.place_name || place.initiative_name)}</strong><p>${esc(asArray(record.thematic_needs).join(', '))}</p><p class="section-note">Updated: ${esc(formatDateTime(record.recorded_at))}</p></div>`).join('')}</div>`
@@ -1746,7 +1859,9 @@ function renderDetail(placeUid) {
         <h4>Potential Partners by Need</h4>
         ${needPartnerGroups.length
           ? `<div class="place-need-groups">${needPartnerGroups.map((group) => `<div class="place-need-group"><strong>${esc(group.sourceName)}</strong><div class="place-need-groups">${group.items.map((item) => `<div class="place-need-group"><strong>${esc(item.needLabel)}</strong><div class="place-inline-list">${item.entities.map((entity) => `<span class="innovation-chip innovation-chip-muted">${renderEntityNameLink(entity.entity_uid, entity.entity_name)} | ${esc(entity.entity_type_label || entity.entity_type_slug || 'Entity')}</span>`).join('')}</div></div>`).join('')}</div></div>`).join('')}</div>`
-          : '<p class="section-note">No geography-matched partners were found against the current thematic needs.</p>'}
+          : isHydrating
+            ? '<p class="section-note">Loading matched partners for this place...</p>'
+            : '<p class="section-note">No geography-matched partners were found against the current thematic needs.</p>'}
       </article>
       <article class="place-detail-card place-detail-card-compact">
         <h4>Spider Charts</h4>
@@ -1759,7 +1874,7 @@ function renderDetail(placeUid) {
       <article class="place-detail-row-header">
         <h4>Potential Partners By State</h4>
       </article>
-      ${Object.entries(potentialPartners).map(([group, entities]) => `<article class="place-detail-card place-detail-card-compact"><h4>${esc(group)}</h4><div class="place-inline-list">${entities.slice(0, 8).map((entity) => `<span class="innovation-chip innovation-chip-muted">${renderEntityNameLink(entity.entity_uid, entity.entity_name)}</span>`).join('') || '<span class="section-note">No entities listed.</span>'}</div></article>`).join('') || '<article class="place-detail-card place-detail-card-compact"><p class="section-note">No geography-matched potential partners were found for this Place.</p></article>'}
+      ${Object.entries(potentialPartners).map(([group, entities]) => `<article class="place-detail-card place-detail-card-compact"><h4>${esc(group)}</h4><div class="place-inline-list">${entities.slice(0, 8).map((entity) => `<span class="innovation-chip innovation-chip-muted">${renderEntityNameLink(entity.entity_uid, entity.entity_name)}</span>`).join('') || '<span class="section-note">No entities listed.</span>'}</div></article>`).join('') || `<article class="place-detail-card place-detail-card-compact"><p class="section-note">${isHydrating ? 'Loading geography-matched potential partners...' : 'No geography-matched potential partners were found for this Place.'}</p></article>`}
     </section>
   `;
 }
@@ -1874,6 +1989,7 @@ function selectPlace(placeUid, options = {}) {
   placeState.selectedPlaceUid = placeUid;
   if (options.resetCalloutLayout) clearAutoCalloutPositions(placeUid);
   renderDetail(placeUid);
+  if (!getStoredPartnerMatchCache(placeUid)) schedulePlaceDetailHydration(placeUid);
   fillEditor(placeUid);
   renderMap();
   renderRoleCallouts();
@@ -1935,14 +2051,51 @@ async function handleAdminLogout() {
   setStatus(els.adminStatus, 'Signed out.');
 }
 
+async function handleSyncPlacePartnerMatches(scope = 'selected') {
+  if (!placeState.adminEnabled) {
+    setStatus(els.matchSyncStatus, 'Sign in through Admin Sync to refresh partner mapping.', true);
+    return;
+  }
+  if (scope === 'selected' && !placeState.selectedPlaceUid) {
+    setStatus(els.matchSyncStatus, 'Select a place first, or use Sync All Places.', true);
+    return;
+  }
+  setStatus(
+    els.matchSyncStatus,
+    scope === 'all'
+      ? 'Refreshing partner mapping cache for all places...'
+      : 'Refreshing partner mapping cache for the selected place...'
+  );
+  try {
+    const response = await window.EcosystemStore.adminRequest('syncPlacePartnerMatches', {
+      token: placeState.adminToken || getStoredToken(),
+      placeUid: scope === 'selected' ? placeState.selectedPlaceUid : '',
+      scope,
+    });
+    const selectedPlaceUid = placeState.selectedPlaceUid;
+    await initializePageData();
+    if (selectedPlaceUid && getPlaceByUid(selectedPlaceUid)) selectPlace(selectedPlaceUid, { fit: false });
+    setStatus(
+      els.matchSyncStatus,
+      scope === 'all'
+        ? `Partner mapping cache refreshed for ${Number(response?.syncedCount || 0)} place${Number(response?.syncedCount || 0) === 1 ? '' : 's'}.`
+        : 'Partner mapping cache refreshed for the selected place.'
+    );
+  } catch (error) {
+    setStatus(els.matchSyncStatus, error.message || 'Partner mapping cache refresh failed.', true);
+  }
+}
+
 async function loadLocationDatasets() {
   try {
-    const manifest = await ensureLocationManifest();
-    if (!manifest?.bucket_files?.length) {
-      setStatus(els.saveStatus, 'Official LGD place dataset is missing bucket files for autocomplete.', true);
-    }
+    const remoteReady = await probeSupabaseLocationSearch();
+    if (!remoteReady) await useLocalLocationFallback();
   } catch (error) {
-    setStatus(els.saveStatus, error.message || 'Official LGD place dataset could not be loaded for autocomplete.', true);
+    try {
+      await useLocalLocationFallback();
+    } catch {
+      setStatus(els.saveStatus, error.message || 'Official LGD place dataset could not be loaded for autocomplete.', true);
+    }
   }
 }
 
@@ -2032,6 +2185,17 @@ async function initializePageData() {
   placeState.placeDocuments = Array.isArray(data.placeDocuments) ? data.placeDocuments : [];
   placeState.placeSpiderSnapshots = Array.isArray(data.placeSpiderSnapshots) ? data.placeSpiderSnapshots : [];
   placeState.placeThematicNeeds = Array.isArray(data.placeThematicNeeds) ? data.placeThematicNeeds : [];
+  placeState.partnerMatchCache = new Map(
+    (Array.isArray(data.placePartnerMatchCache) ? data.placePartnerMatchCache : [])
+      .filter((item) => item?.place_uid)
+      .map((item) => [item.place_uid, item])
+  );
+  placeState.needPartnerCache.clear();
+  placeState.potentialPartnerCache.clear();
+  placeState.aiNeedMatchCache.clear();
+  placeState.aiNeedMatchInFlight.clear();
+  placeState.detailHydrationInFlight.clear();
+  placeState.locationLookupMode = 'unknown';
   placeState.placeRoleTypes.sort((left, right) => Number(left.sort_order || 0) - Number(right.sort_order || 0));
   ensureRoleOptions();
   setStatus(els.mapStatus, `Loaded ${placeState.placeInitiatives.length} place initiative${placeState.placeInitiatives.length === 1 ? '' : 's'} across India.`);
@@ -2047,6 +2211,8 @@ function bindEvents() {
   });
   document.getElementById('place-admin-login-form').addEventListener('submit', handleAdminLogin);
   document.getElementById('place-admin-logout').addEventListener('click', handleAdminLogout);
+  document.getElementById('sync-selected-place-matches').addEventListener('click', () => handleSyncPlacePartnerMatches('selected'));
+  document.getElementById('sync-all-place-matches').addEventListener('click', () => handleSyncPlacePartnerMatches('all'));
   document.getElementById('add-partner-row').addEventListener('click', () => addPartnerRow({}, { expanded: true }));
   document.getElementById('new-place').addEventListener('click', () => {
     placeState.selectedPlaceUid = '';

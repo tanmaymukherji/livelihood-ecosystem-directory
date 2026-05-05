@@ -50,7 +50,7 @@ window.EcosystemStore = (() => {
   }
 
   async function loadPlaceInitiativesData() {
-    const [entityTypes, entities, placeInitiatives, placeLocations, placePartners, placeRoleTypes, placeDocuments, placeSpiderSnapshots, placeThematicNeeds] = await Promise.all([
+    const [entityTypes, entities, placeInitiatives, placeLocations, placePartners, placeRoleTypes, placeDocuments, placeSpiderSnapshots, placeThematicNeeds, placePartnerMatchCache] = await Promise.all([
       fetchAllRows(ENTITY_TYPES_TABLE(), 'sort_order'),
       fetchAllRows(PUBLIC_ENTITIES_VIEW(), 'entity_name'),
       fetchAllRows('place_initiatives_public', 'initiative_name'),
@@ -60,8 +60,34 @@ window.EcosystemStore = (() => {
       fetchAllRows('place_document_records_public', 'recorded_at'),
       fetchAllRows('place_spider_chart_snapshots_public', 'recorded_at'),
       fetchAllRows('place_thematic_need_records_public', 'recorded_at'),
+      fetchAllRows('place_partner_match_cache_public', 'refreshed_at'),
     ]);
-    return { entityTypes, entities, placeInitiatives, placeLocations, placePartners, placeRoleTypes, placeDocuments, placeSpiderSnapshots, placeThematicNeeds };
+    return { entityTypes, entities, placeInitiatives, placeLocations, placePartners, placeRoleTypes, placeDocuments, placeSpiderSnapshots, placeThematicNeeds, placePartnerMatchCache };
+  }
+
+  async function searchLgdGeography(query, limit = 12) {
+    const supabase = getClient();
+    const raw = String(query || '').trim();
+    if (!raw) return [];
+    const escaped = raw.replace(/[%,]/g, '').trim();
+    if (!escaped) return [];
+    const prefix = `${escaped}%`;
+    const contains = `%${escaped}%`;
+    const result = await supabase
+      .from('lgd_geography_directory_public')
+      .select('entry_uid, location_kind, lgd_code, state_code, district_code, subdistrict_code, local_body_code, village_code, state_name, district_name, block_name, gram_panchayat_name, village_name, display_label, search_text')
+      .or([
+        `village_name.ilike.${prefix}`,
+        `gram_panchayat_name.ilike.${prefix}`,
+        `block_name.ilike.${prefix}`,
+        `district_name.ilike.${prefix}`,
+        `state_name.ilike.${prefix}`,
+        `display_label.ilike.${contains}`,
+        `search_text.ilike.${contains}`,
+      ].join(','))
+      .limit(limit);
+    if (result.error) throw new Error(`LGD geography search failed: ${result.error.message}`);
+    return result.data || [];
   }
 
   async function adminRequest(action, payload = {}) {
@@ -84,5 +110,5 @@ window.EcosystemStore = (() => {
     return data;
   }
 
-  return { loadDirectory, loadPlaceInitiativesData, adminRequest };
+  return { loadDirectory, loadPlaceInitiativesData, searchLgdGeography, adminRequest };
 })();

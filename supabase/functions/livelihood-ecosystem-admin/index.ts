@@ -201,10 +201,199 @@ type MatchOutputGroup = {
   }>;
 };
 
+type MatchProvider = "none" | "rules" | "gemini" | "openai";
+
 function flattenTypeSpecificValues(value: unknown): string[] {
   if (Array.isArray(value)) return value.flatMap((item) => flattenTypeSpecificValues(item));
   if (value && typeof value === "object") return Object.values(value as Record<string, unknown>).flatMap((item) => flattenTypeSpecificValues(item));
   return value ? [String(value)] : [];
+}
+
+function normalizeGeographyTextForMatch(value: unknown) {
+  return normalizeText(String(value || "").replace(/[|;/]+/g, ", ").replace(/\s+/g, " ").trim());
+}
+
+function getLocationDisplayLabelForMatch(location: Record<string, unknown>) {
+  return requireString(location.display_label)
+    || requireString(location.location_name)
+    || [
+      requireString(location.village_name),
+      requireString(location.gram_panchayat_name),
+      requireString(location.block_name),
+      requireString(location.district_name),
+      requireString(location.state_name),
+    ].filter(Boolean).join(", ");
+}
+
+function getPlaceIdentityTokensForMatch(place: Record<string, unknown>) {
+  return [
+    normalizeText(place.place_uid),
+    place.slug,
+    place.initiative_name,
+  ].map((value) => normalizeText(value)).filter(Boolean);
+}
+
+function getPlaceLocationMatchTokensForMatch(locations: Record<string, unknown>[]) {
+  const tokens: string[] = [];
+  const push = (value: unknown) => {
+    const text = normalizeText(value);
+    if (!text) return;
+    tokens.push(text);
+  };
+  locations.forEach((item) => {
+    push(item.location_name);
+    push(item.display_label);
+    push(item.village_name);
+    push(item.block_name);
+    push(item.district_name);
+    push(item.state_name);
+  });
+  return Array.from(new Set(tokens.filter((item) => item.length > 2)));
+}
+
+function itemMatchesPlaceIdentityForMatch(place: Record<string, unknown>, values: string[] = []) {
+  const tokens = getPlaceIdentityTokensForMatch(place);
+  if (!tokens.length) return false;
+  const haystack = values.map((value) => normalizeText(value)).filter(Boolean).join(" | ");
+  return tokens.some((token) => haystack.includes(token));
+}
+
+function recordMatchesPlaceContextForMatch(
+  place: Record<string, unknown>,
+  locations: Record<string, unknown>[],
+  record: Record<string, unknown>,
+  extraValues: unknown[] = [],
+) {
+  const placeUid = requireString(place.place_uid);
+  const values = [
+    record?.place_uid,
+    record?.place_name,
+    record?.title,
+    record?.notes,
+    record?.description,
+    ...extraValues,
+  ].map((value) => normalizeText(value)).filter(Boolean);
+  if (!values.length) return false;
+  if (requireString(record?.place_uid) === placeUid) return true;
+  if (itemMatchesPlaceIdentityForMatch(place, values)) return true;
+  const locationTokens = getPlaceLocationMatchTokensForMatch(locations);
+  if (!locationTokens.length) return false;
+  const haystack = values.join(" | ");
+  return locationTokens.some((token) => haystack.includes(token));
+}
+
+function getEntityGeographyTokensForMatch(entity: Record<string, unknown>) {
+  const values: string[] = [];
+  const push = (value: unknown) => {
+    const text = requireString(value);
+    if (!text) return;
+    values.push(text);
+  };
+  push(entity.state);
+  push(entity.location_label);
+  toTextArray(entity.office_locations).forEach(push);
+  const typeSpecific = toJsonObject(entity.type_specific_data);
+  [
+    typeSpecific.geography_served,
+    typeSpecific.preferred_geography,
+    typeSpecific.service_locations,
+  ].flatMap((value) => flattenTypeSpecificValues(value)).forEach(push);
+  return Array.from(new Set(values.map((item) => item.trim()).filter(Boolean)));
+}
+
+function buildPlaceCoverageContextForMatch(locations: Record<string, unknown>[]) {
+  return {
+    states: new Set(locations.map((item) => normalizeGeographyTextForMatch(item.state_name)).filter(Boolean)),
+    districts: new Set(locations.map((item) => normalizeGeographyTextForMatch(item.district_name)).filter(Boolean)),
+    blocks: new Set(locations.map((item) => normalizeGeographyTextForMatch(item.block_name)).filter(Boolean)),
+    villages: new Set(locations.map((item) => normalizeGeographyTextForMatch(item.village_name)).filter(Boolean)),
+    labels: new Set(locations.map((item) => normalizeGeographyTextForMatch(getLocationDisplayLabelForMatch(item))).filter(Boolean)),
+  };
+}
+
+function geographyMatchesPlaceForMatch(entity: Record<string, unknown>, locations: Record<string, unknown>[]) {
+  const tokens = getEntityGeographyTokensForMatch(entity);
+  if (!tokens.length) return false;
+  const context = buildPlaceCoverageContextForMatch(locations);
+  return tokens.some((value) => {
+    const token = normalizeGeographyTextForMatch(value);
+    if (!token) return false;
+    if (/\b(india|pan india|pan-india|india wide|india-wide|nationwide|all india)\b/.test(token)) return true;
+    if (context.labels.has(token) || context.states.has(token) || context.districts.has(token) || context.blocks.has(token) || context.villages.has(token)) return true;
+    if ([...context.states].some((state) => token.includes(state))) return true;
+    if ([...context.districts].some((district) => token.includes(district))) return true;
+    if ([...context.blocks].some((block) => token.includes(block))) return true;
+    if ([...context.villages].some((village) => token.includes(village))) return true;
+    return false;
+  });
+}
+
+function getEntityThematicTokensForMatch(entity: Record<string, unknown>) {
+  return flattenTypeSpecificValues(entity.type_specific_data || {})
+    .concat(toTextArray(entity.tags))
+    .concat(toTextArray(entity.keywords))
+    .concat([requireString(entity.summary), requireString(entity.description)])
+    .map((value) => String(value || "").trim())
+    .filter(Boolean);
+}
+
+function toEntityMatchReference(entity: Record<string, unknown>) {
+  return {
+    entity_uid: requireString(entity.entity_uid),
+    entity_name: requireString(entity.entity_name),
+    entity_type_slug: requireString(entity.entity_type_slug),
+    entity_type_label: requireString(entity.entity_type_label) || requireString(entity.entity_type_slug) || "Entity",
+    summary: requireString(entity.summary),
+    description: requireString(entity.description),
+    location_label: requireString(entity.location_label),
+    state: requireString(entity.state),
+  };
+}
+
+function getRawNeedGroupsForMatch(records: Record<string, unknown>[]) {
+  const groups = new Map<string, Set<string>>();
+  records.forEach((record) => {
+    const sourceName = requireString(record.place_name) || requireString(record.place_uid) || "Place";
+    if (!groups.has(sourceName)) groups.set(sourceName, new Set<string>());
+    toTextArray(record.thematic_needs).forEach((need) => {
+      const text = requireString(need);
+      if (text) groups.get(sourceName)?.add(text);
+    });
+  });
+  return Array.from(groups.entries()).map(([sourceName, needSet]) => ({
+    sourceName,
+    needs: Array.from(needSet),
+  })).filter((group) => group.needs.length);
+}
+
+function buildCandidateEntityPoolForMatch(
+  entities: Record<string, unknown>[],
+  locations: Record<string, unknown>[],
+  partners: Record<string, unknown>[],
+  limit = 120,
+) {
+  const linkedEntityIds = new Set(partners.map((item) => requireString(item.entity_uid)).filter(Boolean));
+  const linkedEntityNames = new Set(partners.map((item) => normalizeText(item.partner_name)).filter(Boolean));
+  return entities
+    .filter((entity) => requireString(entity.entity_type_slug) !== "place")
+    .filter((entity) => geographyMatchesPlaceForMatch(entity, locations))
+    .filter((entity) => {
+      const entityUid = requireString(entity.entity_uid);
+      const entityName = normalizeText(entity.entity_name);
+      if (entityUid && linkedEntityIds.has(entityUid)) return false;
+      if (entityName && linkedEntityNames.has(entityName)) return false;
+      return true;
+    })
+    .slice(0, limit);
+}
+
+function groupPartnersByTypeForMatch(entities: Record<string, unknown>[]) {
+  return entities.reduce((acc, entity) => {
+    const key = requireString(entity.entity_type_label) || requireString(entity.entity_type_slug) || "Other";
+    if (!acc[key]) acc[key] = [];
+    acc[key].push(toEntityMatchReference(entity));
+    return acc;
+  }, {} as Record<string, Record<string, unknown>[]>);
 }
 
 function parseLooseTagList(value: unknown) {
@@ -1437,7 +1626,16 @@ async function handleCreatePlaceThematicNeedRecord(token: string, submission: Re
   };
   const { data, error } = await supabase.from("place_thematic_need_records").insert(payload).select("*").single();
   if (error) return errorResponse(`Place thematic need create failed: ${error.message}`, 500);
-  return jsonResponse({ ok: true, item: data });
+  let cacheSyncWarning = "";
+  try {
+    const placeUids = await findRelatedPlaceInitiativeUidsForRecord(data || payload);
+    for (const matchedPlaceUid of placeUids) {
+      await syncPlacePartnerMatchCache(matchedPlaceUid, { reason: "thematic_need_create", syncedBy: session.username });
+    }
+  } catch (syncError) {
+    cacheSyncWarning = syncError instanceof Error ? syncError.message : "Place partner match cache refresh failed.";
+  }
+  return jsonResponse({ ok: true, item: data, cache_sync_warning: cacheSyncWarning || null });
 }
 
 async function handleUpdatePlaceThematicNeedRecord(token: string, needUid: string, updates: Record<string, unknown>) {
@@ -1457,9 +1655,18 @@ async function handleUpdatePlaceThematicNeedRecord(token: string, needUid: strin
     admin_notes: `Updated by ${session.username} on ${new Date().toISOString()}`,
     updated_at: new Date().toISOString(),
   };
-  const { error } = await supabase.from("place_thematic_need_records").update(payload).eq("need_uid", needUid);
+  const { data: updatedRow, error } = await supabase.from("place_thematic_need_records").update(payload).eq("need_uid", needUid).select("*").single();
   if (error) return errorResponse(`Place thematic need update failed: ${error.message}`, 500);
-  return jsonResponse({ ok: true });
+  let cacheSyncWarning = "";
+  try {
+    const placeUids = await findRelatedPlaceInitiativeUidsForRecord(updatedRow || {});
+    for (const matchedPlaceUid of placeUids) {
+      await syncPlacePartnerMatchCache(matchedPlaceUid, { reason: "thematic_need_update", syncedBy: session.username });
+    }
+  } catch (syncError) {
+    cacheSyncWarning = syncError instanceof Error ? syncError.message : "Place partner match cache refresh failed.";
+  }
+  return jsonResponse({ ok: true, cache_sync_warning: cacheSyncWarning || null });
 }
 
 async function handleDeletePlaceThematicNeedRecord(token: string, needUid: string) {
@@ -1467,13 +1674,22 @@ async function handleDeletePlaceThematicNeedRecord(token: string, needUid: strin
   const session = await validateSession(token);
   if (!session) return errorResponse("Invalid admin session.", 401);
   if (!needUid) return errorResponse("Missing thematic need id.", 400);
-  const { error } = await supabase.from("place_thematic_need_records").update({
+  const { data: deletedRow, error } = await supabase.from("place_thematic_need_records").update({
     is_deleted: true,
     admin_notes: `Deleted by ${session.username} on ${new Date().toISOString()}`,
     updated_at: new Date().toISOString(),
-  }).eq("need_uid", needUid);
+  }).eq("need_uid", needUid).select("*").single();
   if (error) return errorResponse(`Place thematic need delete failed: ${error.message}`, 500);
-  return jsonResponse({ ok: true });
+  let cacheSyncWarning = "";
+  try {
+    const placeUids = await findRelatedPlaceInitiativeUidsForRecord(deletedRow || {});
+    for (const matchedPlaceUid of placeUids) {
+      await syncPlacePartnerMatchCache(matchedPlaceUid, { reason: "thematic_need_delete", syncedBy: session.username });
+    }
+  } catch (syncError) {
+    cacheSyncWarning = syncError instanceof Error ? syncError.message : "Place partner match cache refresh failed.";
+  }
+  return jsonResponse({ ok: true, cache_sync_warning: cacheSyncWarning || null });
 }
 
 async function approveLinkedPlaceSpiderSubmissions(
@@ -1913,7 +2129,14 @@ async function handleUpsertPlaceInitiative(token: string, placeInput: Record<str
   const { error: partnerError } = await supabase.from("place_initiative_partners").insert(partnerRows);
   if (partnerError) return errorResponse(`Place partner save failed: ${partnerError.message}`, 500);
 
-  return jsonResponse({ ok: true, place_uid: placeUid });
+  let cacheSyncWarning = "";
+  try {
+    await syncPlacePartnerMatchCache(placeUid, { reason: "place_upsert", syncedBy: session.username });
+  } catch (syncError) {
+    cacheSyncWarning = syncError instanceof Error ? syncError.message : "Place partner match cache refresh failed.";
+  }
+
+  return jsonResponse({ ok: true, place_uid: placeUid, cache_sync_warning: cacheSyncWarning || null });
 }
 
 async function handleDeletePlaceInitiative(token: string, placeUid: string) {
@@ -1927,6 +2150,7 @@ async function handleDeletePlaceInitiative(token: string, placeUid: string) {
     updated_at: new Date().toISOString(),
   }).eq("place_uid", placeUid);
   if (error) return errorResponse(`Place delete failed: ${error.message}`, 500);
+  await supabase.from("place_partner_match_cache").delete().eq("place_uid", placeUid);
   return jsonResponse({ ok: true });
 }
 
@@ -2144,6 +2368,197 @@ function semanticRuleBasedNeedMatching(context: MatchContext) {
   return groups;
 }
 
+function mapNeedMatchOutput(raw: Record<string, unknown> | null, candidateEntities: Array<Record<string, unknown>>) {
+  return toRecordArray(raw?.groups).map((group) => ({
+    sourceName: requireString(group.sourceName),
+    items: toRecordArray(group.items).map((item) => {
+      const entityRefs = toRecordArray(item.entities).map((entity) => requireString(entity.entity_uid)).filter(Boolean);
+      const entities = entityRefs
+        .map((uid) => candidateEntities.find((entity) => entity.entity_uid === uid))
+        .filter(Boolean)
+        .map((entity) => toEntityMatchReference(entity));
+      return {
+        needLabel: requireString(item.needLabel),
+        entities,
+      };
+    }).filter((item) => item.needLabel && item.entities.length),
+  })).filter((group) => group.sourceName && group.items.length);
+}
+
+async function computeNeedMatchGroups(context: MatchContext): Promise<{ groups: MatchOutputGroup[]; provider: MatchProvider }> {
+  const geminiResult = await runGeminiNeedMatching(context).catch(() => null);
+  const geminiGroups = mapNeedMatchOutput(geminiResult, context.candidate_entities);
+  if (geminiGroups.length) return { groups: geminiGroups, provider: "gemini" };
+
+  const openAiResult = await runOpenAiNeedMatching(context).catch(() => null);
+  const openAiGroups = mapNeedMatchOutput(openAiResult, context.candidate_entities);
+  if (openAiGroups.length) return { groups: openAiGroups, provider: "openai" };
+
+  const ruleGroups = semanticRuleBasedNeedMatching(context).map((group) => ({
+    sourceName: group.sourceName,
+    items: group.items.map((item) => ({
+      needLabel: item.needLabel,
+      entities: item.entities.map((entity) => toEntityMatchReference(entity)),
+    })),
+  }));
+  return {
+    groups: ruleGroups,
+    provider: ruleGroups.length ? "rules" : "none",
+  };
+}
+
+async function syncPlacePartnerMatchCache(
+  placeUid: string,
+  options: { reason?: string; syncedBy?: string; sharedEntities?: Record<string, unknown>[] } = {},
+) {
+  const supabase = getSupabaseAdmin();
+  const normalizedPlaceUid = requireString(placeUid);
+  if (!normalizedPlaceUid) {
+    return { ok: false, place_uid: "", error: "Missing place id." };
+  }
+
+  const [{ data: place, error: placeError }, { data: locations, error: locationError }, { data: partners, error: partnerError }, { data: allNeedRecords, error: needError }] = await Promise.all([
+    supabase.from("place_initiatives").select("place_uid, initiative_name, approval_status, is_deleted").eq("place_uid", normalizedPlaceUid).maybeSingle(),
+    supabase.from("place_initiative_locations").select("*").eq("place_uid", normalizedPlaceUid).order("sort_order"),
+    supabase.from("place_initiative_partners").select("*").eq("place_uid", normalizedPlaceUid).order("sort_order"),
+    supabase.from("place_thematic_need_records").select("*").eq("approval_status", "approved").eq("is_deleted", false).order("recorded_at", { ascending: false }),
+  ]);
+
+  if (placeError) throw new Error(`Place match context load failed: ${placeError.message}`);
+  if (locationError) throw new Error(`Place locations load failed: ${locationError.message}`);
+  if (partnerError) throw new Error(`Place partners load failed: ${partnerError.message}`);
+  if (needError) throw new Error(`Place thematic needs load failed: ${needError.message}`);
+
+  if (!place || place.is_deleted || place.approval_status !== "approved") {
+    await supabase.from("place_partner_match_cache").delete().eq("place_uid", normalizedPlaceUid);
+    return { ok: true, place_uid: normalizedPlaceUid, deleted: true };
+  }
+
+  const matchingNeedRecords = (allNeedRecords || []).filter((record) =>
+    recordMatchesPlaceContextForMatch(place, locations || [], record, toTextArray(record.thematic_needs))
+  );
+
+  const allEntities = options.sharedEntities || await fetchAllRows("ecosystem_directory_entities", "entity_name");
+  const candidateEntities = buildCandidateEntityPoolForMatch(allEntities, locations || [], partners || [], 120).map((entity) => ({
+    entity_uid: requireString(entity.entity_uid),
+    entity_name: requireString(entity.entity_name),
+    entity_type_slug: requireString(entity.entity_type_slug),
+    entity_type_label: requireString(entity.entity_type_label) || requireString(entity.entity_type_slug) || "Entity",
+    summary: requireString(entity.summary),
+    description: requireString(entity.description),
+    location_label: requireString(entity.location_label),
+    state: requireString(entity.state),
+    themes: getEntityThematicTokensForMatch(entity).slice(0, 30),
+    geography: getEntityGeographyTokensForMatch(entity).slice(0, 20),
+  }));
+  const rawNeedGroups = getRawNeedGroupsForMatch(matchingNeedRecords);
+  const matchContext: MatchContext = {
+    place_uid: normalizedPlaceUid,
+    initiative_name: requireString(place.initiative_name),
+    locations: (locations || []).map((item) => ({
+      display_label: getLocationDisplayLabelForMatch(item),
+      state_name: requireString(item.state_name) || null,
+      district_name: requireString(item.district_name) || null,
+      block_name: requireString(item.block_name) || null,
+      village_name: requireString(item.village_name) || null,
+    })),
+    need_groups: rawNeedGroups,
+    candidate_entities: candidateEntities,
+  };
+
+  const matchedNeedGroups = rawNeedGroups.length && candidateEntities.length
+    ? await computeNeedMatchGroups(matchContext)
+    : { groups: [], provider: "none" as MatchProvider };
+
+  const potentialPartnerGroups = groupPartnersByTypeForMatch(
+    buildCandidateEntityPoolForMatch(allEntities, locations || [], partners || [], 180)
+  );
+
+  const payload = {
+    place_uid: normalizedPlaceUid,
+    initiative_name: requireString(place.initiative_name),
+    ai_provider: matchedNeedGroups.provider,
+    need_groups: matchedNeedGroups.groups,
+    potential_partner_groups: potentialPartnerGroups,
+    candidate_entity_count: candidateEntities.length,
+    need_record_count: matchingNeedRecords.length,
+    last_sync_reason: requireString(options.reason) || "manual",
+    synced_by: requireString(options.syncedBy) || null,
+    refreshed_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+
+  const { error: upsertError } = await supabase.from("place_partner_match_cache").upsert(payload, { onConflict: "place_uid" });
+  if (upsertError) throw new Error(`Place partner match cache save failed: ${upsertError.message}`);
+  return {
+    ok: true,
+    place_uid: normalizedPlaceUid,
+    provider: matchedNeedGroups.provider,
+    candidate_entity_count: candidateEntities.length,
+    need_record_count: matchingNeedRecords.length,
+  };
+}
+
+async function findRelatedPlaceInitiativeUidsForRecord(record: Record<string, unknown>) {
+  const supabase = getSupabaseAdmin();
+  const [{ data: places, error: placeError }, { data: locations, error: locationError }] = await Promise.all([
+    supabase.from("place_initiatives").select("place_uid, slug, initiative_name").eq("approval_status", "approved").eq("is_deleted", false),
+    supabase.from("place_initiative_locations").select("*").order("sort_order"),
+  ]);
+  if (placeError) throw new Error(`Place list load failed: ${placeError.message}`);
+  if (locationError) throw new Error(`Place location list load failed: ${locationError.message}`);
+  const locationsByPlaceUid = (locations || []).reduce((acc, item) => {
+    const key = requireString(item.place_uid);
+    if (!key) return acc;
+    if (!acc.has(key)) acc.set(key, []);
+    acc.get(key).push(item);
+    return acc;
+  }, new Map());
+  return (places || [])
+    .filter((place) => recordMatchesPlaceContextForMatch(place, locationsByPlaceUid.get(requireString(place.place_uid)) || [], record, toTextArray(record.thematic_needs)))
+    .map((place) => requireString(place.place_uid))
+    .filter(Boolean);
+}
+
+async function handleSyncPlacePartnerMatches(token: string, placeUid: string, scopeInput: unknown) {
+  const supabase = getSupabaseAdmin();
+  const session = await validateSession(token);
+  if (!session) return errorResponse("Invalid admin session.", 401);
+  const scope = requireString(scopeInput) || (placeUid ? "selected" : "all");
+  const sharedEntities = await fetchAllRows("ecosystem_directory_entities", "entity_name");
+  let placeUids: string[] = [];
+
+  if (scope === "all") {
+    const { data, error } = await supabase
+      .from("place_initiatives")
+      .select("place_uid")
+      .eq("approval_status", "approved")
+      .eq("is_deleted", false)
+      .order("initiative_name");
+    if (error) return errorResponse(`Place sync list failed: ${error.message}`, 500);
+    placeUids = (data || []).map((item) => requireString(item.place_uid)).filter(Boolean);
+  } else {
+    const normalizedPlaceUid = requireString(placeUid);
+    if (!normalizedPlaceUid) return errorResponse("Select a place or choose sync all.", 400);
+    placeUids = [normalizedPlaceUid];
+  }
+
+  const results = [];
+  for (const uid of placeUids) {
+    results.push(await syncPlacePartnerMatchCache(uid, {
+      reason: scope === "all" ? "manual_sync_all" : "manual_sync_selected",
+      syncedBy: session.username,
+      sharedEntities,
+    }));
+  }
+  return jsonResponse({
+    ok: true,
+    scope,
+    syncedCount: results.filter((item) => item.ok && !item.deleted).length,
+    results,
+  });
+}
+
 async function handleMatchPlaceNeeds(contextInput: Record<string, unknown>) {
   const candidateEntities = toRecordArray(contextInput.candidate_entities).map((item) => ({
     entity_uid: requireString(item.entity_uid),
@@ -2172,32 +2587,8 @@ async function handleMatchPlaceNeeds(contextInput: Record<string, unknown>) {
   if (!context.place_uid || !needGroups.length || !candidateEntities.length) {
     return jsonResponse({ groups: [], provider: "none" });
   }
-
-  const mapOutput = (raw: Record<string, unknown> | null) => toRecordArray(raw?.groups).map((group) => ({
-    sourceName: requireString(group.sourceName),
-    items: toRecordArray(group.items).map((item) => {
-      const entityRefs = toRecordArray(item.entities).map((entity) => requireString(entity.entity_uid)).filter(Boolean);
-      const entities = entityRefs.map((uid) => candidateEntities.find((entity) => entity.entity_uid === uid)).filter(Boolean);
-      return {
-        needLabel: requireString(item.needLabel),
-        entities,
-      };
-    }).filter((item) => item.needLabel && item.entities.length),
-  })).filter((group) => group.sourceName && group.items.length);
-
-  const geminiResult = await runGeminiNeedMatching(context).catch(() => null);
-  const geminiGroups = mapOutput(geminiResult);
-  if (geminiGroups.length) return jsonResponse({ groups: geminiGroups, provider: "gemini" });
-
-  const openAiResult = await runOpenAiNeedMatching(context).catch(() => null);
-  const openAiGroups = mapOutput(openAiResult);
-  if (openAiGroups.length) return jsonResponse({ groups: openAiGroups, provider: "openai" });
-
-  const ruleGroups = semanticRuleBasedNeedMatching(context);
-  return jsonResponse({
-    groups: ruleGroups,
-    provider: ruleGroups.length ? "rules" : "none",
-  });
+  const result = await computeNeedMatchGroups(context);
+  return jsonResponse(result);
 }
 
 Deno.serve(async (request) => {
@@ -2283,6 +2674,8 @@ Deno.serve(async (request) => {
         return await handleUpdatePlaceThematicNeedRecord(token, body.needUid ? String(body.needUid) : "", updates);
       case "deletePlaceThematicNeedRecord":
         return await handleDeletePlaceThematicNeedRecord(token, body.needUid ? String(body.needUid) : "");
+      case "syncPlacePartnerMatches":
+        return await handleSyncPlacePartnerMatches(token, placeUid, body.scope);
       case "upsertPlaceInitiative":
         return await handleUpsertPlaceInitiative(token, place);
       case "deletePlaceInitiative":

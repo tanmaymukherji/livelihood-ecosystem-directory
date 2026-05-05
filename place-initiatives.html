@@ -6,8 +6,8 @@
   <link rel="icon" href="data:," />
   <title>Place Initiatives | Livelihood Ecosystem Directory</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="./config.js?v=20260505d"></script>
-  <link rel="stylesheet" href="./styles.css?v=20260505d" />
+  <script src="./config.js?v=20260505e"></script>
+  <link rel="stylesheet" href="./styles.css?v=20260505e" />
 </head>
 <body class="place-read-only">
   <div class="vendor-shell place-shell">
@@ -180,6 +180,17 @@
               </div>
               <p class="admin-status" id="place-admin-status"></p>
             </form>
+            <div class="admin-form">
+              <div class="form-group">
+                <label>Partner Mapping Cache</label>
+                <small>Refresh the precomputed need and provider mapping used by map pin detail views.</small>
+              </div>
+              <div class="btn-group">
+                <button class="btn btn-small" id="sync-selected-place-matches" type="button">Sync Selected Place</button>
+                <button class="btn btn-small" id="sync-all-place-matches" type="button">Sync All Places</button>
+              </div>
+              <p class="admin-status" id="place-match-sync-status"></p>
+            </div>
           </div>
         </div>
       </section>
@@ -197,8 +208,8 @@
     </main>
   </div>
 
-  <script src="./ecosystem-form-fields.js?v=20260505d"></script>
-  <script src="./ecosystem-store.js?v=20260505d"></script>
-  <script src="./place-initiatives.js?v=20260505d"></script>
+  <script src="./ecosystem-form-fields.js?v=20260505e"></script>
+  <script src="./ecosystem-store.js?v=20260505e"></script>
+  <script src="./place-initiatives.js?v=20260505e"></script>
 </body>
 </html>

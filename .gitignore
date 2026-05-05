@@ -1,3 +1,4 @@
 supabase/.temp/
 data/lgd-cache/
 data/lgd/seed.sql
+data/lgd/import-progress.json
