@@ -391,12 +391,12 @@ function splitSpiderLabel(label, maxChars = 16, maxLines = 3) {
 function buildSpiderChartSvgBase(placeName, subtitle, series) {
   const metrics = normalizePlaceMetricSet(series?.[0]?.metricsJson || {});
   const width = 980;
-  const height = 760;
+  const height = 820;
   const centerX = width / 2;
-  const centerY = 390;
-  const radius = 210;
-  const labelRadius = 300;
-  const lineHeight = 18;
+  const centerY = 430;
+  const radius = 190;
+  const labelRadius = 282;
+  const lineHeight = 16;
   const labelPoints = metrics.map((metric, index) => {
     const angle = (-Math.PI / 2) + ((Math.PI * 2 * index) / metrics.length);
     const lines = splitSpiderLabel(metric.label);
@@ -405,6 +405,7 @@ function buildSpiderChartSvgBase(placeName, subtitle, series) {
       x: centerX + Math.cos(angle) * labelRadius,
       y: centerY + Math.sin(angle) * labelRadius,
       lines,
+      scoreLabel: `${metric.score}/${metric.maxScore}`,
       textAnchor: Math.cos(angle) > 0.22 ? 'start' : Math.cos(angle) < -0.22 ? 'end' : 'middle',
     };
   });
@@ -436,13 +437,17 @@ function buildSpiderChartSvgBase(placeName, subtitle, series) {
     return `<polygon points="${dataPolygon}" fill="${esc(color)}22" stroke="${esc(color)}" stroke-width="3"></polygon>${dataDots}`;
   }).join('');
   const labels = labelPoints.map((metric) => {
-    const startY = metric.y - (((metric.lines.length - 1) * lineHeight) / 2);
-    const tspans = metric.lines.map((line, index) => `<tspan x="${metric.x}" dy="${index === 0 ? 0 : lineHeight}">${esc(line)}</tspan>`).join('');
-    return `<text x="${metric.x}" y="${startY}" font-size="14" font-weight="600" text-anchor="${metric.textAnchor}" fill="#28435c">${tspans}</text>`;
+    const totalLines = metric.lines.length + 1;
+    const startY = metric.y - (((totalLines - 1) * lineHeight) / 2);
+    const tspans = [
+      ...metric.lines.map((line, index) => `<tspan x="${metric.x}" dy="${index === 0 ? 0 : lineHeight}">${esc(line)}</tspan>`),
+      `<tspan x="${metric.x}" dy="${lineHeight}" font-size="12" font-weight="500" fill="#6b7f93">${esc(metric.scoreLabel)}</tspan>`,
+    ].join('');
+    return `<text x="${metric.x}" y="${startY}" font-size="13" font-weight="600" text-anchor="${metric.textAnchor}" fill="#28435c">${tspans}</text>`;
   }).join('');
   const ringLabels = rings.map((ring) => `<text x="${centerX + 12}" y="${centerY - ((radius * ring) / 100) + 5}" font-size="12" font-weight="600" fill="#688099">${ring}</text>`).join('');
   const legend = (Array.isArray(series) ? series : []).length > 1
-    ? `<g transform="translate(116, 94)">${series.map((entry, index) => {
+    ? `<g transform="translate(116, 112)">${series.map((entry, index) => {
       const color = entry.color || SPIDER_SERIES_COLORS[index % SPIDER_SERIES_COLORS.length];
       const y = index * 24;
       return `<rect x="0" y="${y}" width="14" height="14" rx="4" fill="${esc(color)}"></rect><text x="22" y="${y + 12}" font-size="13" font-weight="600" fill="#385064">${esc(entry.legend)}</text>`;
@@ -451,8 +456,8 @@ function buildSpiderChartSvgBase(placeName, subtitle, series) {
   return `
     <svg viewBox="0 0 ${width} ${height}" class="place-radar-svg" role="img" aria-label="Spider chart for ${esc(placeName)}" preserveAspectRatio="xMidYMid meet">
       <rect x="0" y="0" width="${width}" height="${height}" fill="#fbfcfe"></rect>
-      <text x="${centerX}" y="48" text-anchor="middle" font-size="28" font-weight="700" fill="#16324f">${esc(placeName)}</text>
-      <text x="${centerX}" y="78" text-anchor="middle" font-size="15" fill="#5f7388">${esc(subtitle)}</text>
+      <text x="${centerX}" y="60" text-anchor="middle" font-size="28" font-weight="700" fill="#16324f">${esc(placeName)}</text>
+      <text x="${centerX}" y="92" text-anchor="middle" font-size="15" fill="#5f7388">${esc(subtitle)}</text>
       ${ringPolygons}
       ${axisLines}
       ${ringLabels}
@@ -569,6 +574,19 @@ function getPlaceSpiderSnapshots(placeUid) {
       .sort((left, right) => new Date(right.recorded_at || 0).getTime() - new Date(left.recorded_at || 0).getTime()),
     (item) => normalizeText([item.place_uid, item.title, item.recorded_at].join('|'))
   );
+}
+
+function groupPlaceSpiderSnapshots(placeUid) {
+  const place = getPlaceByUid(placeUid);
+  const groups = new Map();
+  getPlaceSpiderSnapshots(placeUid).forEach((snapshot) => {
+    const label = String(snapshot.place_name || place?.initiative_name || 'Place').trim();
+    const key = normalizeText(label);
+    if (!key) return;
+    if (!groups.has(key)) groups.set(key, { label, snapshots: [] });
+    groups.get(key).snapshots.push(snapshot);
+  });
+  return Array.from(groups.values());
 }
 
 function getPlaceDocuments(placeUid) {
@@ -1831,6 +1849,7 @@ function renderDetail(placeUid) {
   const states = getPlaceStates(locations);
   const documents = getPlaceDocuments(placeUid);
   const spiderSnapshots = getPlaceSpiderSnapshots(placeUid);
+  const spiderSnapshotGroups = groupPlaceSpiderSnapshots(placeUid);
   const thematicNeeds = getPlaceTopThematicNeeds(placeUid);
   const cachedMatch = getStoredPartnerMatchCache(placeUid);
   const aiMatch = cachedMatch
@@ -1912,7 +1931,7 @@ function renderDetail(placeUid) {
         <h4>Spider Charts</h4>
         ${spiderSnapshots.length
           ? `<div class="vendor-inline-list">
-              ${spiderSnapshots.length > 1 ? `<button class="btn btn-small" type="button" data-open-place-spider-combined="true">View Combined Spider Chart</button>` : ''}
+              ${spiderSnapshotGroups.filter((group) => group.snapshots.length > 1).map((group) => `<button class="btn btn-small" type="button" data-open-place-spider-combined="${esc(normalizeText(group.label))}">Combined | ${esc(group.label)}</button>`).join('')}
               ${spiderSnapshots.map((snapshot, index) => `<button class="btn btn-small" type="button" data-open-place-spider="${esc(String(index))}">${esc(snapshot.place_name || place.initiative_name)} - ${esc(formatCompactDate(snapshot.recorded_at))}</button>`).join('')}
             </div>`
           : '<p class="section-note">No approved spider charts are available for this Place yet.</p>'}
@@ -2397,8 +2416,9 @@ function bindEvents() {
     if (combinedSpiderButton) {
       const placeUid = placeState.selectedPlaceUid;
       const place = getPlaceByUid(placeUid);
-      const snapshots = getPlaceSpiderSnapshots(placeUid);
-      if (place && snapshots.length) openSpiderChartModal(place, snapshots);
+      const groupKey = normalizeText(combinedSpiderButton.dataset.openPlaceSpiderCombined || '');
+      const group = groupPlaceSpiderSnapshots(placeUid).find((item) => normalizeText(item.label) === groupKey);
+      if (place && group?.snapshots?.length) openSpiderChartModal(place, group.snapshots);
       return;
     }
     const spiderButton = event.target.closest('[data-open-place-spider]');
