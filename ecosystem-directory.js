@@ -599,9 +599,11 @@ async function renderMapMarkers(entities) {
     if (point) points.push({ entity, point });
   }
   if (!points.length) {
-    mapListEl.innerHTML = entities.length
-      ? '<div class="vendor-map-status">Matching entities were found, but no usable coordinates are available yet.</div>'
-      : '<div class="vendor-map-status">Run a search to see matching entities on the map.</div>';
+    if (mapListEl) {
+      mapListEl.innerHTML = entities.length
+        ? '<div class="vendor-map-status">Matching entities were found, but no usable coordinates are available yet.</div>'
+        : '<div class="vendor-map-status">Run a search to see matching entities on the map.</div>';
+    }
     directoryState.map?.setCenter?.(INDIA_CENTER);
     directoryState.map?.setZoom?.(4.8);
     return;
