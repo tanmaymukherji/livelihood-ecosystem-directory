@@ -19,7 +19,8 @@ const placeState = {
   mapPopup: null,
   mapFeatures: null,
   roleDragState: null,
-  locationHierarchy: null,
+  locationManifest: null,
+  locationBuckets: new Map(),
   flatLocationEntries: [],
   pendingLocationSuggestion: null,
   pendingLeadSuggestion: null,
@@ -58,8 +59,8 @@ const PLACE_SPIDER_METRICS = [
 ];
 const SOTH_STAGES = ['Initiate', 'Engage', 'Action', 'Auto Pilot'];
 const GRAMEEE_STAGES = ['Triggering', 'Incubating', 'Sustaining'];
-const LOCATION_DATA_URL = 'https://raw.githubusercontent.com/pranshumaheshwari/indian-cities-and-villages/master/data.json';
-const STATE_DISTRICT_URL = 'https://raw.githubusercontent.com/aharnish-infotech/india-state-district-json/main/India-State-District.json';
+const LGD_MANIFEST_URL = './data/lgd/manifest.json';
+const LGD_BUCKET_BASE_URL = './data/lgd/buckets';
 const INDIA_STATE_CENTERS = {
   'andaman and nicobar islands': { lat: 11.7401, lng: 92.6586 },
   'andhra pradesh': { lat: 15.9129, lng: 79.74 },
@@ -807,13 +808,14 @@ function getPlacePartners(placeUid) {
 function guessLocationKind(item) {
   if (item.location_kind) return item.location_kind;
   if (item.village_name) return 'village';
+  if (item.gram_panchayat_name) return 'panchayat';
   if (item.block_name) return 'block';
   if (item.district_name) return 'district';
   return 'state';
 }
 
 function locationDisplayLabel(item) {
-  return item.display_label || item.location_name || [item.village_name, item.block_name, item.district_name, item.state_name].filter(Boolean).join(', ');
+  return item.display_label || item.location_name || [item.village_name, item.gram_panchayat_name, item.block_name, item.district_name, item.state_name].filter(Boolean).join(', ');
 }
 
 function getPlaceStates(locations) {
@@ -825,6 +827,7 @@ function inferLocationHierarchyMatch(item) {
     item.display_label,
     item.location_name,
     item.village_name,
+    item.gram_panchayat_name,
     item.block_name,
     item.district_name,
   ].map((value) => String(value || '').trim()).filter(Boolean);
@@ -835,6 +838,7 @@ function inferLocationHierarchyMatch(item) {
       entry.display_label,
       entry.location_name,
       entry.village_name,
+      entry.gram_panchayat_name,
       entry.block_name,
       entry.district_name,
       entry.state_name,
@@ -845,11 +849,13 @@ function inferLocationHierarchyMatch(item) {
   const stateNames = Array.from(new Set(matches.map((entry) => entry.state_name).filter(Boolean)));
   const districtNames = Array.from(new Set(matches.map((entry) => entry.district_name).filter(Boolean)));
   const blockNames = Array.from(new Set(matches.map((entry) => entry.block_name).filter(Boolean)));
+  const panchayatNames = Array.from(new Set(matches.map((entry) => entry.gram_panchayat_name).filter(Boolean)));
   const villageNames = Array.from(new Set(matches.map((entry) => entry.village_name).filter(Boolean)));
   return {
     state_name: stateNames.length === 1 ? stateNames[0] : null,
     district_name: districtNames.length === 1 ? districtNames[0] : null,
     block_name: blockNames.length === 1 ? blockNames[0] : null,
+    gram_panchayat_name: panchayatNames.length === 1 ? panchayatNames[0] : null,
     village_name: villageNames.length === 1 ? villageNames[0] : null,
   };
 }
@@ -1186,18 +1192,123 @@ function buildLocationEntry(kind, names) {
   const stateName = names.state_name || names.state || '';
   const districtName = names.district_name || names.district || '';
   const blockName = names.block_name || names.block || '';
+  const gramPanchayatName = names.gram_panchayat_name || names.panchayat || '';
   const villageName = names.village_name || names.village || '';
   return {
     location_kind: kind,
-    location_name: names.location_name || villageName || blockName || districtName || stateName,
+    location_name: names.location_name || villageName || gramPanchayatName || blockName || districtName || stateName,
     state_name: stateName || null,
     district_name: districtName || null,
     block_name: blockName || null,
+    gram_panchayat_name: gramPanchayatName || null,
     village_name: villageName || null,
-    display_label: names.display_label || [villageName, blockName, districtName, stateName].filter(Boolean).join(', ') || stateName,
+    lgd_entry_uid: names.lgd_entry_uid || null,
+    lgd_state_code: names.lgd_state_code || null,
+    lgd_district_code: names.lgd_district_code || null,
+    lgd_subdistrict_code: names.lgd_subdistrict_code || null,
+    lgd_local_body_code: names.lgd_local_body_code || null,
+    lgd_village_code: names.lgd_village_code || null,
+    display_label: names.display_label || [villageName, gramPanchayatName, blockName, districtName, stateName].filter(Boolean).join(', ') || stateName,
     latitude: names.latitude ?? null,
     longitude: names.longitude ?? null,
   };
+}
+
+function normalizeLocationBucketKey(value) {
+  const cleaned = normalizeText(value).replace(/[^a-z0-9]/g, '');
+  return cleaned[0] || '_';
+}
+
+function buildLocationEntryFromLgdRow(row) {
+  const kind = row?.[0] || 'state';
+  if (kind === 'state') {
+    return buildLocationEntry('state', {
+      state_name: row[1],
+      location_name: row[1],
+      display_label: row[2] || row[1],
+      lgd_entry_uid: `state-${row[3] || slugify(row[1])}`,
+      lgd_state_code: row[3] || null,
+    });
+  }
+  if (kind === 'district') {
+    return buildLocationEntry('district', {
+      district_name: row[1],
+      state_name: row[2],
+      location_name: row[1],
+      display_label: [row[1], row[2]].filter(Boolean).join(', '),
+      lgd_entry_uid: `district-${row[4] || slugify(`${row[1]}-${row[2]}`)}`,
+      lgd_state_code: row[3] || null,
+      lgd_district_code: row[4] || null,
+    });
+  }
+  if (kind === 'block') {
+    return buildLocationEntry('block', {
+      block_name: row[1],
+      district_name: row[2],
+      state_name: row[3],
+      location_name: row[1],
+      display_label: [row[1], row[2], row[3]].filter(Boolean).join(', '),
+      lgd_entry_uid: `block-${row[6] || slugify(`${row[1]}-${row[2]}-${row[3]}`)}`,
+      lgd_state_code: row[4] || null,
+      lgd_district_code: row[5] || null,
+      lgd_subdistrict_code: row[6] || null,
+    });
+  }
+  if (kind === 'panchayat') {
+    return buildLocationEntry('panchayat', {
+      gram_panchayat_name: row[1],
+      block_name: row[2],
+      district_name: row[3],
+      state_name: row[4],
+      location_name: row[1],
+      display_label: [row[1], row[2], row[3], row[4]].filter(Boolean).join(', '),
+      lgd_entry_uid: `panchayat-${row[8] || slugify(`${row[1]}-${row[2]}-${row[3]}-${row[4]}`)}`,
+      lgd_state_code: row[5] || null,
+      lgd_district_code: row[6] || null,
+      lgd_subdistrict_code: row[7] || null,
+      lgd_local_body_code: row[8] || null,
+    });
+  }
+  return buildLocationEntry('village', {
+    village_name: row[1],
+    gram_panchayat_name: row[2],
+    block_name: row[3],
+    district_name: row[4],
+    state_name: row[5],
+    location_name: row[1],
+    display_label: [row[1], row[2], row[3], row[4], row[5]].filter(Boolean).join(', '),
+    lgd_entry_uid: `village-${row[10] || slugify(`${row[1]}-${row[4]}-${row[5]}`)}`,
+    lgd_state_code: row[6] || null,
+    lgd_district_code: row[7] || null,
+    lgd_subdistrict_code: row[8] || null,
+    lgd_local_body_code: row[9] || null,
+    lgd_village_code: row[10] || null,
+  });
+}
+
+async function ensureLocationManifest() {
+  if (placeState.locationManifest) return placeState.locationManifest;
+  const response = await fetch(LGD_MANIFEST_URL, { cache: 'no-store' });
+  if (!response.ok) throw new Error(`LGD manifest could not be loaded (${response.status}).`);
+  placeState.locationManifest = await response.json();
+  return placeState.locationManifest;
+}
+
+async function ensureLocationBucket(bucketKey) {
+  if (placeState.locationBuckets.has(bucketKey)) return placeState.locationBuckets.get(bucketKey);
+  const response = await fetch(`${LGD_BUCKET_BASE_URL}/${bucketKey}.json`, { cache: 'no-store' });
+  if (!response.ok) {
+    placeState.locationBuckets.set(bucketKey, []);
+    return [];
+  }
+  const json = await response.json();
+  const entries = (Array.isArray(json) ? json : []).map(buildLocationEntryFromLgdRow);
+  placeState.locationBuckets.set(bucketKey, entries);
+  placeState.flatLocationEntries = dedupeBy(
+    [...placeState.flatLocationEntries, ...entries],
+    (item) => normalizeText(item.lgd_entry_uid || `${item.location_kind}|${item.display_label}`),
+  );
+  return entries;
 }
 
 function addLocationFromSelection(item) {
@@ -1212,55 +1323,28 @@ function addLocationFromSelection(item) {
   placeState.pendingLocationSelectionKey = '';
 }
 
-function getLocationSuggestionMatches(query) {
+async function getLocationSuggestionMatches(query) {
   const normalized = normalizeText(query);
   if (!normalized) return [];
+  await ensureLocationManifest();
+  const bucketEntries = await ensureLocationBucket(normalizeLocationBucketKey(normalized));
   const matches = [];
+  const matchKeys = new Set();
   const pushMatch = (item) => {
-    const key = normalizeText(`${item.location_kind}|${item.display_label}`);
-    if (!key || matches.some((entry) => normalizeText(`${entry.location_kind}|${entry.display_label}`) === key)) return;
+    const key = normalizeText(item.lgd_entry_uid || `${item.location_kind}|${item.display_label}`);
+    if (!key || matchKeys.has(key)) return;
+    matchKeys.add(key);
     matches.push(item);
   };
 
-  placeState.flatLocationEntries
-    .filter((item) => normalizeText(item.display_label).includes(normalized))
+  bucketEntries
+    .filter((item) => {
+      const name = normalizeText(item.location_name);
+      const label = normalizeText(item.display_label);
+      return name.startsWith(normalized) || label.includes(normalized);
+    })
     .slice(0, 12)
     .forEach(pushMatch);
-
-  if (matches.length < 12 && placeState.locationHierarchy && typeof placeState.locationHierarchy === 'object') {
-    for (const [stateName, districts] of Object.entries(placeState.locationHierarchy)) {
-      if (matches.length >= 12) break;
-      for (const [districtName, blocks] of Object.entries(districts || {})) {
-        if (matches.length >= 12) break;
-        for (const [blockName, villages] of Object.entries(blocks || {})) {
-          if (normalizeText(blockName).includes(normalized)) {
-            pushMatch(buildLocationEntry('block', {
-              state_name: stateName,
-              district_name: districtName,
-              block_name: blockName,
-              location_name: blockName,
-              display_label: [blockName, districtName, stateName].filter(Boolean).join(', '),
-            }));
-          }
-          const villageNames = Array.isArray(villages) ? villages : Object.keys(villages || {});
-          for (const villageName of villageNames) {
-            if (matches.length >= 12) break;
-            if (!normalizeText(villageName).includes(normalized)) continue;
-            pushMatch(buildLocationEntry('village', {
-              state_name: stateName,
-              district_name: districtName,
-              block_name: blockName,
-              village_name: villageName,
-              location_name: villageName,
-              display_label: [villageName, blockName, districtName, stateName].filter(Boolean).join(', '),
-            }));
-          }
-          if (matches.length >= 12) break;
-        }
-      }
-    }
-  }
-
   return matches.slice(0, 12);
 }
 
@@ -1852,80 +1936,13 @@ async function handleAdminLogout() {
 }
 
 async function loadLocationDatasets() {
-  const [stateDistrictResponse, hierarchyResponse] = await Promise.allSettled([
-    fetch(STATE_DISTRICT_URL),
-    fetch(LOCATION_DATA_URL),
-  ]);
-  let flat = [];
-  if (stateDistrictResponse.status === 'fulfilled' && stateDistrictResponse.value.ok) {
-    const json = await stateDistrictResponse.value.json();
-    (Array.isArray(json) ? json : []).forEach((item) => {
-      const stateName = item.state || item.name || item.State || item.StateName || '';
-      if (stateName) {
-        flat.push(buildLocationEntry('state', { state_name: stateName, location_name: stateName, display_label: stateName }));
-      }
-      const districtName = item.district || item.District || item['DistrictName(InEnglish)'] || '';
-      if (districtName) {
-        flat.push(buildLocationEntry('district', {
-          state_name: stateName,
-          district_name: districtName,
-          location_name: districtName,
-          display_label: [districtName, stateName].filter(Boolean).join(', '),
-        }));
-      }
-    });
-  }
-  if (hierarchyResponse.status === 'fulfilled' && hierarchyResponse.value.ok) {
-    const hierarchyJson = await hierarchyResponse.value.json();
-    const normalizedHierarchy = {};
-    (Array.isArray(hierarchyJson) ? hierarchyJson : []).forEach((stateEntry) => {
-      const stateName = String(stateEntry.state || stateEntry.StateName || '').trim();
-      if (!stateName) return;
-      if (!normalizedHierarchy[stateName]) normalizedHierarchy[stateName] = {};
-      flat.push(buildLocationEntry('state', { state_name: stateName, location_name: stateName, display_label: stateName }));
-      const districts = Array.isArray(stateEntry.districts) ? stateEntry.districts : [];
-      districts.forEach((districtEntry) => {
-        const districtName = String(districtEntry.district || districtEntry.DistrictName || '').trim();
-        if (!districtName) return;
-        if (!normalizedHierarchy[stateName][districtName]) normalizedHierarchy[stateName][districtName] = {};
-        flat.push(buildLocationEntry('district', {
-          state_name: stateName,
-          district_name: districtName,
-          location_name: districtName,
-          display_label: [districtName, stateName].filter(Boolean).join(', '),
-        }));
-        const blocks = Array.isArray(districtEntry.subDistricts) ? districtEntry.subDistricts : [];
-        blocks.forEach((blockEntry) => {
-          const blockName = String(blockEntry.subDistrict || blockEntry.block || '').trim();
-          if (!blockName) return;
-          if (!normalizedHierarchy[stateName][districtName][blockName]) normalizedHierarchy[stateName][districtName][blockName] = [];
-          flat.push(buildLocationEntry('block', {
-            state_name: stateName,
-            district_name: districtName,
-            block_name: blockName,
-            location_name: blockName,
-            display_label: [blockName, districtName, stateName].filter(Boolean).join(', '),
-          }));
-          const villageNames = Array.isArray(blockEntry.villages) ? blockEntry.villages : [];
-          normalizedHierarchy[stateName][districtName][blockName] = villageNames.slice();
-          villageNames.forEach((villageName) => {
-            flat.push(buildLocationEntry('village', {
-              state_name: stateName,
-              district_name: districtName,
-              block_name: blockName,
-              village_name: villageName,
-              location_name: villageName,
-              display_label: [villageName, blockName, districtName, stateName].filter(Boolean).join(', '),
-            }));
-          });
-        });
-      });
-    });
-    placeState.locationHierarchy = normalizedHierarchy;
-  }
-  placeState.flatLocationEntries = dedupeBy(flat, (item) => normalizeText(`${item.location_kind}|${item.display_label}`));
-  if (!placeState.flatLocationEntries.length) {
-    setStatus(els.saveStatus, 'Standard India place-name dataset could not be loaded for autocomplete.', true);
+  try {
+    const manifest = await ensureLocationManifest();
+    if (!manifest?.bucket_files?.length) {
+      setStatus(els.saveStatus, 'Official LGD place dataset is missing bucket files for autocomplete.', true);
+    }
+  } catch (error) {
+    setStatus(els.saveStatus, error.message || 'Official LGD place dataset could not be loaded for autocomplete.', true);
   }
 }
 
@@ -2067,8 +2084,10 @@ function bindEvents() {
     els.leadRoleCustom.addEventListener(eventName, updateLeadCardSummary);
   });
 
-  els.locationSearch.addEventListener('input', () => {
-    const matches = getLocationSuggestionMatches(els.locationSearch.value);
+  els.locationSearch.addEventListener('input', async () => {
+    const query = els.locationSearch.value;
+    const matches = await getLocationSuggestionMatches(query);
+    if (query !== els.locationSearch.value) return;
     placeState.pendingLocationSuggestion = matches;
     placeState.pendingLocationSelectionKey = matches.length === 1 ? normalizeText(`${matches[0].location_kind}|${matches[0].display_label}`) : '';
     renderLocationSuggestions(matches);

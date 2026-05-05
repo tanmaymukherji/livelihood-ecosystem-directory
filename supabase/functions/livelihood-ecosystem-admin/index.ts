@@ -461,6 +461,7 @@ async function geocodeEntityFallback(input: Record<string, unknown>) {
 function buildPlaceLocationQuery(location: Record<string, unknown>) {
   return [
     requireString(location.village_name),
+    requireString(location.gram_panchayat_name),
     requireString(location.block_name),
     requireString(location.district_name),
     requireString(location.state_name),
@@ -471,6 +472,7 @@ function buildPlaceLocationQuery(location: Record<string, unknown>) {
 function buildPlaceLocationHints(location: Record<string, unknown>) {
   return dedupeLocations([
     requireString(location.village_name),
+    requireString(location.gram_panchayat_name),
     requireString(location.block_name),
     requireString(location.district_name),
     requireString(location.state_name),
@@ -1770,6 +1772,7 @@ function buildPlaceSearchText(
       requireString(item.state_name),
       requireString(item.district_name),
       requireString(item.block_name),
+      requireString(item.gram_panchayat_name),
       requireString(item.village_name),
     ]).join(" "),
     requireString(lead.name),
@@ -1810,17 +1813,25 @@ async function handleUpsertPlaceInitiative(token: string, placeInput: Record<str
     const stateName = requireString(location.state_name);
     const districtName = requireString(location.district_name);
     const blockName = requireString(location.block_name);
+    const gramPanchayatName = requireString(location.gram_panchayat_name);
     const villageName = requireString(location.village_name);
-    const locationName = requireString(location.location_name) || villageName || blockName || districtName || stateName;
-    const displayLabel = requireString(location.display_label) || [villageName, blockName, districtName, stateName].filter(Boolean).join(", ") || locationName;
-    const locationKind = requireString(location.location_kind) || (villageName ? "village" : blockName ? "block" : districtName ? "district" : "state");
+    const locationName = requireString(location.location_name) || villageName || gramPanchayatName || blockName || districtName || stateName;
+    const displayLabel = requireString(location.display_label) || [villageName, gramPanchayatName, blockName, districtName, stateName].filter(Boolean).join(", ") || locationName;
+    const locationKind = requireString(location.location_kind) || (villageName ? "village" : gramPanchayatName ? "panchayat" : blockName ? "block" : districtName ? "district" : "state");
     return {
       location_kind: locationKind,
       location_name: locationName,
       display_label: displayLabel,
+      lgd_entry_uid: requireString(location.lgd_entry_uid) || null,
+      lgd_state_code: requireString(location.lgd_state_code) || null,
+      lgd_district_code: requireString(location.lgd_district_code) || null,
+      lgd_subdistrict_code: requireString(location.lgd_subdistrict_code) || null,
+      lgd_local_body_code: requireString(location.lgd_local_body_code) || null,
+      lgd_village_code: requireString(location.lgd_village_code) || null,
       state_name: stateName || null,
       district_name: districtName || null,
       block_name: blockName || null,
+      gram_panchayat_name: gramPanchayatName || null,
       village_name: villageName || null,
       latitude: geocoded.latitude,
       longitude: geocoded.longitude,

@@ -1,0 +1,107 @@
+{
+  "version": "20260505",
+  "generated_at": "2026-05-05T03:58:34.192Z",
+  "source_urls": {
+    "villages": {
+      "label": "LGD Villages",
+      "url": "https://api.data.gov.in/resource/c967fe8f-69c4-42df-8afc-8a2c98057437?api-key=579b464db66ec23bdd000001cdc3b564546246a772a26393094f5645"
+    },
+    "localBodies": {
+      "label": "LGD Local Bodies",
+      "url": "https://api.data.gov.in/resource/1a6c26ed-d67c-40ea-aa20-d38d35f341a5?api-key=579b464db66ec23bdd000001cdc3b564546246a772a26393094f5645"
+    }
+  },
+  "schema": {
+    "state": [
+      "location_kind",
+      "state_name",
+      "display_label",
+      "lgd_state_code"
+    ],
+    "district": [
+      "location_kind",
+      "district_name",
+      "state_name",
+      "lgd_state_code",
+      "lgd_district_code"
+    ],
+    "block": [
+      "location_kind",
+      "block_name",
+      "district_name",
+      "state_name",
+      "lgd_state_code",
+      "lgd_district_code",
+      "lgd_subdistrict_code"
+    ],
+    "panchayat": [
+      "location_kind",
+      "gram_panchayat_name",
+      "block_name",
+      "district_name",
+      "state_name",
+      "lgd_state_code",
+      "lgd_district_code",
+      "lgd_subdistrict_code",
+      "lgd_local_body_code"
+    ],
+    "village": [
+      "location_kind",
+      "village_name",
+      "gram_panchayat_name",
+      "block_name",
+      "district_name",
+      "state_name",
+      "lgd_state_code",
+      "lgd_district_code",
+      "lgd_subdistrict_code",
+      "lgd_local_body_code",
+      "lgd_village_code"
+    ]
+  },
+  "bucket_files": [
+    "0.json",
+    "1.json",
+    "2.json",
+    "3.json",
+    "4.json",
+    "5.json",
+    "6.json",
+    "7.json",
+    "8.json",
+    "9.json",
+    "a.json",
+    "b.json",
+    "c.json",
+    "d.json",
+    "e.json",
+    "f.json",
+    "g.json",
+    "h.json",
+    "i.json",
+    "j.json",
+    "k.json",
+    "l.json",
+    "m.json",
+    "n.json",
+    "o.json",
+    "p.json",
+    "q.json",
+    "r.json",
+    "s.json",
+    "t.json",
+    "u.json",
+    "v.json",
+    "w.json",
+    "x.json",
+    "y.json",
+    "z.json"
+  ],
+  "counts": {
+    "states": 35,
+    "districts": 793,
+    "blocks": 7300,
+    "panchayats": 243556,
+    "villages": 611845
+  }
+}
