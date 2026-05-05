@@ -7,10 +7,13 @@ a{text-decoration:none}
 .vendor-kicker{text-transform:uppercase;letter-spacing:.08em;font-size:.78rem;opacity:.82;margin-bottom:.4rem}
 .vendor-subtitle{max-width:760px;line-height:1.6;opacity:.92}
 .vendor-hero-actions{display:flex;gap:.6rem;flex-wrap:wrap}
-.vendor-hero-summary{margin-left:auto;max-width:420px;min-width:min(360px,100%)}
-.vendor-hero-summary-card{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.2);box-shadow:none}
-.vendor-hero-summary-card h3{color:#fff}
-.vendor-hero-summary-card .section-note{color:rgba(255,255,255,.84);margin-bottom:0}
+.vendor-hero-summary{margin-left:auto;max-width:320px;min-width:min(280px,100%)}
+.vendor-hero-summary-card{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.2);box-shadow:none;padding:.9rem 1rem}
+.vendor-hero-summary-card h3{color:#fff;font-size:1rem;margin-bottom:.45rem}
+.vendor-hero-summary-card .section-note{color:rgba(255,255,255,.84);margin-bottom:0;font-size:.82rem;line-height:1.4}
+.vendor-hero-summary-card .stats-grid{grid-template-columns:1fr;gap:.45rem}
+.vendor-hero-summary-card .stat-card{padding:.6rem .75rem;border-radius:10px;text-align:left}
+.vendor-hero-summary-card .stat-number{font-size:1.15rem}
 .vendor-footer-links{display:flex;justify-content:center;gap:1.1rem;flex-wrap:wrap;padding:1.4rem 0 .35rem;color:#6a7785}
 .vendor-footer-links a{color:#6a7785;font-size:.92rem}
 .vendor-footer-links a:hover{color:#1f4b6e}
