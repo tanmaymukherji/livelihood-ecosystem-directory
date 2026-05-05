@@ -654,7 +654,7 @@ async function renderResults() {
   const pageEntities = getPageResults();
   const mapEntities = directoryState.hasSearched ? directoryState.filteredEntities : [];
   resultsEl.innerHTML = '';
-  mapListEl.innerHTML = '';
+  if (mapListEl) mapListEl.innerHTML = '';
   renderPagination(totalPages, totalMatches);
   setCounts();
 
@@ -673,10 +673,12 @@ async function renderResults() {
   }
 
   resultsSummaryEl.textContent = `${totalMatches} result${totalMatches === 1 ? '' : 's'} found. Page ${directoryState.currentPage} of ${totalPages}.`;
-  mapEntities.forEach((entity, index) => {
-    const typeMeta = getEntityTypeMeta(entity.entity_type_slug);
-    mapListEl.insertAdjacentHTML('beforeend', `<div class="vendor-map-list-item" data-focus-entity="${esc(entity.entity_uid)}"><span class="vendor-flag" style="background:${esc(typeMeta.color_hex || '#1f4b6e')}">${index + 1}</span><span><strong>${esc(entity.entity_name)}</strong><br /><small>${esc(typeMeta.label)}</small><br /><small>${esc(getPrimaryLocationLabel(entity))}</small></span><div class="btn-group"><a class="btn btn-small" href="./entity-detail.html?entity=${encodeURIComponent(entity.entity_uid)}">View Details</a></div></div>`);
-  });
+  if (mapListEl) {
+    mapEntities.forEach((entity, index) => {
+      const typeMeta = getEntityTypeMeta(entity.entity_type_slug);
+      mapListEl.insertAdjacentHTML('beforeend', `<div class="vendor-map-list-item" data-focus-entity="${esc(entity.entity_uid)}"><span class="vendor-flag" style="background:${esc(typeMeta.color_hex || '#1f4b6e')}">${index + 1}</span><span><strong>${esc(entity.entity_name)}</strong><br /><small>${esc(typeMeta.label)}</small><br /><small>${esc(getPrimaryLocationLabel(entity))}</small></span><div class="btn-group"><a class="btn btn-small" href="./entity-detail.html?entity=${encodeURIComponent(entity.entity_uid)}">View Details</a></div></div>`);
+    });
+  }
 
   pageEntities.forEach((entity) => {
     const typeMeta = getEntityTypeMeta(entity.entity_type_slug);
@@ -887,7 +889,7 @@ Object.values(searchEls).forEach((input) => {
   input.addEventListener('input', persistSearchState);
 });
 document.getElementById('entity-type-filters').addEventListener('change', persistSearchState);
-mapListEl.addEventListener('click', (event) => {
+mapListEl?.addEventListener('click', (event) => {
   if (event.target.closest('a')) return;
   const target = event.target.closest('[data-focus-entity]');
   if (target) focusEntity(target.dataset.focusEntity);

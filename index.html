@@ -6,8 +6,8 @@
   <link rel="icon" href="data:," />
   <title>Livelihood Ecosystem Directory</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="./config.js?v=20260504q"></script>
-  <link rel="stylesheet" href="./styles.css?v=20260504q" />
+  <script src="./config.js?v=20260505a"></script>
+  <link rel="stylesheet" href="./styles.css?v=20260505a" />
 </head>
 <body>
   <div class="vendor-shell">
@@ -25,147 +25,149 @@
 
     <main class="vendor-layout">
       <aside class="vendor-sidebar">
-        <section class="section">
-          <h3>Search Filters</h3>
-          <div class="form-group">
-            <label for="search-keyword">Keyword</label>
-            <input id="search-keyword" type="search" placeholder="Mentor, accelerator, livelihoods, incubation, market access..." />
-          </div>
-          <div class="form-group">
-            <label for="search-location">Place</label>
-            <input id="search-location" type="search" placeholder="Village, district, city, state, or address" />
-          </div>
-          <div class="form-group">
-            <label>Entity Types</label>
-            <div id="entity-type-filters" class="checkbox-grid"></div>
-          </div>
-          <div class="btn-group">
-            <button class="btn" id="run-search" type="button">Search</button>
-            <button class="btn btn-danger btn-small" id="clear-search" type="button">Clear</button>
-          </div>
-        </section>
+        <div class="vendor-sidebar-top">
+          <section class="section">
+            <h3>Search Filters</h3>
+            <div class="form-group">
+              <label for="search-keyword">Keyword</label>
+              <input id="search-keyword" type="search" placeholder="Mentor, accelerator, livelihoods, incubation, market access..." />
+            </div>
+            <div class="form-group">
+              <label for="search-location">Place</label>
+              <input id="search-location" type="search" placeholder="Village, district, city, state, or address" />
+            </div>
+            <div class="form-group">
+              <label>Entity Types</label>
+              <div id="entity-type-filters" class="checkbox-grid"></div>
+            </div>
+            <div class="btn-group">
+              <button class="btn" id="run-search" type="button">Search</button>
+              <button class="btn btn-danger btn-small" id="clear-search" type="button">Clear</button>
+            </div>
+          </section>
 
-        <section class="section">
-          <h3>Submit a New Entry</h3>
-          <p class="section-note">New submissions go into an admin approval queue before they appear publicly.</p>
-          <form class="admin-form" id="submission-form">
-            <div class="form-group">
-              <label for="submission-entity-type">Entity Type</label>
-              <select id="submission-entity-type" required></select>
-            </div>
-            <div class="form-group" id="submission-name-group">
-              <label for="submission-name">Name</label>
-              <input id="submission-name" type="text" required />
-            </div>
-            <div class="form-group" id="submission-location-group">
-              <label for="submission-location">Place / Address</label>
-              <input id="submission-location" type="text" required />
-            </div>
-            <div class="form-group" id="submission-email-group">
-              <label for="submission-email">Email</label>
-              <input id="submission-email" type="email" />
-            </div>
-            <div class="form-group" id="submission-phone-group">
-              <label for="submission-phone">Phone</label>
-              <input id="submission-phone" type="text" />
-            </div>
-            <div class="form-group" id="submission-website-group">
-              <label for="submission-website">Website</label>
-              <input id="submission-website" type="url" placeholder="https://..." />
-            </div>
-            <div class="form-group" id="submission-summary-group">
-              <label for="submission-summary">Summary</label>
-              <textarea id="submission-summary" rows="4" placeholder="What does this person or organisation do?"></textarea>
-            </div>
-            <div class="form-group" id="submission-social-links-group">
-              <label for="submission-social-links">Social Media</label>
-              <textarea id="submission-social-links" rows="3" placeholder="linkedin|https://...\ninstagram|https://..."></textarea>
-            </div>
-            <div class="form-group" id="submission-office-locations-group">
-              <label for="submission-office-locations">Additional Office Locations</label>
-              <textarea id="submission-office-locations" rows="3" placeholder="One location per line"></textarea>
-            </div>
-            <div id="submission-dynamic-fields"></div>
-            <div class="section" id="submission-place-tools" hidden>
-              <h4>Place Data</h4>
-              <p class="section-note">You can optionally attach one initial document and one initial spider chart snapshot while creating a new place. They will move with the place into admin review.</p>
+          <section class="section">
+            <h3>Submit a New Entry</h3>
+            <p class="section-note">New submissions go into an admin approval queue before they appear publicly.</p>
+            <form class="admin-form" id="submission-form">
               <div class="form-group">
-                <label><input id="submission-add-place-document" type="checkbox" /> Add Initial Document</label>
+                <label for="submission-entity-type">Entity Type</label>
+                <select id="submission-entity-type" required></select>
               </div>
-              <div id="submission-place-document-block" hidden>
+              <div class="form-group" id="submission-name-group">
+                <label for="submission-name">Name</label>
+                <input id="submission-name" type="text" required />
+              </div>
+              <div class="form-group" id="submission-location-group">
+                <label for="submission-location">Place / Address</label>
+                <input id="submission-location" type="text" required />
+              </div>
+              <div class="form-group" id="submission-email-group">
+                <label for="submission-email">Email</label>
+                <input id="submission-email" type="email" />
+              </div>
+              <div class="form-group" id="submission-phone-group">
+                <label for="submission-phone">Phone</label>
+                <input id="submission-phone" type="text" />
+              </div>
+              <div class="form-group" id="submission-website-group">
+                <label for="submission-website">Website</label>
+                <input id="submission-website" type="url" placeholder="https://..." />
+              </div>
+              <div class="form-group" id="submission-summary-group">
+                <label for="submission-summary">Summary</label>
+                <textarea id="submission-summary" rows="4" placeholder="What does this person or organisation do?"></textarea>
+              </div>
+              <div class="form-group" id="submission-social-links-group">
+                <label for="submission-social-links">Social Media</label>
+                <textarea id="submission-social-links" rows="3" placeholder="linkedin|https://...\ninstagram|https://..."></textarea>
+              </div>
+              <div class="form-group" id="submission-office-locations-group">
+                <label for="submission-office-locations">Additional Office Locations</label>
+                <textarea id="submission-office-locations" rows="3" placeholder="One location per line"></textarea>
+              </div>
+              <div id="submission-dynamic-fields"></div>
+              <div class="section" id="submission-place-tools" hidden>
+                <h4>Place Data</h4>
+                <p class="section-note">You can optionally attach one initial document and one initial spider chart snapshot while creating a new place. They will move with the place into admin review.</p>
                 <div class="form-group">
-                  <label for="submission-place-document-title">Document Title</label>
-                  <input id="submission-place-document-title" type="text" />
+                  <label><input id="submission-add-place-document" type="checkbox" /> Add Initial Document</label>
+                </div>
+                <div id="submission-place-document-block" hidden>
+                  <div class="form-group">
+                    <label for="submission-place-document-title">Document Title</label>
+                    <input id="submission-place-document-title" type="text" />
+                  </div>
+                  <div class="form-group">
+                    <label for="submission-place-document-description">Document Description</label>
+                    <textarea id="submission-place-document-description" rows="3"></textarea>
+                  </div>
+                  <div class="form-group">
+                    <label for="submission-place-document-date">Document Date</label>
+                    <input id="submission-place-document-date" type="date" />
+                  </div>
+                  <div class="form-group">
+                    <label for="submission-place-document-recorded-at">Recorded At</label>
+                    <input id="submission-place-document-recorded-at" type="datetime-local" />
+                  </div>
+                  <div class="form-group">
+                    <label for="submission-place-document-file">Document File</label>
+                    <input id="submission-place-document-file" type="file" />
+                  </div>
                 </div>
                 <div class="form-group">
-                  <label for="submission-place-document-description">Document Description</label>
-                  <textarea id="submission-place-document-description" rows="3"></textarea>
+                  <label><input id="submission-add-place-spider" type="checkbox" /> Add Initial Spider Chart Snapshot</label>
+                </div>
+                <div id="submission-place-spider-block" hidden>
+                  <div class="form-group">
+                    <label for="submission-place-spider-title">Snapshot Title</label>
+                    <input id="submission-place-spider-title" type="text" />
+                  </div>
+                  <div class="form-group">
+                    <label for="submission-place-spider-recorded-at">Recorded At</label>
+                    <input id="submission-place-spider-recorded-at" type="datetime-local" />
+                  </div>
+                  <div class="form-group">
+                    <label for="submission-place-spider-notes">Notes</label>
+                    <textarea id="submission-place-spider-notes" rows="3"></textarea>
+                  </div>
+                  <div class="place-metric-grid" id="submission-place-metric-grid"></div>
                 </div>
                 <div class="form-group">
-                  <label for="submission-place-document-date">Document Date</label>
-                  <input id="submission-place-document-date" type="date" />
+                  <label><input id="submission-add-place-needs" type="checkbox" /> Add Initial Thematic Needs</label>
                 </div>
-                <div class="form-group">
-                  <label for="submission-place-document-recorded-at">Recorded At</label>
-                  <input id="submission-place-document-recorded-at" type="datetime-local" />
-                </div>
-                <div class="form-group">
-                  <label for="submission-place-document-file">Document File</label>
-                  <input id="submission-place-document-file" type="file" />
+                <div id="submission-place-needs-block" hidden>
+                  <div class="form-group">
+                    <label for="submission-place-needs-thematics">Thematic Needs</label>
+                    <textarea id="submission-place-needs-thematics" rows="4" placeholder="One thematic need per line"></textarea>
+                  </div>
+                  <div class="form-group">
+                    <label for="submission-place-needs-org">Updated By Organisation</label>
+                    <input id="submission-place-needs-org" type="text" />
+                  </div>
+                  <div class="form-group">
+                    <label for="submission-place-needs-recorded-at">Recorded At</label>
+                    <input id="submission-place-needs-recorded-at" type="datetime-local" />
+                  </div>
+                  <div class="form-group">
+                    <label for="submission-place-needs-details">Details</label>
+                    <textarea id="submission-place-needs-details" rows="3" placeholder="What are the specific needs being observed on the ground?"></textarea>
+                  </div>
                 </div>
               </div>
               <div class="form-group">
-                <label><input id="submission-add-place-spider" type="checkbox" /> Add Initial Spider Chart Snapshot</label>
-              </div>
-              <div id="submission-place-spider-block" hidden>
-                <div class="form-group">
-                  <label for="submission-place-spider-title">Snapshot Title</label>
-                  <input id="submission-place-spider-title" type="text" />
-                </div>
-                <div class="form-group">
-                  <label for="submission-place-spider-recorded-at">Recorded At</label>
-                  <input id="submission-place-spider-recorded-at" type="datetime-local" />
-                </div>
-                <div class="form-group">
-                  <label for="submission-place-spider-notes">Notes</label>
-                  <textarea id="submission-place-spider-notes" rows="3"></textarea>
-                </div>
-                <div class="place-metric-grid" id="submission-place-metric-grid"></div>
+                <label for="submission-contact-name">Submitted By</label>
+                <input id="submission-contact-name" type="text" required />
               </div>
               <div class="form-group">
-                <label><input id="submission-add-place-needs" type="checkbox" /> Add Initial Thematic Needs</label>
+                <label for="submission-contact-email">Submitter Email</label>
+                <input id="submission-contact-email" type="email" required />
               </div>
-              <div id="submission-place-needs-block" hidden>
-                <div class="form-group">
-                  <label for="submission-place-needs-thematics">Thematic Needs</label>
-                  <textarea id="submission-place-needs-thematics" rows="4" placeholder="One thematic need per line"></textarea>
-                </div>
-                <div class="form-group">
-                  <label for="submission-place-needs-org">Updated By Organisation</label>
-                  <input id="submission-place-needs-org" type="text" />
-                </div>
-                <div class="form-group">
-                  <label for="submission-place-needs-recorded-at">Recorded At</label>
-                  <input id="submission-place-needs-recorded-at" type="datetime-local" />
-                </div>
-                <div class="form-group">
-                  <label for="submission-place-needs-details">Details</label>
-                  <textarea id="submission-place-needs-details" rows="3" placeholder="What are the specific needs being observed on the ground?"></textarea>
-                </div>
-              </div>
-            </div>
-            <div class="form-group">
-              <label for="submission-contact-name">Submitted By</label>
-              <input id="submission-contact-name" type="text" required />
-            </div>
-            <div class="form-group">
-              <label for="submission-contact-email">Submitter Email</label>
-              <input id="submission-contact-email" type="email" required />
-            </div>
-            <button class="btn btn-success" type="submit">Send for Approval</button>
-            <p class="admin-status" id="submission-status"></p>
-          </form>
-        </section>
+              <button class="btn btn-success" type="submit">Send for Approval</button>
+              <p class="admin-status" id="submission-status"></p>
+            </form>
+          </section>
+        </div>
 
         <section class="section">
           <h3>Directory Summary</h3>
@@ -188,7 +190,6 @@
           </div>
           <div class="vendor-map-grid">
             <div id="results-map" class="vendor-map-canvas"></div>
-            <div id="map-results-list" class="vendor-map-list"></div>
           </div>
         </div>
 
@@ -207,8 +208,8 @@
     </main>
   </div>
 
-  <script src="./ecosystem-form-fields.js?v=20260504q"></script>
-  <script src="./ecosystem-store.js?v=20260504q"></script>
-  <script src="./ecosystem-directory.js?v=20260504q"></script>
+  <script src="./ecosystem-form-fields.js?v=20260505a"></script>
+  <script src="./ecosystem-store.js?v=20260505a"></script>
+  <script src="./ecosystem-directory.js?v=20260505a"></script>
 </body>
 </html>
