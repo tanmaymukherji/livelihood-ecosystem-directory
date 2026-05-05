@@ -17,9 +17,16 @@
         <h1>Mentors, Support Organisations, and Local Ecosystem Search</h1>
         <p class="vendor-subtitle">Search by keyword, place, or entity type. Results appear both on the map and in the directory below, with a detail page for every entity.</p>
       </div>
-      <div class="vendor-hero-actions">
-        <a class="btn btn-small" href="./place-initiatives.html">Place Initiatives</a>
-        <a class="btn btn-small" href="./admin.html">Admin</a>
+      <div class="vendor-hero-actions vendor-hero-summary">
+        <section class="section vendor-hero-summary-card">
+          <h3>Directory Summary</h3>
+          <div class="stats-grid">
+            <div class="stat-card"><div class="stat-number" id="entity-total-count">0</div><div>Approved Entities</div></div>
+            <div class="stat-card"><div class="stat-number" id="type-total-count">0</div><div>Entity Types</div></div>
+            <div class="stat-card"><div class="stat-number" id="filtered-entity-count">0</div><div>Matches</div></div>
+          </div>
+          <p class="section-note" id="directory-status">Loading directory...</p>
+        </section>
       </div>
     </header>
 
@@ -168,16 +175,6 @@
             </form>
           </section>
         </div>
-
-        <section class="section">
-          <h3>Directory Summary</h3>
-          <div class="stats-grid">
-            <div class="stat-card"><div class="stat-number" id="entity-total-count">0</div><div>Approved Entities</div></div>
-            <div class="stat-card"><div class="stat-number" id="type-total-count">0</div><div>Entity Types</div></div>
-            <div class="stat-card"><div class="stat-number" id="filtered-entity-count">0</div><div>Matches</div></div>
-          </div>
-          <p class="section-note" id="directory-status">Loading directory...</p>
-        </section>
       </aside>
 
       <section class="vendor-results-shell">
@@ -206,6 +203,10 @@
         </div>
       </section>
     </main>
+    <footer class="vendor-footer-links">
+      <a href="./place-initiatives.html">Place Initiatives</a>
+      <a href="./admin.html">Admin</a>
+    </footer>
   </div>
 
   <script src="./ecosystem-form-fields.js?v=20260505a"></script>
