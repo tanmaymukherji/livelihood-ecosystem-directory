@@ -1,0 +1,1107 @@
+{
+  "source_label": "CSR and philanthropy workbooks",
+  "raw_source_rows": 201,
+  "unique_workbook_entities": 183,
+  "inserted": 181,
+  "merged": 2,
+  "records": [
+    {
+      "entity_name": "Tata Trusts",
+      "merge_action": "inserted",
+      "website_url": "https://www.tatatrusts.org",
+      "location_label": "Mumbai, Maharashtra"
+    },
+    {
+      "entity_name": "Sir Dorabji Tata Trust",
+      "merge_action": "inserted",
+      "website_url": "https://www.tatatrusts.org",
+      "location_label": "Maharashtra"
+    },
+    {
+      "entity_name": "JN Tata Endowment",
+      "merge_action": "inserted",
+      "website_url": "https://jntataendowment.org/contact-us/",
+      "location_label": "Maharashtra"
+    },
+    {
+      "entity_name": "Reliance Foundation",
+      "merge_action": "inserted",
+      "website_url": "https://www.reliancefoundation.org/contact-us",
+      "location_label": "Maharashtra"
+    },
+    {
+      "entity_name": "Azim Premji Foundation",
+      "merge_action": "inserted",
+      "website_url": "https://www.azimpremjifoundation.org",
+      "location_label": "Karnataka"
+    },
+    {
+      "entity_name": "HCL Foundation",
+      "merge_action": "inserted",
+      "website_url": "https://www.hclfoundation.org",
+      "location_label": "Noida/Bengaluru"
+    },
+    {
+      "entity_name": "EdelGive Foundation",
+      "merge_action": "inserted",
+      "website_url": "https://www.edelgive.org",
+      "location_label": "Mumbai, Maharashtra"
+    },
+    {
+      "entity_name": "Infosys Foundation",
+      "merge_action": "inserted",
+      "website_url": "https://www.infosys.org/infosys-foundation/contact.html",
+      "location_label": "Bengaluru, Karnataka"
+    },
+    {
+      "entity_name": "Wipro Foundation",
+      "merge_action": "inserted",
+      "website_url": "https://www.wiprofoundation.org/contact-us/",
+      "location_label": "Bengaluru, Karnataka"
+    },
+    {
+      "entity_name": "Adani Foundation",
+      "merge_action": "inserted",
+      "website_url": null,
+      "location_label": "Gujarat"
+    },
+    {
+      "entity_name": "Bharti Foundation",
+      "merge_action": "inserted",
+      "website_url": "https://bhartifoundation.org",
+      "location_label": "Haryana"
+    },
+    {
+      "entity_name": "HDFC Bank CSR / Parivartan",
+      "merge_action": "inserted",
+      "website_url": "https://www.hdfcbank.com",
+      "location_label": "Maharashtra"
+    },
+    {
+      "entity_name": "ITC Limited",
+      "merge_action": "inserted",
+      "website_url": "https://www.itcportal.com",
+      "location_label": "West Bengal"
+    },
+    {
+      "entity_name": "Mahindra Group",
+      "merge_action": "inserted",
+      "website_url": "https://www.mahindra.com",
+      "location_label": "Maharashtra"
+    },
+    {
+      "entity_name": "SBI Foundation",
+      "merge_action": "inserted",
+      "website_url": "https://www.sbifoundation.in",
+      "location_label": "Mumbai, Maharashtra"
+    },
+    {
+      "entity_name": "JSW Foundation",
+      "merge_action": "inserted",
+      "website_url": "https://www.jswfoundation.in",
+      "location_label": "Mumbai, Maharashtra"
+    },
+    {
+      "entity_name": "ONGC Foundation / CSR",
+      "merge_action": "inserted",
+      "website_url": "https://www.ongc.org",
+      "location_label": "Delhi"
+    },
+    {
+      "entity_name": "NTPC CSR",
+      "merge_action": "inserted",
+      "website_url": "https://www.ntpc.co.in",
+      "location_label": "Delhi"
+    },
+    {
+      "entity_name": "Tata Steel Foundation",
+      "merge_action": "inserted",
+      "website_url": "https://www.tatasteelfoundation.org",
+      "location_label": "Jamshedpur, Jharkhand"
+    },
+    {
+      "entity_name": "Hindustan Unilever Foundation",
+      "merge_action": "inserted",
+      "website_url": "https://www.huf.org.in",
+      "location_label": "Maharashtra"
+    },
+    {
+      "entity_name": "Godrej Foundation / Godrej CSR",
+      "merge_action": "inserted",
+      "website_url": "https://www.godrej.com",
+      "location_label": "Maharashtra"
+    },
+    {
+      "entity_name": "L&T CSR / Foundation",
+      "merge_action": "inserted",
+      "website_url": "https://www.larsentoubro.com",
+      "location_label": "Maharashtra"
+    },
+    {
+      "entity_name": "Bajaj Group / Bajaj CSR",
+      "merge_action": "inserted",
+      "website_url": "https://www.bajajgroup.company",
+      "location_label": "Maharashtra"
+    },
+    {
+      "entity_name": "Power Grid CSR",
+      "merge_action": "inserted",
+      "website_url": "https://www.powergrid.in",
+      "location_label": "Haryana"
+    },
+    {
+      "entity_name": "Bharat Petroleum CSR",
+      "merge_action": "inserted",
+      "website_url": "https://www.bharatpetroleum.in",
+      "location_label": "Maharashtra"
+    },
+    {
+      "entity_name": "Coal India CSR",
+      "merge_action": "inserted",
+      "website_url": "https://www.coalindia.in/csr/",
+      "location_label": "Kolkata, West Bengal"
+    },
+    {
+      "entity_name": "Vedanta Foundation / CSR",
+      "merge_action": "inserted",
+      "website_url": "https://www.vedantaresources.com",
+      "location_label": "Maharashtra"
+    },
+    {
+      "entity_name": "Apollo Foundation / CSR",
+      "merge_action": "inserted",
+      "website_url": "https://www.apollohospitals.com",
+      "location_label": "Tamil Nadu"
+    },
+    {
+      "entity_name": "Tech Mahindra Foundation",
+      "merge_action": "inserted",
+      "website_url": "https://www.techmahindrafoundation.org",
+      "location_label": "Delhi"
+    },
+    {
+      "entity_name": "Axis Bank Foundation",
+      "merge_action": "inserted",
+      "website_url": "https://www.axisbankfoundation.org",
+      "location_label": "Mumbai, Maharashtra"
+    },
+    {
+      "entity_name": "IDFC FIRST Bank CSR",
+      "merge_action": "inserted",
+      "website_url": "https://www.idfcfirstbank.com",
+      "location_label": "Maharashtra"
+    },
+    {
+      "entity_name": "CRISIL Foundation",
+      "merge_action": "inserted",
+      "website_url": "https://www.crisil.com",
+      "location_label": "Maharashtra"
+    },
+    {
+      "entity_name": "Deloitte India CSR",
+      "merge_action": "inserted",
+      "website_url": "https://www.deloitte.com/in",
+      "location_label": "Mumbai/India"
+    },
+    {
+      "entity_name": "Accenture India CSR",
+      "merge_action": "inserted",
+      "website_url": "https://www.accenture.com/in-en/about/corporate-citizenship-index",
+      "location_label": "Bengaluru / Mumbai / India offices"
+    },
+    {
+      "entity_name": "Bosch India Foundation",
+      "merge_action": "inserted",
+      "website_url": "https://www.bosch.in",
+      "location_label": "Karnataka"
+    },
+    {
+      "entity_name": "Asian Paints CSR",
+      "merge_action": "inserted",
+      "website_url": "https://www.asianpaints.com",
+      "location_label": "Maharashtra"
+    },
+    {
+      "entity_name": "Procter & Gamble CSR India",
+      "merge_action": "inserted",
+      "website_url": "https://www.pg.com",
+      "location_label": "Mumbai/India"
+    },
+    {
+      "entity_name": "Coca-Cola India CSR",
+      "merge_action": "inserted",
+      "website_url": "https://www.coca-colaindia.com",
+      "location_label": "Gurugram/India"
+    },
+    {
+      "entity_name": "Samsung India CSR",
+      "merge_action": "inserted",
+      "website_url": "https://www.samsung.com/in",
+      "location_label": "Noida/India"
+    },
+    {
+      "entity_name": "Cisco CSR India",
+      "merge_action": "inserted",
+      "website_url": "https://www.cisco.com",
+      "location_label": "Bengaluru/India"
+    },
+    {
+      "entity_name": "Microsoft Philanthropies India",
+      "merge_action": "inserted",
+      "website_url": "https://www.microsoft.com/en-us/corporate-responsibility/philanthropies",
+      "location_label": "Gurugram / Bengaluru / Hyderabad offices"
+    },
+    {
+      "entity_name": "Google.org India",
+      "merge_action": "inserted",
+      "website_url": "https://www.google.org",
+      "location_label": "India offices in Bengaluru, Hyderabad, Mumbai, Gurugram; Google.org global"
+    },
+    {
+      "entity_name": "Amazon CSR India",
+      "merge_action": "inserted",
+      "website_url": "https://www.amazon.in",
+      "location_label": "India"
+    },
+    {
+      "entity_name": "Flipkart Foundation / CSR",
+      "merge_action": "inserted",
+      "website_url": "https://www.flipkart.com",
+      "location_label": "Bengaluru/India"
+    },
+    {
+      "entity_name": "Paytm Foundation / CSR",
+      "merge_action": "inserted",
+      "website_url": "https://paytm.com",
+      "location_label": "Noida/India"
+    },
+    {
+      "entity_name": "PhonePe CSR / foundation initiatives",
+      "merge_action": "inserted",
+      "website_url": "https://www.phonepe.com",
+      "location_label": "Bengaluru/India"
+    },
+    {
+      "entity_name": "Marico Foundation",
+      "merge_action": "inserted",
+      "website_url": "https://www.marico.com",
+      "location_label": "Maharashtra"
+    },
+    {
+      "entity_name": "Dabur CSR",
+      "merge_action": "inserted",
+      "website_url": "https://www.dabur.com",
+      "location_label": "Uttar Pradesh"
+    },
+    {
+      "entity_name": "Emami CSR",
+      "merge_action": "inserted",
+      "website_url": "https://www.emami.com",
+      "location_label": "West Bengal"
+    },
+    {
+      "entity_name": "ITC CSR",
+      "merge_action": "inserted",
+      "website_url": "https://www.itcportal.com",
+      "location_label": "West Bengal"
+    },
+    {
+      "entity_name": "Godrej Consumer CSR",
+      "merge_action": "inserted",
+      "website_url": "https://www.godrej.com",
+      "location_label": "Maharashtra"
+    },
+    {
+      "entity_name": "Tata Consumer Products CSR",
+      "merge_action": "inserted",
+      "website_url": "https://www.tataconsumer.com",
+      "location_label": "Kolkata/India"
+    },
+    {
+      "entity_name": "Jubilant Bhartia Foundation",
+      "merge_action": "inserted",
+      "website_url": "https://www.jubilantbhartiafoundation.com",
+      "location_label": "Noida, Uttar Pradesh"
+    },
+    {
+      "entity_name": "Shriram Foundation / CSR",
+      "merge_action": "inserted",
+      "website_url": "https://www.shriram.com",
+      "location_label": "Delhi"
+    },
+    {
+      "entity_name": "Torrent CSR",
+      "merge_action": "inserted",
+      "website_url": "https://www.torrentpharma.com",
+      "location_label": "Gujarat"
+    },
+    {
+      "entity_name": "Zydus Foundation",
+      "merge_action": "inserted",
+      "website_url": "https://www.zyduslife.com",
+      "location_label": "Gujarat"
+    },
+    {
+      "entity_name": "Cipla Foundation",
+      "merge_action": "inserted",
+      "website_url": "https://www.ciplafoundation.com",
+      "location_label": "Mumbai, Maharashtra"
+    },
+    {
+      "entity_name": "Sun Pharma CSR",
+      "merge_action": "inserted",
+      "website_url": "https://www.sunpharma.com",
+      "location_label": "Maharashtra"
+    },
+    {
+      "entity_name": "Lupin Foundation",
+      "merge_action": "inserted",
+      "website_url": "https://www.lupin.com",
+      "location_label": "Maharashtra"
+    },
+    {
+      "entity_name": "Glenmark Foundation",
+      "merge_action": "inserted",
+      "website_url": "https://www.glenmarkpharma.com",
+      "location_label": "Maharashtra"
+    },
+    {
+      "entity_name": "Dr. Reddy's Foundation",
+      "merge_action": "inserted",
+      "website_url": "https://www.drreddysfoundation.org",
+      "location_label": "Hyderabad, Telangana"
+    },
+    {
+      "entity_name": "UPL CSR",
+      "merge_action": "inserted",
+      "website_url": "https://www.upl-ltd.com",
+      "location_label": "Maharashtra"
+    },
+    {
+      "entity_name": "Bharat Forge CSR",
+      "merge_action": "inserted",
+      "website_url": "https://www.bharatforge.com",
+      "location_label": "Maharashtra"
+    },
+    {
+      "entity_name": "TVS Motor CSR",
+      "merge_action": "inserted",
+      "website_url": "https://www.tvsmotor.com",
+      "location_label": "Tamil Nadu"
+    },
+    {
+      "entity_name": "MRF CSR",
+      "merge_action": "inserted",
+      "website_url": "https://www.mrf.co.in",
+      "location_label": "Tamil Nadu"
+    },
+    {
+      "entity_name": "Apollo Tyres CSR",
+      "merge_action": "inserted",
+      "website_url": "https://www.apollotyres.com",
+      "location_label": "Gurugram, Kerala"
+    },
+    {
+      "entity_name": "Hero MotoCorp CSR",
+      "merge_action": "inserted",
+      "website_url": "https://www.heromotocorp.com",
+      "location_label": "Haryana"
+    },
+    {
+      "entity_name": "Maruti Suzuki CSR",
+      "merge_action": "inserted",
+      "website_url": "https://www.marutisuzuki.com",
+      "location_label": "Haryana"
+    },
+    {
+      "entity_name": "Hyundai Motor India Foundation",
+      "merge_action": "inserted",
+      "website_url": "https://www.hyundai.com/in",
+      "location_label": "Tamil Nadu"
+    },
+    {
+      "entity_name": "Renault Nissan CSR",
+      "merge_action": "inserted",
+      "website_url": "https://www.nissan.in",
+      "location_label": "Tamil Nadu"
+    },
+    {
+      "entity_name": "Mahindra CSR / Foundation",
+      "merge_action": "inserted",
+      "website_url": "https://www.mahindra.com",
+      "location_label": "Maharashtra"
+    },
+    {
+      "entity_name": "Motherson CSR",
+      "merge_action": "inserted",
+      "website_url": "https://www.motherson.com",
+      "location_label": "Noida/India"
+    },
+    {
+      "entity_name": "Hiranandani Foundation / CSR",
+      "merge_action": "inserted",
+      "website_url": "https://www.hiranandani.com",
+      "location_label": "Mumbai/India"
+    },
+    {
+      "entity_name": "Oberoi CSR / Foundation",
+      "merge_action": "inserted",
+      "website_url": "https://www.oberoigroup.com",
+      "location_label": "Mumbai/India"
+    },
+    {
+      "entity_name": "Lodha Foundation / CSR",
+      "merge_action": "inserted",
+      "website_url": "https://www.lodhagroup.com",
+      "location_label": "Maharashtra"
+    },
+    {
+      "entity_name": "DLF Foundation",
+      "merge_action": "inserted",
+      "website_url": "https://www.dlf.in",
+      "location_label": "Haryana"
+    },
+    {
+      "entity_name": "CREDAI CSR Foundation",
+      "merge_action": "inserted",
+      "website_url": "https://credai.org",
+      "location_label": "India"
+    },
+    {
+      "entity_name": "CSC e-Governance CSR",
+      "merge_action": "inserted",
+      "website_url": "https://www.csc.gov.in",
+      "location_label": "Delhi"
+    },
+    {
+      "entity_name": "Brillio CSR",
+      "merge_action": "inserted",
+      "website_url": "https://www.brillio.com",
+      "location_label": "Bengaluru/India"
+    },
+    {
+      "entity_name": "Bridgestone India CSR",
+      "merge_action": "inserted",
+      "website_url": "https://www.bridgestone.co.in",
+      "location_label": "Pune/India"
+    },
+    {
+      "entity_name": "AkzoNobel CSR India",
+      "merge_action": "inserted",
+      "website_url": "https://www.akzonobel.com",
+      "location_label": "Gurugram/India"
+    },
+    {
+      "entity_name": "Arvind CSR",
+      "merge_action": "inserted",
+      "website_url": "https://www.arvind.com",
+      "location_label": "Gujarat"
+    },
+    {
+      "entity_name": "Bata India CSR",
+      "merge_action": "inserted",
+      "website_url": "https://www.bata.in",
+      "location_label": "Haryana"
+    },
+    {
+      "entity_name": "Ambuja Cement Foundation",
+      "merge_action": "inserted",
+      "website_url": "https://www.ambujacement.com",
+      "location_label": "Gujarat"
+    },
+    {
+      "entity_name": "Dalmia Bharat Foundation",
+      "merge_action": "inserted",
+      "website_url": "https://www.dalmia.co.in",
+      "location_label": "Delhi"
+    },
+    {
+      "entity_name": "Shree Cement CSR",
+      "merge_action": "inserted",
+      "website_url": "https://www.shreecement.com",
+      "location_label": "Kolkata, Rajasthan"
+    },
+    {
+      "entity_name": "Nuvoco CSR",
+      "merge_action": "inserted",
+      "website_url": "https://www.nuvoco.com",
+      "location_label": "Mumbai/India"
+    },
+    {
+      "entity_name": "ACC CSR",
+      "merge_action": "inserted",
+      "website_url": "https://www.acc.co.in",
+      "location_label": "Mumbai/India"
+    },
+    {
+      "entity_name": "Ramco CSR",
+      "merge_action": "inserted",
+      "website_url": "https://www.ramcocements.in",
+      "location_label": "Chennai/India"
+    },
+    {
+      "entity_name": "JK Tyre CSR",
+      "merge_action": "inserted",
+      "website_url": "https://www.jktyre.com",
+      "location_label": "Delhi"
+    },
+    {
+      "entity_name": "CII Foundation",
+      "merge_action": "inserted",
+      "website_url": "https://www.cii.in",
+      "location_label": "Delhi"
+    },
+    {
+      "entity_name": "Aditya Birla Capital Foundation",
+      "merge_action": "inserted",
+      "website_url": "https://www.adityabirlacapital.com",
+      "location_label": "Mumbai/India"
+    },
+    {
+      "entity_name": "Aditya Birla Group CSR",
+      "merge_action": "inserted",
+      "website_url": "https://www.adityabirla.com",
+      "location_label": "Mumbai/India"
+    },
+    {
+      "entity_name": "Shiv Nadar Foundation",
+      "merge_action": "inserted",
+      "website_url": "https://www.shivnadar.org",
+      "location_label": "Chennai/NCR"
+    },
+    {
+      "entity_name": "Nilekani Philanthropies",
+      "merge_action": "inserted",
+      "website_url": "https://www.nilekaniphilanthropies.org",
+      "location_label": "Bengaluru/India"
+    },
+    {
+      "entity_name": "Hinduja Foundation",
+      "merge_action": "inserted",
+      "website_url": "https://www.hindujafoundation.org",
+      "location_label": "Mumbai/India"
+    },
+    {
+      "entity_name": "UNM Foundation",
+      "merge_action": "inserted",
+      "website_url": "https://www.unmfoundation.org",
+      "location_label": "Mumbai/India"
+    },
+    {
+      "entity_name": "Larsen & Toubro Foundation",
+      "merge_action": "inserted",
+      "website_url": "https://www.larsentoubro.com",
+      "location_label": "Mumbai/India"
+    },
+    {
+      "entity_name": "Mahindra Foundation",
+      "merge_action": "inserted",
+      "website_url": "https://www.mahindrafoundation.org",
+      "location_label": "Mumbai/India"
+    },
+    {
+      "entity_name": "ICICI Foundation",
+      "merge_action": "inserted",
+      "website_url": "https://www.icicifoundation.org",
+      "location_label": "Mumbai/India"
+    },
+    {
+      "entity_name": "GMR Varalakshmi Foundation",
+      "merge_action": "inserted",
+      "website_url": "https://www.gmrgroup.in",
+      "location_label": "Delhi"
+    },
+    {
+      "entity_name": "Godrej Foundation",
+      "merge_action": "inserted",
+      "website_url": "https://www.godrej.com",
+      "location_label": "Mumbai/India"
+    },
+    {
+      "entity_name": "Suzlon Foundation",
+      "merge_action": "inserted",
+      "website_url": "https://www.suzlon.com",
+      "location_label": "Pune/India"
+    },
+    {
+      "entity_name": "Eicher Goodearth Foundation",
+      "merge_action": "inserted",
+      "website_url": "https://www.eicher.in",
+      "location_label": "Delhi"
+    },
+    {
+      "entity_name": "Muthoot Finance CSR / Foundation",
+      "merge_action": "inserted",
+      "website_url": "https://www.muthootfinance.com",
+      "location_label": "Kochi/India"
+    },
+    {
+      "entity_name": "Manipal Foundation",
+      "merge_action": "inserted",
+      "website_url": "https://www.manipal.edu",
+      "location_label": "Manipal/India"
+    },
+    {
+      "entity_name": "K.C. Mahindra Education Trust",
+      "merge_action": "inserted",
+      "website_url": "https://www.kceducationtrust.org",
+      "location_label": "Mumbai/India"
+    },
+    {
+      "entity_name": "Sir Ratan Tata Trust",
+      "merge_action": "inserted",
+      "website_url": "https://www.tatatrusts.org",
+      "location_label": "Mumbai/India"
+    },
+    {
+      "entity_name": "Tata Education Trust",
+      "merge_action": "inserted",
+      "website_url": "https://www.tatatrusts.org",
+      "location_label": "Mumbai/India"
+    },
+    {
+      "entity_name": "BHEL CSR",
+      "merge_action": "inserted",
+      "website_url": "https://www.bhel.com",
+      "location_label": "Bhopal/India"
+    },
+    {
+      "entity_name": "NMDC CSR",
+      "merge_action": "inserted",
+      "website_url": "https://www.nmdc.co.in",
+      "location_label": "Hyderabad/India"
+    },
+    {
+      "entity_name": "SAIL CSR",
+      "merge_action": "inserted",
+      "website_url": "https://www.sail.co.in",
+      "location_label": "Delhi"
+    },
+    {
+      "entity_name": "Reliance Foundation / Reliance Industries CSR",
+      "merge_action": "inserted",
+      "website_url": "https://www.reliancefoundation.org",
+      "location_label": "Mumbai, Maharashtra"
+    },
+    {
+      "entity_name": "HDFC Bank Parivartan",
+      "merge_action": "inserted",
+      "website_url": "https://www.hdfcbank.com/csr",
+      "location_label": "Mumbai, Maharashtra"
+    },
+    {
+      "entity_name": "Azim Premji Foundation Grants",
+      "merge_action": "inserted",
+      "website_url": "https://azimpremjifoundation.org",
+      "location_label": "Bengaluru, Karnataka"
+    },
+    {
+      "entity_name": "HCLFoundation",
+      "merge_action": "inserted",
+      "website_url": "https://www.hclfoundation.org",
+      "location_label": "Noida, Uttar Pradesh"
+    },
+    {
+      "entity_name": "ICICI Foundation for Inclusive Growth",
+      "merge_action": "inserted",
+      "website_url": "https://www.icicifoundation.org",
+      "location_label": "Mumbai, Maharashtra"
+    },
+    {
+      "entity_name": "Kotak Education Foundation",
+      "merge_action": "inserted",
+      "website_url": "https://kotakeducation.org",
+      "location_label": "Mumbai, Maharashtra"
+    },
+    {
+      "entity_name": "Mahindra Group CSR / Project Nanhi Kali / K.C. Mahindra Education Trust",
+      "merge_action": "inserted",
+      "website_url": "https://www.mahindra.com/our-story/sustainability/csr",
+      "location_label": "Mumbai, Maharashtra"
+    },
+    {
+      "entity_name": "Vedanta / Anil Agarwal Foundation / Nand Ghar",
+      "merge_action": "inserted",
+      "website_url": "https://www.vedantaresources.com/social-impact/",
+      "location_label": "Mumbai, Maharashtra"
+    },
+    {
+      "entity_name": "Aditya Birla Centre for Community Initiatives and Rural Development",
+      "merge_action": "inserted",
+      "website_url": "https://www.adityabirla.com/csr",
+      "location_label": "Mumbai, Maharashtra"
+    },
+    {
+      "entity_name": "ITC Mission Sunehra Kal / ITC CSR",
+      "merge_action": "inserted",
+      "website_url": "https://www.itcportal.com/sustainability/sustainability-integrated-report-2024/social-investments.aspx",
+      "location_label": "Kolkata, West Bengal"
+    },
+    {
+      "entity_name": "Godrej Good & Green / Godrej DEI Lab / Godrej CSR",
+      "merge_action": "inserted",
+      "website_url": "https://www.godrejindustries.com/sustainability",
+      "location_label": "Mumbai, Maharashtra"
+    },
+    {
+      "entity_name": "Hindustan Unilever Foundation / HUL CSR",
+      "merge_action": "inserted",
+      "website_url": "https://www.huf.co.in",
+      "location_label": "Mumbai, Maharashtra"
+    },
+    {
+      "entity_name": "Piramal Foundation",
+      "merge_action": "inserted",
+      "website_url": "https://www.piramalfoundation.org",
+      "location_label": "Mumbai, Delhi"
+    },
+    {
+      "entity_name": "Bajaj Foundation / Jamnalal Bajaj Foundation",
+      "merge_action": "inserted",
+      "website_url": "https://www.jamnalalbajajfoundation.org",
+      "location_label": "Wardha, Maharashtra"
+    },
+    {
+      "entity_name": "Larsen & Toubro CSR / L&T Public Charitable Trust",
+      "merge_action": "inserted",
+      "website_url": "https://www.larsentoubro.com/corporate/sustainability/corporate-social-responsibility/",
+      "location_label": "Mumbai, Maharashtra"
+    },
+    {
+      "entity_name": "Maruti Suzuki India CSR",
+      "merge_action": "inserted",
+      "website_url": "https://www.marutisuzuki.com/corporate/csr",
+      "location_label": "Gurugram, Haryana"
+    },
+    {
+      "entity_name": "Hero MotoCorp CSR / Hero WeCare",
+      "merge_action": "inserted",
+      "website_url": "https://www.heromotocorp.com/en-in/company/corporate-social-responsibility.html",
+      "location_label": "Gurugram, Haryana"
+    },
+    {
+      "entity_name": "TVS Motor Company CSR / Srinivasan Services Trust",
+      "merge_action": "inserted",
+      "website_url": "https://www.ssttvs.org",
+      "location_label": "Chennai, Tamil Nadu"
+    },
+    {
+      "entity_name": "Ashok Leyland CSR / Road to School",
+      "merge_action": "inserted",
+      "website_url": "https://www.ashokleyland.com/csr",
+      "location_label": "Chennai, Tamil Nadu"
+    },
+    {
+      "entity_name": "Mphasis F1 Foundation",
+      "merge_action": "inserted",
+      "website_url": "https://www.mphasis.com/home/corporate-social-responsibility.html",
+      "location_label": "Bengaluru, Karnataka"
+    },
+    {
+      "entity_name": "Cognizant Foundation India",
+      "merge_action": "inserted",
+      "website_url": "https://www.cognizantfoundation.org",
+      "location_label": "Chennai / Bengaluru / India offices"
+    },
+    {
+      "entity_name": "NSE Foundation",
+      "merge_action": "inserted",
+      "website_url": "https://www.nsefoundation.org",
+      "location_label": "Mumbai, Maharashtra"
+    },
+    {
+      "entity_name": "BSE Foundation",
+      "merge_action": "inserted",
+      "website_url": "https://www.bseindia.com/static/about/csr.aspx",
+      "location_label": "Mumbai, Maharashtra"
+    },
+    {
+      "entity_name": "Apollo Tyres Foundation",
+      "merge_action": "inserted",
+      "website_url": "https://www.apollotyres.com/en-in/csr/",
+      "location_label": "Gurugram, Delhi"
+    },
+    {
+      "entity_name": "Lupin Human Welfare & Research Foundation",
+      "merge_action": "inserted",
+      "website_url": "https://www.lupinfoundation.in",
+      "location_label": "Pune, Madhya Pradesh"
+    },
+    {
+      "entity_name": "Narayana Health CSR / Mazumdar Shaw Medical Foundation",
+      "merge_action": "inserted",
+      "website_url": "https://www.mazumdarshawmedicalfoundation.org",
+      "location_label": "Bengaluru, Karnataka"
+    },
+    {
+      "entity_name": "Shell Foundation / Shell India CSR",
+      "merge_action": "inserted",
+      "website_url": "https://shellfoundation.org",
+      "location_label": "India office via Shell India; global foundation in UK"
+    },
+    {
+      "entity_name": "Schneider Electric Foundation / Schneider Electric India Foundation",
+      "merge_action": "inserted",
+      "website_url": "https://www.se.com/in/en/about-us/sustainability/foundation/",
+      "location_label": "Gurugram / Bengaluru / India operating locations"
+    },
+    {
+      "entity_name": "Siemens India CSR",
+      "merge_action": "inserted",
+      "website_url": "https://www.siemens.com/in/en/company/sustainability/corporate-citizenship.html",
+      "location_label": "Mumbai, Maharashtra"
+    },
+    {
+      "entity_name": "Bosch India Foundation / Bosch CSR",
+      "merge_action": "inserted",
+      "website_url": "https://www.bosch.in/our-company/bosch-in-india/corporate-social-responsibility/",
+      "location_label": "Bengaluru, Karnataka"
+    },
+    {
+      "entity_name": "Capgemini India CSR",
+      "merge_action": "inserted",
+      "website_url": "https://www.capgemini.com/in-en/about-us/corporate-responsibility/",
+      "location_label": "Mumbai / Bengaluru / Pune / India offices"
+    },
+    {
+      "entity_name": "IBM India CSR / IBM SkillsBuild",
+      "merge_action": "inserted",
+      "website_url": "https://skillsbuild.org",
+      "location_label": "Bengaluru / India offices"
+    },
+    {
+      "entity_name": "Amazon India CSR / Amazon Future Engineer",
+      "merge_action": "inserted",
+      "website_url": "https://www.aboutamazon.in/impact/community",
+      "location_label": "Hyderabad, Delhi"
+    },
+    {
+      "entity_name": "Honeywell Hometown Solutions India Foundation",
+      "merge_action": "inserted",
+      "website_url": "https://www.honeywell.com/in/en/csr",
+      "location_label": "Gurugram / Bengaluru / Pune / India offices"
+    },
+    {
+      "entity_name": "Sterlite Technologies / STL CSR",
+      "merge_action": "inserted",
+      "website_url": "https://www.stl.tech/sustainability/csr/",
+      "location_label": "Pune / Mumbai / operating areas"
+    },
+    {
+      "entity_name": "ONGC Foundation / ONGC CSR",
+      "merge_action": "inserted",
+      "website_url": "https://ongcfoundation.org",
+      "location_label": "Delhi"
+    },
+    {
+      "entity_name": "NTPC Foundation / NTPC CSR",
+      "merge_action": "inserted",
+      "website_url": "https://ntpc.co.in/about-us/corporate-functions/corporate-citizenship/corporate-social-responsibility",
+      "location_label": "Delhi"
+    },
+    {
+      "entity_name": "Power Grid Corporation CSR",
+      "merge_action": "inserted",
+      "website_url": "https://www.powergrid.in/csr",
+      "location_label": "Gurugram, Haryana"
+    },
+    {
+      "entity_name": "IndianOil CSR / IndianOil Foundation",
+      "merge_action": "inserted",
+      "website_url": "https://iocl.com/corporate-social-responsibility",
+      "location_label": "Delhi"
+    },
+    {
+      "entity_name": "BPCL CSR",
+      "merge_action": "inserted",
+      "website_url": "https://www.bharatpetroleum.in/social-responsibility/corporate-social-responsibility.aspx",
+      "location_label": "Mumbai, Maharashtra"
+    },
+    {
+      "entity_name": "HPCL CSR",
+      "merge_action": "inserted",
+      "website_url": "https://www.hindustanpetroleum.com/corporate-social-responsibility",
+      "location_label": "Mumbai, Maharashtra"
+    },
+    {
+      "entity_name": "REC Foundation",
+      "merge_action": "inserted",
+      "website_url": "https://www.recfoundation.in",
+      "location_label": "Delhi"
+    },
+    {
+      "entity_name": "PFC CSR / PFC Foundation",
+      "merge_action": "inserted",
+      "website_url": "https://www.pfcindia.com/Home/VS/29",
+      "location_label": "Delhi"
+    },
+    {
+      "entity_name": "NABARD / NABFOUNDATION",
+      "merge_action": "inserted",
+      "website_url": "https://nabfoundation.in",
+      "location_label": "Mumbai, Maharashtra"
+    },
+    {
+      "entity_name": "SIDBI / Swavalamban / PRAYAAS / CSR",
+      "merge_action": "inserted",
+      "website_url": "https://www.sidbi.in",
+      "location_label": "Mumbai, Delhi"
+    },
+    {
+      "entity_name": "Rainmatter Foundation",
+      "merge_action": "merged",
+      "website_url": "https://rainmatter.org",
+      "location_label": "Bengaluru, Karnataka"
+    },
+    {
+      "entity_name": "Rohini Nilekani Philanthropies",
+      "merge_action": "inserted",
+      "website_url": "https://rohininilekaniphilanthropies.org",
+      "location_label": "Bengaluru, Karnataka"
+    },
+    {
+      "entity_name": "A.T.E. Chandra Foundation",
+      "merge_action": "inserted",
+      "website_url": "https://www.atecf.org",
+      "location_label": "Mumbai, Maharashtra"
+    },
+    {
+      "entity_name": "Dasra",
+      "merge_action": "inserted",
+      "website_url": "https://www.dasra.org",
+      "location_label": "Mumbai, Maharashtra"
+    },
+    {
+      "entity_name": "Give / Give Grants",
+      "merge_action": "inserted",
+      "website_url": "https://give.do",
+      "location_label": "Bengaluru / Mumbai / India offices"
+    },
+    {
+      "entity_name": "The/Nudge Institute",
+      "merge_action": "inserted",
+      "website_url": "https://www.thenudge.org",
+      "location_label": "Bengaluru, Karnataka"
+    },
+    {
+      "entity_name": "Villgro Innovations Foundation",
+      "merge_action": "inserted",
+      "website_url": "https://villgro.org",
+      "location_label": "Chennai, Tamil Nadu"
+    },
+    {
+      "entity_name": "Social Alpha",
+      "merge_action": "merged",
+      "website_url": "https://www.socialalpha.org",
+      "location_label": "Bengaluru, Delhi"
+    },
+    {
+      "entity_name": "Acumen India",
+      "merge_action": "inserted",
+      "website_url": "https://acumen.org/india/",
+      "location_label": "Mumbai / India office"
+    },
+    {
+      "entity_name": "Omidyar Network India / OMI-related philanthropy",
+      "merge_action": "inserted",
+      "website_url": "https://omidyarnetwork.in",
+      "location_label": "Bengaluru, Delhi"
+    },
+    {
+      "entity_name": "Michael & Susan Dell Foundation India",
+      "merge_action": "inserted",
+      "website_url": "https://www.dell.org/india/",
+      "location_label": "Gurugram / Bengaluru / India presence"
+    },
+    {
+      "entity_name": "Bill & Melinda Gates Foundation India",
+      "merge_action": "inserted",
+      "website_url": "https://www.gatesfoundation.org/ideas/locations/india",
+      "location_label": "Delhi"
+    },
+    {
+      "entity_name": "Ford Foundation India",
+      "merge_action": "inserted",
+      "website_url": "https://www.fordfoundation.org/about/people/india/",
+      "location_label": "Delhi"
+    },
+    {
+      "entity_name": "John D. and Catherine T. MacArthur Foundation India",
+      "merge_action": "inserted",
+      "website_url": "https://www.macfound.org/about/offices/macarthur-in-india",
+      "location_label": "Delhi"
+    },
+    {
+      "entity_name": "David and Lucile Packard Foundation India",
+      "merge_action": "inserted",
+      "website_url": "https://www.packard.org/what-we-fund/india/",
+      "location_label": "India programme presence; headquarters US"
+    },
+    {
+      "entity_name": "Children's Investment Fund Foundation (CIFF) India",
+      "merge_action": "inserted",
+      "website_url": "https://ciff.org/india/",
+      "location_label": "Delhi"
+    },
+    {
+      "entity_name": "Aga Khan Foundation India",
+      "merge_action": "inserted",
+      "website_url": "https://www.akdn.org/our-agencies/aga-khan-foundation/india",
+      "location_label": "Delhi"
+    },
+    {
+      "entity_name": "British Asian Trust India",
+      "merge_action": "inserted",
+      "website_url": "https://www.britishasiantrust.org/our-work/india/",
+      "location_label": "India office via BAT; global HQ UK"
+    },
+    {
+      "entity_name": "USAID India",
+      "merge_action": "inserted",
+      "website_url": "https://www.usaid.gov/india",
+      "location_label": "American Embassy, Delhi"
+    },
+    {
+      "entity_name": "UK FCDO / British High Commission India",
+      "merge_action": "inserted",
+      "website_url": "https://www.gov.uk/world/organisations/british-high-commission-new-delhi",
+      "location_label": "British High Commission, Delhi"
+    },
+    {
+      "entity_name": "European Union Delegation to India",
+      "merge_action": "inserted",
+      "website_url": "https://www.eeas.europa.eu/delegations/india_en",
+      "location_label": "Delhi"
+    },
+    {
+      "entity_name": "UNDP India",
+      "merge_action": "inserted",
+      "website_url": "https://www.undp.org/india",
+      "location_label": "Delhi"
+    },
+    {
+      "entity_name": "UNICEF India",
+      "merge_action": "inserted",
+      "website_url": "https://www.unicef.org/india",
+      "location_label": "Delhi"
+    },
+    {
+      "entity_name": "GIZ India",
+      "merge_action": "inserted",
+      "website_url": "https://www.giz.de/en/worldwide/368.html",
+      "location_label": "Delhi"
+    },
+    {
+      "entity_name": "CSRBOX / NGOBOX",
+      "merge_action": "inserted",
+      "website_url": "https://www.csrbox.org",
+      "location_label": "Ahmedabad, Gujarat"
+    },
+    {
+      "entity_name": "FundsforNGOs India listings",
+      "merge_action": "inserted",
+      "website_url": "https://www2.fundsforngos.org/tag/india/",
+      "location_label": "Online platform; global"
+    }
+  ]
+}
