@@ -68,6 +68,17 @@ PUSA_PUBLIC_PROFILES = {
     },
 }
 
+GENERIC_INDIA_LOCATIONS = {
+    "india",
+    "pan india",
+    "pan-india",
+    "north india",
+    "remote pan india",
+    "urban + rural outreach",
+    "urban and rural outreach",
+    "rural outreach",
+}
+
 
 def compact_spaces(value: str) -> str:
     return re.sub(r"\s+", " ", str(value or "").strip())
@@ -337,14 +348,26 @@ def geocode_query(query, cache):
 
 
 def geocode_location(location_label, state, cache):
+    normalized_location = (clean_text(location_label) or "").lower()
+    normalized_state = (clean_text(state) or "").lower()
+    if normalized_location in GENERIC_INDIA_LOCATIONS:
+        return (22.3511148, 78.6677428)
+    if normalized_state == "india":
+        return (22.3511148, 78.6677428)
     queries = dedupe([
         location_label,
         f"{state}, India" if state and state != "India" else state,
         "India",
     ])
     for query in queries:
+        normalized_query = (clean_text(query) or "").lower()
+        if normalized_query in GENERIC_INDIA_LOCATIONS:
+            continue
         point = geocode_query(query, cache)
         if point:
+            lat, lng = point
+            if not (6 <= lat <= 38 and 68 <= lng <= 98):
+                continue
             if query != "India":
                 time.sleep(0.8)
             return point
