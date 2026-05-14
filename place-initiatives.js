@@ -985,7 +985,7 @@ function getCachedPotentialPartnerGroups(placeUid) {
 function hydratePlaceDetailCaches(placeUid) {
   if (!placeUid) return;
   const needGroups = getNeedToPotentialPartnerGroups(placeUid);
-  const potentialPartners = groupPartnersByType(getPotentialPartnersByStateForPlace(placeUid, { limit: 400 }));
+  const potentialPartners = groupPartnersByType(getPotentialPartnersByStateForPlace(placeUid));
   placeState.needPartnerCache.set(placeUid, needGroups);
   placeState.potentialPartnerCache.set(placeUid, potentialPartners);
 }
@@ -1166,8 +1166,7 @@ function getPotentialPartnersByStateForPlace(placeUid, options = {}) {
       if (entityUid && linkedEntityIds.has(entityUid)) return false;
       if (entityName && linkedEntityNames.has(entityName)) return false;
       return true;
-    })
-    .slice(0, options.limit || 400);
+    });
 }
 
 function getRolePartnerSummary(placeUid) {
