@@ -97,7 +97,7 @@ const EDITABLE_FIELDS = [
   "admin_notes",
 ] as const;
 
-const SOTH_STAGE_NAMES = ["Initiate", "Engage", "Action", "Auto Pilot"] as const;
+const SOTH_STAGE_NAMES = ["Initiate", "Engage", "Action", "Expand", "Auto Pilot"] as const;
 const GRAMEEE_STAGE_NAMES = ["Triggering", "Incubating", "Sustaining"] as const;
 const PLACE_ROLE_TO_ENTITY_TYPE: Record<string, string> = {
   cso: "cso",

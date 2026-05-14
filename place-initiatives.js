@@ -62,7 +62,7 @@ const PLACE_SPIDER_METRICS = [
   { key: 'institution', label: 'Institution', defaultMax: 5 },
   { key: 'wash', label: 'Water / Sanitation / Hygiene', defaultMax: 5 },
 ];
-const SOTH_STAGES = ['Initiate', 'Engage', 'Action', 'Auto Pilot'];
+const SOTH_STAGES = ['Initiate', 'Engage', 'Action', 'Expand', 'Auto Pilot'];
 const GRAMEEE_STAGES = ['Triggering', 'Incubating', 'Sustaining'];
 const LGD_MANIFEST_URL = './data/lgd/manifest.json';
 const LGD_BUCKET_BASE_URL = './data/lgd/buckets';
