@@ -607,6 +607,35 @@ function getSpiderChartNeedIdentifiers(placeUid) {
   return { labels, recordedAt: latestSnapshot.recorded_at || '' };
 }
 
+function getSpiderNeedLabels(snapshot) {
+  return normalizePlaceMetricSet(snapshot?.metrics_json)
+    .filter((metric) => metric.key === 'arresting_distress_migration' ? metric.normalized > 50 : metric.normalized < 50)
+    .map((metric) => metric.label);
+}
+
+function getRawVillageNeedGroups(placeUid) {
+  const groups = new Map();
+  getPlaceTopThematicNeeds(placeUid).records.forEach((record) => {
+    const sourceName = String(record.place_name || record.place_uid || 'Place').trim();
+    if (!groups.has(sourceName)) groups.set(sourceName, new Set());
+    asArray(record.thematic_needs).forEach((need) => {
+      const text = String(need || '').trim();
+      if (text) groups.get(sourceName).add(text);
+    });
+  });
+  getPlaceSpiderSnapshots(placeUid).forEach((snapshot) => {
+    const sourceName = String(snapshot.place_name || snapshot.place_uid || 'Place').trim();
+    const spiderNeeds = getSpiderNeedLabels(snapshot);
+    if (!spiderNeeds.length) return;
+    if (!groups.has(sourceName)) groups.set(sourceName, new Set());
+    spiderNeeds.forEach((need) => groups.get(sourceName).add(need));
+  });
+  return Array.from(groups.entries()).map(([sourceName, needSet]) => ({
+    sourceName,
+    needs: Array.from(needSet),
+  })).filter((group) => group.needs.length);
+}
+
 function extractNeedKeywords(placeUid, options = {}) {
   const thematicRecords = getPlaceTopThematicNeeds(placeUid).records;
   const thematic = options.placeName
@@ -628,18 +657,18 @@ function extractNeedKeywords(placeUid, options = {}) {
 function getVillageNeedPartnerGroups(placeUid) {
   const aiMatch = placeState.aiNeedMatchCache.get(placeUid);
   if (aiMatch?.groups?.length) return aiMatch.groups;
-  const records = getPlaceTopThematicNeeds(placeUid).records;
-  if (!records.length) return [];
+  const rawGroups = getRawVillageNeedGroups(placeUid);
+  if (!rawGroups.length) return [];
   const locations = getPlaceLocations(placeUid);
   const partners = getPlacePartners(placeUid);
   const linkedEntityIds = new Set(partners.map((item) => String(item.entity_uid || '').trim()).filter(Boolean));
   const linkedEntityNames = new Set(partners.map((item) => normalizeText(item.partner_name)).filter(Boolean));
   const sourceGroups = new Map();
 
-  records.forEach((record) => {
-    const sourceName = String(record.place_name || record.place_uid || 'Place').trim();
+  rawGroups.forEach((record) => {
+    const sourceName = String(record.sourceName || 'Place').trim();
     if (!sourceGroups.has(sourceName)) sourceGroups.set(sourceName, new Set());
-    asArray(record.thematic_needs).forEach((need) => {
+    asArray(record.needs).forEach((need) => {
       const text = String(need || '').trim();
       if (text) sourceGroups.get(sourceName).add(text);
     });

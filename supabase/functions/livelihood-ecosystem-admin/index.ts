@@ -39,6 +39,23 @@ const PLACE_SPIDER_METRIC_KEYS = [
   "wash",
 ] as const;
 
+const PLACE_SPIDER_METRIC_LABELS: Record<(typeof PLACE_SPIDER_METRIC_KEYS)[number], string> = {
+  arresting_distress_migration: "Arresting Distress Migration",
+  export_import: "Export Import",
+  income: "Income",
+  livelihood_basket: "Livelihood Basket",
+  youth_employment: "Youth Employment",
+  agro_ecology: "Agro Ecology",
+  energy: "Energy",
+  forest: "Forest",
+  soil: "Soil",
+  water: "Water",
+  gender_inclusion: "Gender Inclusion",
+  nutrition: "Nutrition",
+  institution: "Institution",
+  wash: "Water / Sanitation / Hygiene",
+};
+
 const ENTITY_TABLES: Record<string, string> = {
   mentor: "mentor_entities",
   community_steward: "community_steward_entities",
@@ -350,7 +367,21 @@ function toEntityMatchReference(entity: Record<string, unknown>) {
   };
 }
 
-function getRawNeedGroupsForMatch(records: Record<string, unknown>[]) {
+function getSpiderNeedLabelsForMatch(snapshot: Record<string, unknown>) {
+  const metrics = normalizePlaceMetrics(snapshot.metrics_json);
+  return PLACE_SPIDER_METRIC_KEYS
+    .map((key) => {
+      const entry = metrics[key];
+      const score = toNullableNumber(entry?.score) ?? 0;
+      const maxScore = Math.max(1, toNullableNumber(entry?.max_score) ?? 5);
+      const normalized = (score / maxScore) * 100;
+      const isNeed = key === "arresting_distress_migration" ? normalized > 50 : normalized < 50;
+      return isNeed ? PLACE_SPIDER_METRIC_LABELS[key] : "";
+    })
+    .filter(Boolean);
+}
+
+function getRawNeedGroupsForMatch(records: Record<string, unknown>[], spiderSnapshots: Record<string, unknown>[] = []) {
   const groups = new Map<string, Set<string>>();
   records.forEach((record) => {
     const sourceName = requireString(record.place_name) || requireString(record.place_uid) || "Place";
@@ -359,6 +390,13 @@ function getRawNeedGroupsForMatch(records: Record<string, unknown>[]) {
       const text = requireString(need);
       if (text) groups.get(sourceName)?.add(text);
     });
+  });
+  spiderSnapshots.forEach((snapshot) => {
+    const sourceName = requireString(snapshot.place_name) || requireString(snapshot.place_uid) || "Place";
+    const labels = getSpiderNeedLabelsForMatch(snapshot);
+    if (!labels.length) return;
+    if (!groups.has(sourceName)) groups.set(sourceName, new Set<string>());
+    labels.forEach((label) => groups.get(sourceName)?.add(label));
   });
   return Array.from(groups.entries()).map(([sourceName, needSet]) => ({
     sourceName,
@@ -2417,17 +2455,19 @@ async function syncPlacePartnerMatchCache(
     return { ok: false, place_uid: "", error: "Missing place id." };
   }
 
-  const [{ data: place, error: placeError }, { data: locations, error: locationError }, { data: partners, error: partnerError }, { data: allNeedRecords, error: needError }] = await Promise.all([
+  const [{ data: place, error: placeError }, { data: locations, error: locationError }, { data: partners, error: partnerError }, { data: allNeedRecords, error: needError }, { data: allSpiderSnapshots, error: spiderError }] = await Promise.all([
     supabase.from("place_initiatives").select("place_uid, initiative_name, approval_status, is_deleted").eq("place_uid", normalizedPlaceUid).maybeSingle(),
     supabase.from("place_initiative_locations").select("*").eq("place_uid", normalizedPlaceUid).order("sort_order"),
     supabase.from("place_initiative_partners").select("*").eq("place_uid", normalizedPlaceUid).order("sort_order"),
     supabase.from("place_thematic_need_records").select("*").eq("approval_status", "approved").eq("is_deleted", false).order("recorded_at", { ascending: false }),
+    supabase.from("place_spider_chart_snapshots").select("*").eq("approval_status", "approved").eq("is_deleted", false).order("recorded_at", { ascending: false }),
   ]);
 
   if (placeError) throw new Error(`Place match context load failed: ${placeError.message}`);
   if (locationError) throw new Error(`Place locations load failed: ${locationError.message}`);
   if (partnerError) throw new Error(`Place partners load failed: ${partnerError.message}`);
   if (needError) throw new Error(`Place thematic needs load failed: ${needError.message}`);
+  if (spiderError) throw new Error(`Place spider chart load failed: ${spiderError.message}`);
 
   if (!place || place.is_deleted || place.approval_status !== "approved") {
     await supabase.from("place_partner_match_cache").delete().eq("place_uid", normalizedPlaceUid);
@@ -2436,6 +2476,9 @@ async function syncPlacePartnerMatchCache(
 
   const matchingNeedRecords = (allNeedRecords || []).filter((record) =>
     recordMatchesPlaceContextForMatch(place, locations || [], record, toTextArray(record.thematic_needs))
+  );
+  const matchingSpiderSnapshots = (allSpiderSnapshots || []).filter((snapshot) =>
+    recordMatchesPlaceContextForMatch(place, locations || [], snapshot)
   );
 
   const allEntities = options.sharedEntities || await fetchAllRows("ecosystem_directory_entities", "entity_name");
@@ -2451,7 +2494,7 @@ async function syncPlacePartnerMatchCache(
     themes: getEntityThematicTokensForMatch(entity).slice(0, 30),
     geography: getEntityGeographyTokensForMatch(entity).slice(0, 20),
   }));
-  const rawNeedGroups = getRawNeedGroupsForMatch(matchingNeedRecords);
+  const rawNeedGroups = getRawNeedGroupsForMatch(matchingNeedRecords, matchingSpiderSnapshots);
   const matchContext: MatchContext = {
     place_uid: normalizedPlaceUid,
     initiative_name: requireString(place.initiative_name),
@@ -2481,7 +2524,7 @@ async function syncPlacePartnerMatchCache(
     need_groups: matchedNeedGroups.groups,
     potential_partner_groups: potentialPartnerGroups,
     candidate_entity_count: candidateEntities.length,
-    need_record_count: matchingNeedRecords.length,
+    need_record_count: matchingNeedRecords.length + matchingSpiderSnapshots.length,
     last_sync_reason: requireString(options.reason) || "manual",
     synced_by: requireString(options.syncedBy) || null,
     refreshed_at: new Date().toISOString(),
@@ -2495,7 +2538,7 @@ async function syncPlacePartnerMatchCache(
     place_uid: normalizedPlaceUid,
     provider: matchedNeedGroups.provider,
     candidate_entity_count: candidateEntities.length,
-    need_record_count: matchingNeedRecords.length,
+    need_record_count: matchingNeedRecords.length + matchingSpiderSnapshots.length,
   };
 }
 
