@@ -183,11 +183,11 @@ a{text-decoration:none}
 .place-need-groups{display:grid;gap:.8rem}
 .place-need-group{display:grid;gap:.45rem;padding:.75rem;border:1px solid #dfe4ea;border-radius:12px;background:#fff}
 .place-progress-block{display:grid;gap:.8rem}
-.place-progress-bar{display:grid;grid-template-columns:repeat(auto-fit,minmax(74px,1fr));gap:.55rem;margin-top:.4rem}
+.place-progress-bar{display:grid;grid-template-columns:repeat(var(--progress-columns,1),minmax(0,1fr));gap:.4rem;margin-top:.4rem}
 .place-progress-item{display:grid;gap:.28rem;align-items:start}
-.place-progress-segment{min-height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;padding:.45rem .4rem;text-align:center;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-.place-progress-label{font-size:.83rem;font-weight:700;color:#fff;line-height:1.15}
-.place-progress-state{font-size:.76rem;color:#607384;text-align:center}
+.place-progress-segment{min-height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;padding:.4rem .3rem;text-align:center;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.place-progress-label{font-size:.78rem;font-weight:700;color:#fff;line-height:1.12}
+.place-progress-state{font-size:.72rem;color:#607384;text-align:center}
 .place-inline-list{display:flex;flex-wrap:wrap;gap:.45rem}
 .place-partner-detail{display:grid;gap:.2rem;padding:.65rem;border-radius:12px;background:#fff;border:1px solid #dfe4ea}
 .place-partner-detail small{color:#6a7785}
