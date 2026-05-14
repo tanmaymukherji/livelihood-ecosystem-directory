@@ -293,6 +293,7 @@ function buildPlaceHierarchyProfile(source = {}, fallback = {}) {
   const merged = { ...fallback, ...source };
   const entityNameParts = String(merged.entity_name || '').split('|').map((part) => part.trim()).filter(Boolean);
   const locationLabelParts = String(merged.location_label || '').split('|').map((part) => part.trim()).filter(Boolean);
+  const displayLabelParts = String(merged.display_label || '').split(',').map((part) => part.trim()).filter(Boolean);
   const parsedPrimaryName = entityNameParts[0] || locationLabelParts[0] || '';
   const parsedKind = entityNameParts[1] || locationLabelParts[1] || '';
   const kind = getCanonicalPlaceKind(
@@ -304,6 +305,8 @@ function buildPlaceHierarchyProfile(source = {}, fallback = {}) {
   );
   const profile = {
     kind,
+    location_name: normalizeText(merged.location_name),
+    display_label: normalizeText(merged.display_label),
     village_name: normalizeText(merged.village_name),
     gram_panchayat_name: normalizeText(merged.gram_panchayat_name || merged.panchayat_name),
     block_name: normalizeText(merged.block_name),
@@ -315,6 +318,8 @@ function buildPlaceHierarchyProfile(source = {}, fallback = {}) {
   profile.primary_name = profile.village_name
     || profile.gram_panchayat_name
     || profile.block_name
+    || profile.location_name
+    || normalizeText(displayLabelParts[0])
     || profile.district_name
     || profile.state_name
     || normalizeText(parsedPrimaryName)
@@ -355,8 +360,15 @@ function findMatchingPlaceEntityForLocation(location) {
     if (entity.entity_type_slug !== 'place') return;
     const entityProfile = getPlaceEntityProfile(entity);
     if (!entityProfile.primary_name) return;
-    if (locationProfile.kind && entityProfile.kind && locationProfile.kind !== entityProfile.kind) return;
     if (locationProfile.primary_name !== entityProfile.primary_name) return;
+
+    const kindMismatch = locationProfile.kind && entityProfile.kind && locationProfile.kind !== entityProfile.kind;
+    const hasGeographyAlignment = (!locationProfile.state_name || !entityProfile.state_name || locationProfile.state_name === entityProfile.state_name)
+      && (!locationProfile.district_name || !entityProfile.district_name || locationProfile.district_name === entityProfile.district_name);
+    const canOverrideKindMismatch = kindMismatch
+      && Boolean(locationProfile.location_name)
+      && hasGeographyAlignment;
+    if (kindMismatch && !canOverrideKindMismatch) return;
 
     let score = 10;
     if (locationProfile.kind && entityProfile.kind && locationProfile.kind === entityProfile.kind) score += 5;
