@@ -291,10 +291,15 @@ function getCanonicalPlaceKind(value) {
 
 function buildPlaceHierarchyProfile(source = {}, fallback = {}) {
   const merged = { ...fallback, ...source };
+  const entityNameParts = String(merged.entity_name || '').split('|').map((part) => part.trim()).filter(Boolean);
+  const locationLabelParts = String(merged.location_label || '').split('|').map((part) => part.trim()).filter(Boolean);
+  const parsedPrimaryName = entityNameParts[0] || locationLabelParts[0] || '';
+  const parsedKind = entityNameParts[1] || locationLabelParts[1] || '';
   const kind = getCanonicalPlaceKind(
     merged.location_kind
     || merged.place_kind
     || merged.kind
+    || parsedKind
     || guessLocationKind(merged)
   );
   const profile = {
@@ -312,6 +317,7 @@ function buildPlaceHierarchyProfile(source = {}, fallback = {}) {
     || profile.block_name
     || profile.district_name
     || profile.state_name
+    || normalizeText(parsedPrimaryName)
     || profile.entity_name
     || profile.location_label;
   return profile;
