@@ -1,0 +1,3229 @@
+{
+  "source_label": "Consolidated trader association workbooks",
+  "raw_source_rows": 361,
+  "unique_workbook_entities": 357,
+  "existing_live_trader_association_count": 0,
+  "inserted": 357,
+  "merged": 0,
+  "with_website": 130,
+  "with_phone": 131,
+  "records": [
+    {
+      "entity_name": "Confederation of All India Traders (CAIT)",
+      "merge_action": "inserted",
+      "location_label": "National office: Karol Bagh, New Delhi",
+      "website_url": "https://cait.in",
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx",
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "All India Consumer Products Distributors Federation (AICPDF)",
+      "merge_action": "inserted",
+      "location_label": "Kolhapur / national network",
+      "website_url": "https://aicpdf.com",
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx",
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Federation of All India Vyapar Mandal (FAIVM)",
+      "merge_action": "inserted",
+      "location_label": "Ghaziabad / national",
+      "website_url": "https://www.faivm.in",
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx",
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Retailers Association of India (RAI)",
+      "merge_action": "inserted",
+      "location_label": "Mumbai / national",
+      "website_url": "https://rai.net.in",
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx",
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Punjab Pradesh Beopar Mandal",
+      "merge_action": "inserted",
+      "location_label": "Punjab",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Haryana Chamber of Commerce and Industry",
+      "merge_action": "inserted",
+      "location_label": "Haryana",
+      "website_url": "https://hcci.in",
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Himachal Chamber of Commerce & Industry",
+      "merge_action": "inserted",
+      "location_label": "Himachal Pradesh",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Jammu Chamber of Commerce & Industry",
+      "merge_action": "inserted",
+      "location_label": "Jammu & Kashmir",
+      "website_url": "https://jcci.org",
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Kashmir Chamber of Commerce & Industry (KCC&I)",
+      "merge_action": "inserted",
+      "location_label": "Jammu & Kashmir",
+      "website_url": "https://kcci.org.in",
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Uttarakhand Chamber of Commerce & Industry",
+      "merge_action": "inserted",
+      "location_label": "Uttarakhand",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Delhi Hindustani Mercantile Association",
+      "merge_action": "inserted",
+      "location_label": "Delhi",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Chandigarh Beopar Mandal",
+      "merge_action": "inserted",
+      "location_label": "Chandigarh",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Ludhiana Hosiery Merchants Association",
+      "merge_action": "inserted",
+      "location_label": "Punjab",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Maharashtra Chamber of Commerce (MACCIA)",
+      "merge_action": "inserted",
+      "location_label": "Maharashtra",
+      "website_url": "https://maccia.org.in",
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Gujarat Chamber of Commerce & Industry (GCCI)",
+      "merge_action": "inserted",
+      "location_label": "Gujarat",
+      "website_url": "https://gujaratchamber.org",
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Goa Chamber of Commerce & Industry",
+      "merge_action": "inserted",
+      "location_label": "Goa",
+      "website_url": "https://goachamber.org",
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Rajasthan Chamber of Commerce & Industry",
+      "merge_action": "inserted",
+      "location_label": "Rajasthan",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Dadra & Nagar Haveli Industries & Trade Association",
+      "merge_action": "inserted",
+      "location_label": "DNH & DD",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Ahmedabad Grain Merchants Association",
+      "merge_action": "inserted",
+      "location_label": "Gujarat",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Pune Merchants Chamber",
+      "merge_action": "inserted",
+      "location_label": "Maharashtra",
+      "website_url": "https://punemerchantschamber.com",
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Tamil Nadu Chamber of Commerce & Industry",
+      "merge_action": "inserted",
+      "location_label": "Tamil Nadu",
+      "website_url": "https://tnchamber.in",
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Federation of Karnataka Chambers of Commerce (FKCCI)",
+      "merge_action": "inserted",
+      "location_label": "Karnataka",
+      "website_url": "https://fkcci.org",
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Kerala Vyapari Vyavasayi Ekana Samithi (KVVES)",
+      "merge_action": "inserted",
+      "location_label": "Kerala",
+      "website_url": "https://kvves.com",
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Federation of Telangana Chambers of Commerce (FTCCI)",
+      "merge_action": "inserted",
+      "location_label": "Telangana",
+      "website_url": "https://ftcci.in",
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Andhra Pradesh Chamber of Commerce & Industry",
+      "merge_action": "inserted",
+      "location_label": "Andhra Pradesh",
+      "website_url": "https://apchamber.in",
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Puducherry Traders Federation",
+      "merge_action": "inserted",
+      "location_label": "Puducherry",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Andaman Chamber of Commerce & Industry",
+      "merge_action": "inserted",
+      "location_label": "Andaman & Nicobar",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Lakshadweep Merchants Association",
+      "merge_action": "inserted",
+      "location_label": "Lakshadweep",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Bangalore Wholesale Grains Association",
+      "merge_action": "inserted",
+      "location_label": "Karnataka",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Bengal National Chamber of Commerce (BNCCI)",
+      "merge_action": "inserted",
+      "location_label": "West Bengal",
+      "website_url": "https://bncci.com",
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Bihar Rajya Vyapari Mahasangh",
+      "merge_action": "inserted",
+      "location_label": "Bihar",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Jharkhand Chamber of Commerce & Industry",
+      "merge_action": "inserted",
+      "location_label": "Jharkhand",
+      "website_url": "https://fjcci.org",
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Odisha Chamber of Commerce & Industry",
+      "merge_action": "inserted",
+      "location_label": "Odisha",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Posta Vyapari Sangha (Kolkata)",
+      "merge_action": "inserted",
+      "location_label": "West Bengal",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Madhya Pradesh Chamber of Commerce (MPCCI)",
+      "merge_action": "inserted",
+      "location_label": "Madhya Pradesh",
+      "website_url": "https://mpcci.org",
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Chhattisgarh Chamber of Commerce & Industry",
+      "merge_action": "inserted",
+      "location_label": "Chhattisgarh",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Indore Mithai & Namkeen Association",
+      "merge_action": "inserted",
+      "location_label": "Madhya Pradesh",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Assam Chamber of Commerce",
+      "merge_action": "inserted",
+      "location_label": "Assam",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Arunachal Chamber of Commerce & Industry",
+      "merge_action": "inserted",
+      "location_label": "Arunachal Pradesh",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Meghalaya Chamber of Commerce",
+      "merge_action": "inserted",
+      "location_label": "Meghalaya",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Mizoram Chamber of Commerce",
+      "merge_action": "inserted",
+      "location_label": "Mizoram",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Nagaland Chamber of Commerce & Industry",
+      "merge_action": "inserted",
+      "location_label": "Nagaland",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Manipur Chamber of Commerce & Industry",
+      "merge_action": "inserted",
+      "location_label": "Manipur",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Tripura Chamber of Commerce & Industry",
+      "merge_action": "inserted",
+      "location_label": "Tripura",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Sikkim Chamber of Commerce",
+      "merge_action": "inserted",
+      "location_label": "Sikkim",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Guntur Chillies Merchants Association",
+      "merge_action": "inserted",
+      "location_label": "Andhra Pradesh",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Unjha Seed & Spice Association",
+      "merge_action": "inserted",
+      "location_label": "Gujarat",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Salem Stainless Steel Association",
+      "merge_action": "inserted",
+      "location_label": "Tamil Nadu",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Sivakasi Cracker & Matchstick Association",
+      "merge_action": "inserted",
+      "location_label": "Tamil Nadu",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Kanpur Vyapar Mandal",
+      "merge_action": "inserted",
+      "location_label": "Uttar Pradesh",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Varanasi Cloth Merchants Association",
+      "merge_action": "inserted",
+      "location_label": "Uttar Pradesh",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Amritsar Dry Fruit Merchants",
+      "merge_action": "inserted",
+      "location_label": "Punjab",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Belgaum Chamber of Commerce",
+      "merge_action": "inserted",
+      "location_label": "Karnataka",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Vijayawada Grain Merchants Association",
+      "merge_action": "inserted",
+      "location_label": "Andhra Pradesh",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Warangal Cotton & Grain Association",
+      "merge_action": "inserted",
+      "location_label": "Telangana",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Solapur Garment Manufacturers Association",
+      "merge_action": "inserted",
+      "location_label": "Maharashtra",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Margao Merchants Association",
+      "merge_action": "inserted",
+      "location_label": "Goa",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Ladakh Chamber of Commerce & Industry",
+      "merge_action": "inserted",
+      "location_label": "Ladakh",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Dadra District Chamber of Commerce",
+      "merge_action": "inserted",
+      "location_label": "DNH & DD",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Uttar Pradesh Federation of Traders",
+      "merge_action": "inserted",
+      "location_label": "Uttar Pradesh",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Capital City Merchants Association of Uttar Pradesh",
+      "merge_action": "inserted",
+      "location_label": "Uttar Pradesh",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Maharashtra Federation of Traders",
+      "merge_action": "inserted",
+      "location_label": "Maharashtra",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Capital City Merchants Association of Maharashtra",
+      "merge_action": "inserted",
+      "location_label": "Maharashtra",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Bihar Federation of Traders",
+      "merge_action": "inserted",
+      "location_label": "Bihar",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Capital City Merchants Association of Bihar",
+      "merge_action": "inserted",
+      "location_label": "Bihar",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "West Bengal Federation of Traders",
+      "merge_action": "inserted",
+      "location_label": "West Bengal",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Capital City Merchants Association of West Bengal",
+      "merge_action": "inserted",
+      "location_label": "West Bengal",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Madhya Pradesh Federation of Traders",
+      "merge_action": "inserted",
+      "location_label": "Madhya Pradesh",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Capital City Merchants Association of Madhya Pradesh",
+      "merge_action": "inserted",
+      "location_label": "Madhya Pradesh",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Tamil Nadu Federation of Traders",
+      "merge_action": "inserted",
+      "location_label": "Tamil Nadu",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Capital City Merchants Association of Tamil Nadu",
+      "merge_action": "inserted",
+      "location_label": "Tamil Nadu",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Rajasthan Federation of Traders",
+      "merge_action": "inserted",
+      "location_label": "Rajasthan",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Capital City Merchants Association of Rajasthan",
+      "merge_action": "inserted",
+      "location_label": "Rajasthan",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Karnataka Federation of Traders",
+      "merge_action": "inserted",
+      "location_label": "Karnataka",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Capital City Merchants Association of Karnataka",
+      "merge_action": "inserted",
+      "location_label": "Karnataka",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Gujarat Federation of Traders",
+      "merge_action": "inserted",
+      "location_label": "Gujarat",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Capital City Merchants Association of Gujarat",
+      "merge_action": "inserted",
+      "location_label": "Gujarat",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Andhra Pradesh Federation of Traders",
+      "merge_action": "inserted",
+      "location_label": "Andhra Pradesh",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Capital City Merchants Association of Andhra Pradesh",
+      "merge_action": "inserted",
+      "location_label": "Andhra Pradesh",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Odisha Federation of Traders",
+      "merge_action": "inserted",
+      "location_label": "Odisha",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Capital City Merchants Association of Odisha",
+      "merge_action": "inserted",
+      "location_label": "Odisha",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Telangana Federation of Traders",
+      "merge_action": "inserted",
+      "location_label": "Telangana",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Capital City Merchants Association of Telangana",
+      "merge_action": "inserted",
+      "location_label": "Telangana",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Kerala Federation of Traders",
+      "merge_action": "inserted",
+      "location_label": "Kerala",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Capital City Merchants Association of Kerala",
+      "merge_action": "inserted",
+      "location_label": "Kerala",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Jharkhand Federation of Traders",
+      "merge_action": "inserted",
+      "location_label": "Jharkhand",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Capital City Merchants Association of Jharkhand",
+      "merge_action": "inserted",
+      "location_label": "Jharkhand",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Assam Federation of Traders",
+      "merge_action": "inserted",
+      "location_label": "Assam",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Capital City Merchants Association of Assam",
+      "merge_action": "inserted",
+      "location_label": "Assam",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Punjab Federation of Traders",
+      "merge_action": "inserted",
+      "location_label": "Punjab",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Capital City Merchants Association of Punjab",
+      "merge_action": "inserted",
+      "location_label": "Punjab",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Chhattisgarh Federation of Traders",
+      "merge_action": "inserted",
+      "location_label": "Chhattisgarh",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Capital City Merchants Association of Chhattisgarh",
+      "merge_action": "inserted",
+      "location_label": "Chhattisgarh",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Haryana Federation of Traders",
+      "merge_action": "inserted",
+      "location_label": "Haryana",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Capital City Merchants Association of Haryana",
+      "merge_action": "inserted",
+      "location_label": "Haryana",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Uttarakhand Federation of Traders",
+      "merge_action": "inserted",
+      "location_label": "Uttarakhand",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Capital City Merchants Association of Uttarakhand",
+      "merge_action": "inserted",
+      "location_label": "Uttarakhand",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Himachal Pradesh Federation of Traders",
+      "merge_action": "inserted",
+      "location_label": "Himachal Pradesh",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Capital City Merchants Association of Himachal Pradesh",
+      "merge_action": "inserted",
+      "location_label": "Himachal Pradesh",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Tripura Federation of Traders",
+      "merge_action": "inserted",
+      "location_label": "Tripura",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Capital City Merchants Association of Tripura",
+      "merge_action": "inserted",
+      "location_label": "Tripura",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Meghalaya Federation of Traders",
+      "merge_action": "inserted",
+      "location_label": "Meghalaya",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Capital City Merchants Association of Meghalaya",
+      "merge_action": "inserted",
+      "location_label": "Meghalaya",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Manipur Federation of Traders",
+      "merge_action": "inserted",
+      "location_label": "Manipur",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Capital City Merchants Association of Manipur",
+      "merge_action": "inserted",
+      "location_label": "Manipur",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Nagaland Federation of Traders",
+      "merge_action": "inserted",
+      "location_label": "Nagaland",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Capital City Merchants Association of Nagaland",
+      "merge_action": "inserted",
+      "location_label": "Nagaland",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Goa Federation of Traders",
+      "merge_action": "inserted",
+      "location_label": "Goa",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Capital City Merchants Association of Goa",
+      "merge_action": "inserted",
+      "location_label": "Goa",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Arunachal Pradesh Federation of Traders",
+      "merge_action": "inserted",
+      "location_label": "Arunachal Pradesh",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Capital City Merchants Association of Arunachal Pradesh",
+      "merge_action": "inserted",
+      "location_label": "Arunachal Pradesh",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Mizoram Federation of Traders",
+      "merge_action": "inserted",
+      "location_label": "Mizoram",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Capital City Merchants Association of Mizoram",
+      "merge_action": "inserted",
+      "location_label": "Mizoram",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Sikkim Federation of Traders",
+      "merge_action": "inserted",
+      "location_label": "Sikkim",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Capital City Merchants Association of Sikkim",
+      "merge_action": "inserted",
+      "location_label": "Sikkim",
+      "website_url": null,
+      "source_files": [
+        "T1 - All_India_Trader_Associations_States_UTs.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Federation of All India Distributors Associations (FAIDA)",
+      "merge_action": "inserted",
+      "location_label": "National distributor network",
+      "website_url": "https://www.faida.org.in",
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Federation of Retailer Associations of India (FRAI)",
+      "merge_action": "inserted",
+      "location_label": "National",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "India Pulses and Grains Association (IPGA)",
+      "merge_action": "inserted",
+      "location_label": "Mumbai",
+      "website_url": "https://www.ipga.co.in",
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "All India Dal Mill Association (AIDMA)",
+      "merge_action": "inserted",
+      "location_label": "Indore",
+      "website_url": "https://aidma.in",
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "The Solvent Extractors Association of India (SEA)",
+      "merge_action": "inserted",
+      "location_label": "Mumbai",
+      "website_url": "https://seaofindia.com",
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Indian Vegetable Oil Producers Association (IVPA)",
+      "merge_action": "inserted",
+      "location_label": "New Delhi",
+      "website_url": "https://ivpa.in",
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Indian Oilseeds and Produce Export Promotion Council (IOPEPC)",
+      "merge_action": "inserted",
+      "location_label": "Mumbai",
+      "website_url": "https://www.iopepc.org",
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "The Soybean Processors Association of India (SOPA)",
+      "merge_action": "inserted",
+      "location_label": "Indore",
+      "website_url": "https://www.sopa.org",
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "All India Rice Exporters Association (AIREA)",
+      "merge_action": "inserted",
+      "location_label": "New Delhi",
+      "website_url": "https://airea.net",
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "All India Food Processors Association (AIFPA)",
+      "merge_action": "inserted",
+      "location_label": "New Delhi",
+      "website_url": "https://aifpa.net",
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "All India Bread Manufacturers Association (AIBMA)",
+      "merge_action": "inserted",
+      "location_label": "New Delhi",
+      "website_url": "https://www.aibma.com",
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "India Pepper and Spice Trade Association (IPSTA)",
+      "merge_action": "inserted",
+      "location_label": "Kochi",
+      "website_url": "https://www.ipstaindia.com",
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Indian Beverage Association (IBA)",
+      "merge_action": "inserted",
+      "location_label": "New Delhi",
+      "website_url": "https://www.in-beverage.org",
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Indian Biscuits Manufacturers Association (IBMA)",
+      "merge_action": "inserted",
+      "location_label": "Noida / Delhi NCR",
+      "website_url": "https://www.ibmabiscuits.org",
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Indian Confectionery Manufacturers Association (ICMA)",
+      "merge_action": "inserted",
+      "location_label": "Noida",
+      "website_url": "https://www.icmaconfy.com",
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Indian Dairy Association (IDA)",
+      "merge_action": "inserted",
+      "location_label": "New Delhi",
+      "website_url": "https://www.indairyasso.org",
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Indian Ice-cream Manufacturers Association (IICMA)",
+      "merge_action": "inserted",
+      "location_label": "Ahmedabad",
+      "website_url": "https://www.iicma.in",
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Indian Tea Association (ITA)",
+      "merge_action": "inserted",
+      "location_label": "Kolkata",
+      "website_url": "https://www.indiatea.org",
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Tea Board India",
+      "merge_action": "inserted",
+      "location_label": "Kolkata",
+      "website_url": "https://www.teaboard.gov.in",
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Spices Board India",
+      "merge_action": "inserted",
+      "location_label": "Kochi / national",
+      "website_url": "https://www.indianspices.com",
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Agro Input Dealers Association (AIDA)",
+      "merge_action": "inserted",
+      "location_label": "New Delhi",
+      "website_url": "https://www.aidaindia.co.in",
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "The Fertiliser Association of India (FAI)",
+      "merge_action": "inserted",
+      "location_label": "New Delhi",
+      "website_url": "https://www.faidelhi.org",
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Federation of Seed Industry of India (FSII)",
+      "merge_action": "inserted",
+      "location_label": "National",
+      "website_url": "https://www.fsii.in",
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "CropLife India",
+      "merge_action": "inserted",
+      "location_label": "New Delhi",
+      "website_url": "https://croplifeindia.org",
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Crop Care Federation of India (CCFI)",
+      "merge_action": "inserted",
+      "location_label": "New Delhi",
+      "website_url": "https://cropcarefed.in",
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Pesticides Manufacturers & Formulators Association of India (PMFAI)",
+      "merge_action": "inserted",
+      "location_label": "Chennai",
+      "website_url": "https://pmfai.org",
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "National Cooperative Consumers Federation of India (NCCF)",
+      "merge_action": "inserted",
+      "location_label": "New Delhi",
+      "website_url": "https://www.nccf-india.com",
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Maharashtra State Consumer Products Distributors Federation",
+      "merge_action": "inserted",
+      "location_label": "Maharashtra",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Uttar Pradesh Federation of Distributor Associations",
+      "merge_action": "inserted",
+      "location_label": "Uttar Pradesh",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Tamil Nadu Consumer Products Distributors Welfare Association",
+      "merge_action": "inserted",
+      "location_label": "Tamil Nadu",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Odisha Consumer Products Distributors Federation",
+      "merge_action": "inserted",
+      "location_label": "Odisha",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "All Kerala Distributors Association",
+      "merge_action": "inserted",
+      "location_label": "Kerala",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "All Goa FMCG & Telecom Distributors Association",
+      "merge_action": "inserted",
+      "location_label": "Goa",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Federation of Associations of Maharashtra (FAM)",
+      "merge_action": "inserted",
+      "location_label": "Mumbai",
+      "website_url": "https://famindia.in",
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Confederation of West Bengal Trade Associations (CWBTA)",
+      "merge_action": "inserted",
+      "location_label": "Kolkata",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Punjab Pradesh Vyapar Mandal",
+      "merge_action": "inserted",
+      "location_label": "Punjab state",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "CAIT Chhattisgarh",
+      "merge_action": "inserted",
+      "location_label": "Raipur",
+      "website_url": "https://www.caitcg.in",
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "CAIT Odisha",
+      "merge_action": "inserted",
+      "location_label": "Odisha state",
+      "website_url": "https://caitodisha.in",
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Federation of Gujarat FMCG Distributors Association (FGFD)",
+      "merge_action": "inserted",
+      "location_label": "Gujarat state",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Tamilnadu FMCG Stockists Association",
+      "merge_action": "inserted",
+      "location_label": "Tamil Nadu state",
+      "website_url": "https://fmcgtrade.org",
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Maharashtra Chamber of Commerce, Industry and Agriculture (MACCIA)",
+      "merge_action": "inserted",
+      "location_label": "Mumbai / Maharashtra",
+      "website_url": "https://www.maccima.com",
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Maharashtra Rajya Vyapari Kriti Samiti",
+      "merge_action": "inserted",
+      "location_label": "Maharashtra state",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Solapur Chamber of Commerce Industries & Agriculture",
+      "merge_action": "inserted",
+      "location_label": "Solapur",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Vyapari Mitra Mandal",
+      "merge_action": "inserted",
+      "location_label": "Maharashtra",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Poona Merchants Chamber",
+      "merge_action": "inserted",
+      "location_label": "Pune",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "The Bombay Pipes & Fittings Merchants Association",
+      "merge_action": "inserted",
+      "location_label": "Mumbai",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Bombay Metal Exchange Ltd",
+      "merge_action": "inserted",
+      "location_label": "Mumbai",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "The Darukhana Iron Steel & Scrap Merchants Association",
+      "merge_action": "inserted",
+      "location_label": "Mumbai",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Federation of Mumbai Retail Cloth Dealers Association",
+      "merge_action": "inserted",
+      "location_label": "Mumbai",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Bharat Merchants Chamber",
+      "merge_action": "inserted",
+      "location_label": "Mumbai",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Thane Small Scale Industries Association",
+      "merge_action": "inserted",
+      "location_label": "Thane",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Chamber of Azadpur Fruit Vegetable Traders",
+      "merge_action": "inserted",
+      "location_label": "Azadpur Mandi",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "APMC Azadpur / MNI Azadpur trader ecosystem",
+      "merge_action": "inserted",
+      "location_label": "Azadpur Mandi",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Fruit & Vegetable Merchants Association, APMC Vashi",
+      "merge_action": "inserted",
+      "location_label": "Vashi / Navi Mumbai",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Ahmedabad APMC Commission Agents Network",
+      "merge_action": "inserted",
+      "location_label": "Ahmedabad APMC",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Gujarat APMC Network",
+      "merge_action": "inserted",
+      "location_label": "Statewide APMC markets",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Delhi Electrical Traders Association (Regd.)",
+      "merge_action": "inserted",
+      "location_label": "Bhagirath Place",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Shradhanand Market Trade Association",
+      "merge_action": "inserted",
+      "location_label": "Shradhanand Market",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Khari Baoli Byapar Sang",
+      "merge_action": "inserted",
+      "location_label": "Khari Baoli",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Deputy Ganj Traders Association",
+      "merge_action": "inserted",
+      "location_label": "Sadar Bazar",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Kochapur Traders Association",
+      "merge_action": "inserted",
+      "location_label": "Kamla Nagar",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Hindustan Mercantile Association",
+      "merge_action": "inserted",
+      "location_label": "Chandni Chowk",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Federation of Sadar Bazar Traders Association (Regd.)",
+      "merge_action": "inserted",
+      "location_label": "Sadar Bazar",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Delhi Tractor Trading Association",
+      "merge_action": "inserted",
+      "location_label": "Kashmere Gate",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Dall & Besan Millers Association (Regd.)",
+      "merge_action": "inserted",
+      "location_label": "Lawrence Road Industrial Area",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Jawala Heri Market Welfare Association",
+      "merge_action": "inserted",
+      "location_label": "Paschim Vihar",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Jawala Heri Traders Association",
+      "merge_action": "inserted",
+      "location_label": "Paschim Vihar",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "New Timber Market Association",
+      "merge_action": "inserted",
+      "location_label": "Kirti Nagar",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Fan Market Manufacturer & Traders Association",
+      "merge_action": "inserted",
+      "location_label": "Basai Darapur",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Moti Nagar Market Association",
+      "merge_action": "inserted",
+      "location_label": "Moti Nagar",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Durga Mandir Market Association",
+      "merge_action": "inserted",
+      "location_label": "Moti Nagar",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Mansarovar Market Association",
+      "merge_action": "inserted",
+      "location_label": "Mansarovar Garden",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Rajouri Garden Main Market Traders Association",
+      "merge_action": "inserted",
+      "location_label": "Rajouri Garden",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Arya Samaj Road Traders Association",
+      "merge_action": "inserted",
+      "location_label": "Uttam Nagar",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "School Road Shoe Market Association",
+      "merge_action": "inserted",
+      "location_label": "Uttam Nagar",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Ganesh Nagar Vyapar Mandal",
+      "merge_action": "inserted",
+      "location_label": "Ganesh Nagar",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "New Market Shopkeepers Welfare Association",
+      "merge_action": "inserted",
+      "location_label": "Tilak Nagar",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Mal Road Tilak Nagar Traders Association",
+      "merge_action": "inserted",
+      "location_label": "Tilak Nagar",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Central Old Market Tilak Nagar Association",
+      "merge_action": "inserted",
+      "location_label": "Tilak Nagar",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Iron Merchants Welfare Association",
+      "merge_action": "inserted",
+      "location_label": "Loha Mandi Naraina",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Khanna Market Association",
+      "merge_action": "inserted",
+      "location_label": "West Patel Nagar",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "West Patel Nagar Vyapar Market",
+      "merge_action": "inserted",
+      "location_label": "West Patel Nagar",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "East Patel Nagar Market Association",
+      "merge_action": "inserted",
+      "location_label": "East Patel Nagar",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Punjabi Bagh Central Market Association",
+      "merge_action": "inserted",
+      "location_label": "Punjabi Bagh West",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "East Punjabi Bagh Market Welfare Association",
+      "merge_action": "inserted",
+      "location_label": "Punjabi Bagh East",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "New Delhi Traders Association",
+      "merge_action": "inserted",
+      "location_label": "Connaught Place",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Connaught Circus Municipal Market Association",
+      "merge_action": "inserted",
+      "location_label": "Connaught Place",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Janpath Bhawan Market Association",
+      "merge_action": "inserted",
+      "location_label": "Janpath",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Janpath Traders Association",
+      "merge_action": "inserted",
+      "location_label": "Janpath",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Mini Market Janpath Association",
+      "merge_action": "inserted",
+      "location_label": "Janpath",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Mohan Singh Place Traders Association",
+      "merge_action": "inserted",
+      "location_label": "Baba Kharag Singh Marg",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Shankar Market Traders Association",
+      "merge_action": "inserted",
+      "location_label": "Shankar Market",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Shankar Market Welfare Association",
+      "merge_action": "inserted",
+      "location_label": "Shankar Market",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Tibetan Market Association",
+      "merge_action": "inserted",
+      "location_label": "Janpath / Tibetan Market",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Khan Market Traders Association",
+      "merge_action": "inserted",
+      "location_label": "Khan Market",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Prithvi Raj Road Market Association",
+      "merge_action": "inserted",
+      "location_label": "Prithvi Raj Road",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Bengali Market Traders Association",
+      "merge_action": "inserted",
+      "location_label": "Bengali Market",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Municipal Market Traders Association",
+      "merge_action": "inserted",
+      "location_label": "Babar Road",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Panchkuin Road Municipal Market Association",
+      "merge_action": "inserted",
+      "location_label": "Panchkuin Road",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Palika Place Traders Association",
+      "merge_action": "inserted",
+      "location_label": "Palika Place",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Yashwant Place Traders Association",
+      "merge_action": "inserted",
+      "location_label": "Yashwant Place",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Yashwant Place Mini Market Welfare Association",
+      "merge_action": "inserted",
+      "location_label": "Yashwant Place",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Green Park Extension Market Association (Regd.)",
+      "merge_action": "inserted",
+      "location_label": "Green Park Extension",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Vyapar Mandal Green Park (Regd.)",
+      "merge_action": "inserted",
+      "location_label": "Green Park",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Shopkeepers Association Main Market Hauz Khas",
+      "merge_action": "inserted",
+      "location_label": "Hauz Khas",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Krishna Market Traders Welfare Association",
+      "merge_action": "inserted",
+      "location_label": "Lajpat Nagar-I",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Sarojini Nagar Market Shopkeepers Association (Regd.)",
+      "merge_action": "inserted",
+      "location_label": "Sarojini Nagar",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Babu Market Welfare Association (Regd.)",
+      "merge_action": "inserted",
+      "location_label": "Sarojini Nagar",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Munirka Dukandar Welfare Association (Regd.)",
+      "merge_action": "inserted",
+      "location_label": "Munirka",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Readymade Garments Merchants Association (Regd.)",
+      "merge_action": "inserted",
+      "location_label": "Gandhi Nagar",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Association of Wholesale Readymade Garments Dealers (Regd.)",
+      "merge_action": "inserted",
+      "location_label": "Gandhi Nagar",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Lal Quarters Traders Association",
+      "merge_action": "inserted",
+      "location_label": "Krishna Nagar",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Teli Wara Vyapar Mandal (Regd.)",
+      "merge_action": "inserted",
+      "location_label": "Shahdara",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Sarv Vyapar Mandal",
+      "merge_action": "inserted",
+      "location_label": "Chotta Bazar Shahdara",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Saraf Association Chota Bazar Shahdara",
+      "merge_action": "inserted",
+      "location_label": "Shahdara",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Vikas Marg Vyapar Association",
+      "merge_action": "inserted",
+      "location_label": "Vikas Marg",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Laxmi Nagar Traders Association",
+      "merge_action": "inserted",
+      "location_label": "Laxmi Nagar",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Mahilla Colony Market Association",
+      "merge_action": "inserted",
+      "location_label": "Mahilla Colony",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Adarsh Vyapar Mandal",
+      "merge_action": "inserted",
+      "location_label": "Dilshad Garden",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Dilshad Colony Shopkeeper Welfare Association",
+      "merge_action": "inserted",
+      "location_label": "Dilshad Colony",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Nand Nagari Vyapar Mandal",
+      "merge_action": "inserted",
+      "location_label": "Nand Nagari",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Wazirabad Road Traders Welfare Association (Regd.)",
+      "merge_action": "inserted",
+      "location_label": "Bhajanpura",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Timber Plywood Market Association",
+      "merge_action": "inserted",
+      "location_label": "Paharganj",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Plastic Association Chuna Mandi",
+      "merge_action": "inserted",
+      "location_label": "Paharganj",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Delhi Aluminium Association",
+      "merge_action": "inserted",
+      "location_label": "Paharganj",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Chawri Bazar Hardware Association",
+      "merge_action": "inserted",
+      "location_label": "Chawri Bazar",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Vyapar Sang Nabi Karim",
+      "merge_action": "inserted",
+      "location_label": "Nabi Karim",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Paper Merchant Association (Regd.)",
+      "merge_action": "inserted",
+      "location_label": "Chawri Bazar",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Pahar Ganj Main Bazar Association",
+      "merge_action": "inserted",
+      "location_label": "Paharganj",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Nai Sarak Traders Association",
+      "merge_action": "inserted",
+      "location_label": "Nai Sarak",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Delhi Scooter Traders Association",
+      "merge_action": "inserted",
+      "location_label": "Karol Bagh",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Gurudwara Road Traders Association",
+      "merge_action": "inserted",
+      "location_label": "Karol Bagh",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Ajmal Khan Road Traders Association",
+      "merge_action": "inserted",
+      "location_label": "Karol Bagh",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Ghafar Market Traders Association",
+      "merge_action": "inserted",
+      "location_label": "Karol Bagh",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Adilabad District Bullion Market Association",
+      "merge_action": "inserted",
+      "location_label": "Adilabad",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Akhil Bhartiya Swarnkar Sangha, Egra Branch",
+      "merge_action": "inserted",
+      "location_label": "Medinipur",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Akola Saraf Association",
+      "merge_action": "inserted",
+      "location_label": "Akola",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "All Kerala Gold & Silver Merchant Association",
+      "merge_action": "inserted",
+      "location_label": "Kochi",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Andaman & Nicobar Gold & Silver Merchants Association",
+      "merge_action": "inserted",
+      "location_label": "Port Blair",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Arera Sarafa Association Bhopal",
+      "merge_action": "inserted",
+      "location_label": "Bhopal",
+      "website_url": null,
+      "source_files": [
+        "T2 - india_trader_associations_100plus_single_table.xlsx"
+      ]
+    },
+    {
+      "entity_name": "SEWA - RUDI Multi-Trading Company",
+      "merge_action": "inserted",
+      "location_label": "Gujarat, Rajasthan, MP",
+      "website_url": "https://sewa.org",
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "TRIFED (TRIBES India)",
+      "merge_action": "inserted",
+      "location_label": "All States",
+      "website_url": "https://trifed.tribal.gov.in",
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "KVIC (Khadi Gramodyog)",
+      "merge_action": "inserted",
+      "location_label": "All States",
+      "website_url": "https://kvic.gov.in",
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "StoreKing",
+      "merge_action": "inserted",
+      "location_label": "South/West/North India",
+      "website_url": "https://storeking.in",
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Frontier Markets",
+      "merge_action": "inserted",
+      "location_label": "Rajasthan, UP, Haryana",
+      "website_url": "https://frontiermkts.com",
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Nafed Bazaar",
+      "merge_action": "inserted",
+      "location_label": "All States",
+      "website_url": "https://nafed-india.com",
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Dharmasthala (SKDRDP)",
+      "merge_action": "inserted",
+      "location_label": "Karnataka, Kerala",
+      "website_url": "https://skdrdpindia.org",
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Himalayan Action Research Centre (HARC)",
+      "merge_action": "inserted",
+      "location_label": "Uttarakhand",
+      "website_url": "http://harcindia.org",
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "HIMFED",
+      "merge_action": "inserted",
+      "location_label": "Himachal Pradesh",
+      "website_url": "http://himfed.com",
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Punjab State Cooperative (Markfed)",
+      "merge_action": "inserted",
+      "location_label": "Punjab",
+      "website_url": "https://punjabmarkfed.com",
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "HAFED",
+      "merge_action": "inserted",
+      "location_label": "Haryana",
+      "website_url": "https://hafed.gov.in",
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "JKRLM (Umeed)",
+      "merge_action": "inserted",
+      "location_label": "Jammu & Kashmir",
+      "website_url": "https://jkrlm.gov.in",
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Ladakh Tribal Cooperative",
+      "merge_action": "inserted",
+      "location_label": "Ladakh",
+      "website_url": null,
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Chandigarh Rural Artisans Cluster",
+      "merge_action": "inserted",
+      "location_label": "Chandigarh",
+      "website_url": null,
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Uttarakhand Rural Livelihood (USRLM)",
+      "merge_action": "inserted",
+      "location_label": "Uttarakhand",
+      "website_url": "https://usrlm.uk.gov.in",
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "MAVIM (Tejaswini)",
+      "merge_action": "inserted",
+      "location_label": "Maharashtra",
+      "website_url": "https://mavimindia.org",
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "GLPC (Mission Mangalam)",
+      "merge_action": "inserted",
+      "location_label": "Gujarat",
+      "website_url": "https://glpc.co.in",
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Rajasthan Grameen Livelihood (Rajeevika)",
+      "merge_action": "inserted",
+      "location_label": "Rajasthan",
+      "website_url": "https://rgavp.rajasthan.gov.in",
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Goa State Rural Livelihood Mission",
+      "merge_action": "inserted",
+      "location_label": "Goa",
+      "website_url": null,
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "DNH Rural Development Cell",
+      "merge_action": "inserted",
+      "location_label": "DNH & DD",
+      "website_url": null,
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Kudumbashree",
+      "merge_action": "inserted",
+      "location_label": "Kerala",
+      "website_url": "https://kudumbashree.org",
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "SERP (Society for Elimination of Rural Poverty)",
+      "merge_action": "inserted",
+      "location_label": "Andhra Pradesh",
+      "website_url": "https://serp.ap.gov.in",
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Stree Nidhi",
+      "merge_action": "inserted",
+      "location_label": "Telangana",
+      "website_url": "https://streenidhi.telangana.gov.in",
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "KSRLPS (Sanjeevini)",
+      "merge_action": "inserted",
+      "location_label": "Karnataka",
+      "website_url": "https://ksrlps.karnataka.gov.in",
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "TNSRLM (Mathi)",
+      "merge_action": "inserted",
+      "location_label": "Tamil Nadu",
+      "website_url": "https://www.tnrd.gov.in",
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Puducherry State Rural Livelihood",
+      "merge_action": "inserted",
+      "location_label": "Puducherry",
+      "website_url": null,
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Lakshadweep Coconut Dev. Corp",
+      "merge_action": "inserted",
+      "location_label": "Lakshadweep",
+      "website_url": null,
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Andaman Island Livelihood Mission",
+      "merge_action": "inserted",
+      "location_label": "A & N Islands",
+      "website_url": null,
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "JEEViKA",
+      "merge_action": "inserted",
+      "location_label": "Bihar",
+      "website_url": "https://brlps.in",
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "ORMAS",
+      "merge_action": "inserted",
+      "location_label": "Odisha",
+      "website_url": "https://ormas.org",
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "JSLPS (Palash)",
+      "merge_action": "inserted",
+      "location_label": "Jharkhand",
+      "website_url": "https://jslps.in",
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "WBSRLM (Anandadhara)",
+      "merge_action": "inserted",
+      "location_label": "West Bengal",
+      "website_url": "https://wbsrlm.in",
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "MPSRLM (Livelihood Mission)",
+      "merge_action": "inserted",
+      "location_label": "Madhya Pradesh",
+      "website_url": "https://mpsrlm.mp.gov.in",
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "CGSRLM (Bihan)",
+      "merge_action": "inserted",
+      "location_label": "Chhattisgarh",
+      "website_url": "https://cgsrlm.gov.in",
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "ASRLM (Assam)",
+      "merge_action": "inserted",
+      "location_label": "Assam",
+      "website_url": "https://asrlms.assam.gov.in",
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "MSRLS (Meghalaya)",
+      "merge_action": "inserted",
+      "location_label": "Meghalaya",
+      "website_url": "https://msrls.nic.in",
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "MSRLM (Mizoram)",
+      "merge_action": "inserted",
+      "location_label": "Mizoram",
+      "website_url": "https://msrlm.mizoram.gov.in",
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "ArSRLM (Arunachal)",
+      "merge_action": "inserted",
+      "location_label": "Arunachal Pradesh",
+      "website_url": null,
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "NSRLM (Nagaland)",
+      "merge_action": "inserted",
+      "location_label": "Nagaland",
+      "website_url": "https://nsrlm.nagaland.gov.in",
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "MSRLM (Manipur)",
+      "merge_action": "inserted",
+      "location_label": "Manipur",
+      "website_url": null,
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "TSRLM (Tripura)",
+      "merge_action": "inserted",
+      "location_label": "Tripura",
+      "website_url": "https://tsrlm.tripura.gov.in",
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "SRLM (Sikkim)",
+      "merge_action": "inserted",
+      "location_label": "Sikkim",
+      "website_url": null,
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "PRADAN (Narmada Cluster)",
+      "merge_action": "inserted",
+      "location_label": "Central India",
+      "website_url": "https://pradan.net",
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Vrutti (Impact Catalyst)",
+      "merge_action": "inserted",
+      "location_label": "Karnataka, TN, MP",
+      "website_url": "https://vruttiimpactcatalysts.org",
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "E-Kutir",
+      "merge_action": "inserted",
+      "location_label": "Odisha",
+      "website_url": "https://ekutir.com",
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Gramin Vikas Evam Shikshan Sansthan",
+      "merge_action": "inserted",
+      "location_label": "Rajasthan",
+      "website_url": null,
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Sahaja Aharam",
+      "merge_action": "inserted",
+      "location_label": "Telangana/AP",
+      "website_url": "https://sahajaaharam.in",
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "GoCoop",
+      "merge_action": "inserted",
+      "location_label": "Pan-India",
+      "website_url": "https://gocoop.com",
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Rang De",
+      "merge_action": "inserted",
+      "location_label": "Pan-India",
+      "website_url": "https://rangde.in",
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Hindustan Unilever (Shakti)",
+      "merge_action": "inserted",
+      "location_label": "Pan-India",
+      "website_url": "https://hul.co.in",
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "ITC e-Choupal",
+      "merge_action": "inserted",
+      "location_label": "MP, UP, Haryana",
+      "website_url": "https://itcportal.com",
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "DCM Shriram (Hariyali Kisaan Bazar)",
+      "merge_action": "inserted",
+      "location_label": "North India",
+      "website_url": null,
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Mother Dairy (Safal)",
+      "merge_action": "inserted",
+      "location_label": "Delhi/NCR, Bangalore",
+      "website_url": "https://motherdairy.com",
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "HOPCOMS",
+      "merge_action": "inserted",
+      "location_label": "Karnataka",
+      "website_url": null,
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Mahananda (Dairy)",
+      "merge_action": "inserted",
+      "location_label": "Maharashtra",
+      "website_url": null,
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Milma",
+      "merge_action": "inserted",
+      "location_label": "Kerala",
+      "website_url": "https://milma.com",
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Aavin",
+      "merge_action": "inserted",
+      "location_label": "Tamil Nadu",
+      "website_url": "https://aavinmilk.com",
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Nandini (KMF)",
+      "merge_action": "inserted",
+      "location_label": "Karnataka",
+      "website_url": "https://kmfnandini.coop",
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Omfed",
+      "merge_action": "inserted",
+      "location_label": "Odisha",
+      "website_url": "https://omfed.com",
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Sudha Dairy (COMPFED)",
+      "merge_action": "inserted",
+      "location_label": "Bihar",
+      "website_url": "https://sudha.coop",
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Verka (Milkfed)",
+      "merge_action": "inserted",
+      "location_label": "Punjab",
+      "website_url": "https://verka.coop",
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Vita",
+      "merge_action": "inserted",
+      "location_label": "Haryana",
+      "website_url": "https://vitaindia.org.in",
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Parag (PCDF)",
+      "merge_action": "inserted",
+      "location_label": "Uttar Pradesh",
+      "website_url": null,
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Saras (RCDF)",
+      "merge_action": "inserted",
+      "location_label": "Rajasthan",
+      "website_url": null,
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Medha Dairy",
+      "merge_action": "inserted",
+      "location_label": "Jharkhand",
+      "website_url": null,
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Banas Dairy",
+      "merge_action": "inserted",
+      "location_label": "Gujarat (Palanpur)",
+      "website_url": "https://banasdairy.coop",
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Muni Seva Ashram",
+      "merge_action": "inserted",
+      "location_label": "Gujarat (Vadodara)",
+      "website_url": null,
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Uravu Bamboo Village",
+      "merge_action": "inserted",
+      "location_label": "Kerala",
+      "website_url": null,
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Kala Raksha",
+      "merge_action": "inserted",
+      "location_label": "Gujarat (Kutch)",
+      "website_url": "http://kala-raksha.org",
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Shrujan",
+      "merge_action": "inserted",
+      "location_label": "Gujarat (Kutch)",
+      "website_url": "https://shrujan.org",
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Timbaktu Collective",
+      "merge_action": "inserted",
+      "location_label": "Andhra Pradesh",
+      "website_url": "https://timbaktu.org",
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Deccan Development Society",
+      "merge_action": "inserted",
+      "location_label": "Telangana",
+      "website_url": "https://ddsindia.com",
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Self-Reliant Initiatives (SRI)",
+      "merge_action": "inserted",
+      "location_label": "Multi-state",
+      "website_url": null,
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Technoserve India",
+      "merge_action": "inserted",
+      "location_label": "Multi-state",
+      "website_url": "https://technoserve.org",
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Srijan",
+      "merge_action": "inserted",
+      "location_label": "Multi-state",
+      "website_url": "https://srijanindia.org",
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Agrocel Industries",
+      "merge_action": "inserted",
+      "location_label": "Kutch, Gujarat",
+      "website_url": "https://agrocel.co.in",
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "CottonConnect",
+      "merge_action": "inserted",
+      "location_label": "Multi-state",
+      "website_url": "https://cottonconnect.org",
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Swayam Shikshan Prayog (SSP)",
+      "merge_action": "inserted",
+      "location_label": "Maharashtra",
+      "website_url": "https://sspindia.org",
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Lupin Foundation",
+      "merge_action": "inserted",
+      "location_label": "Rajasthan, MH",
+      "website_url": "https://lupinfoundation.in",
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Reliance Foundation (RFIS)",
+      "merge_action": "inserted",
+      "location_label": "Multi-state",
+      "website_url": "https://reliancefoundation.org",
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Digital Green",
+      "merge_action": "inserted",
+      "location_label": "Multi-state",
+      "website_url": "https://digitalgreen.org",
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Gram Vani",
+      "merge_action": "inserted",
+      "location_label": "Multi-state",
+      "website_url": "https://gramvani.org",
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "WayCool Foods",
+      "merge_action": "inserted",
+      "location_label": "South India",
+      "website_url": "https://waycool.in",
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Ninjacart",
+      "merge_action": "inserted",
+      "location_label": "Multi-state",
+      "website_url": "https://ninjacart.com",
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Crofarm",
+      "merge_action": "inserted",
+      "location_label": "North India",
+      "website_url": "https://crofarm.com",
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "DeHaat",
+      "merge_action": "inserted",
+      "location_label": "Bihar, UP, Odisha",
+      "website_url": "https://agrevolution.in",
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Bijak",
+      "merge_action": "inserted",
+      "location_label": "Multi-state",
+      "website_url": "https://bijak.in",
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "AgriBazaar",
+      "merge_action": "inserted",
+      "location_label": "Multi-state",
+      "website_url": "https://agribazaar.com",
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Kama Ayurveda (Sourcing)",
+      "merge_action": "inserted",
+      "location_label": "Southern India",
+      "website_url": "https://kamaayurveda.com",
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Forest Essentials (Sourcing)",
+      "merge_action": "inserted",
+      "location_label": "Himalayas",
+      "website_url": "https://forestessentialsindia.com",
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Fabindia (Sourcing)",
+      "merge_action": "inserted",
+      "location_label": "Pan-India",
+      "website_url": "https://fabindia.com",
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Organic India",
+      "merge_action": "inserted",
+      "location_label": "Pan-India",
+      "website_url": "https://organicindia.com",
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "24 Mantra Organic",
+      "merge_action": "inserted",
+      "location_label": "Pan-India",
+      "website_url": "https://24mantra.com",
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Ameveo",
+      "merge_action": "inserted",
+      "location_label": "Assam, North East",
+      "website_url": null,
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "NEHHDC",
+      "merge_action": "inserted",
+      "location_label": "North East India",
+      "website_url": "https://nehhdc.com",
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "NERAMAC",
+      "merge_action": "inserted",
+      "location_label": "North East India",
+      "website_url": "https://neramac.com",
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Central Cottage Industries",
+      "merge_action": "inserted",
+      "location_label": "Metros",
+      "website_url": "https://cottageemporium.in",
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Lepakshi (AP Handicrafts)",
+      "merge_action": "inserted",
+      "location_label": "Andhra Pradesh",
+      "website_url": "https://lepakshihandicrafts.gov.in",
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Cauvery (Karnataka Arts)",
+      "merge_action": "inserted",
+      "location_label": "Karnataka",
+      "website_url": "https://cauveryhandicrafts.net",
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Poompuhar (TN Handicrafts)",
+      "merge_action": "inserted",
+      "location_label": "Tamil Nadu",
+      "website_url": "https://tnartivans.com",
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Mrignayanee (MP Govt)",
+      "merge_action": "inserted",
+      "location_label": "Madhya Pradesh",
+      "website_url": "https://mrignayanee.com",
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    },
+    {
+      "entity_name": "Rajasthali (Rajasthan Govt)",
+      "merge_action": "inserted",
+      "location_label": "Rajasthan",
+      "website_url": null,
+      "source_files": [
+        "T3 - Comprehensive_Rural_Retail_Distribution_Networks_India.xlsx"
+      ]
+    }
+  ]
+}
