@@ -896,8 +896,6 @@ function extractNeedKeywords(placeUid, options = {}) {
 }
 
 function getVillageNeedPartnerGroups(placeUid) {
-  const aiMatch = placeState.aiNeedMatchCache.get(placeUid);
-  if (aiMatch?.groups?.length) return aiMatch.groups;
   const rawGroups = getRawVillageNeedGroups(placeUid);
   if (!rawGroups.length) return [];
   const locations = getPlaceLocations(placeUid);
