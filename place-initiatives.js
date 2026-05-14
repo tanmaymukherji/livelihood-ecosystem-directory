@@ -846,7 +846,7 @@ function renderPotentialPartnerAccordion(groups) {
         </summary>
         <div class="place-accordion-body">
           <div class="place-inline-list">
-            ${entities.slice(0, 24).map((entity) => `<span class="innovation-chip innovation-chip-muted">${renderEntityNameLink(entity.entity_uid, entity.entity_name)}</span>`).join('') || '<span class="section-note">No entities listed.</span>'}
+            ${entities.map((entity) => `<span class="innovation-chip innovation-chip-muted">${renderEntityNameLink(entity.entity_uid, entity.entity_name)}</span>`).join('') || '<span class="section-note">No entities listed.</span>'}
           </div>
         </div>
       </details>
@@ -987,7 +987,7 @@ function getCachedPotentialPartnerGroups(placeUid) {
 function hydratePlaceDetailCaches(placeUid) {
   if (!placeUid) return;
   const needGroups = getNeedToPotentialPartnerGroups(placeUid);
-  const potentialPartners = groupPartnersByType(getPotentialPartnersForPlace(placeUid, { limit: 180 }));
+  const potentialPartners = groupPartnersByType(getPotentialPartnersByStateForPlace(placeUid, { limit: 400 }));
   placeState.needPartnerCache.set(placeUid, needGroups);
   placeState.potentialPartnerCache.set(placeUid, potentialPartners);
 }
@@ -1069,6 +1069,34 @@ function geographyMatchesPlace(entity, locations) {
   });
 }
 
+function extractStateMatchesFromText(value) {
+  const token = normalizeGeographyText(value);
+  if (!token) return [];
+  return Object.keys(INDIA_STATE_CENTERS).filter((state) => token.includes(state));
+}
+
+function getEntityStateTokens(entity) {
+  const values = [];
+  const push = (value) => {
+    const text = String(value || '').trim();
+    if (!text) return;
+    values.push(text);
+  };
+  push(entity.state);
+  push(entity.location_label);
+  push(entity.primary_address);
+  asArray(entity.office_locations).forEach(push);
+  return Array.from(new Set(values.flatMap((value) => extractStateMatchesFromText(value))));
+}
+
+function geographyMatchesPlaceState(entity, locations) {
+  const stateTokens = getEntityStateTokens(entity);
+  if (!stateTokens.length) return false;
+  const context = buildPlaceCoverageContext(locations);
+  if (!context.states.size) return false;
+  return stateTokens.some((state) => context.states.has(state));
+}
+
 function getEntityThematicTokens(entity) {
   return flattenTypeSpecificValues(entity.type_specific_data || {})
     .concat(asArray(entity.tags))
@@ -1108,6 +1136,24 @@ function getPotentialPartnersForPlace(placeUid, options = {}) {
     })
     .filter((entity) => !options.requireThematicMatch || thematicMatchesNeed(entity, needKeywords))
     .slice(0, options.limit || 200);
+}
+
+function getPotentialPartnersByStateForPlace(placeUid, options = {}) {
+  const locations = getPlaceLocations(placeUid);
+  const partners = getPlacePartners(placeUid);
+  const linkedEntityIds = new Set(partners.map((item) => String(item.entity_uid || '').trim()).filter(Boolean));
+  const linkedEntityNames = new Set(partners.map((item) => normalizeText(item.partner_name)).filter(Boolean));
+  return placeState.entities
+    .filter((entity) => entity.entity_type_slug !== 'place')
+    .filter((entity) => geographyMatchesPlaceState(entity, locations))
+    .filter((entity) => {
+      const entityUid = String(entity.entity_uid || '').trim();
+      const entityName = normalizeText(entity.entity_name);
+      if (entityUid && linkedEntityIds.has(entityUid)) return false;
+      if (entityName && linkedEntityNames.has(entityName)) return false;
+      return true;
+    })
+    .slice(0, options.limit || 400);
 }
 
 function getRolePartnerSummary(placeUid) {
@@ -2131,9 +2177,12 @@ function renderDetail(placeUid) {
   const needPartnerGroups = getCachedNeedPartnerGroups(placeUid).length
     ? getCachedNeedPartnerGroups(placeUid)
     : placeState.needPartnerCache.get(placeUid) || [];
-  const potentialPartners = Object.keys(getCachedPotentialPartnerGroups(placeUid)).length
-    ? getCachedPotentialPartnerGroups(placeUid)
-    : placeState.potentialPartnerCache.get(placeUid) || {};
+  const localPotentialPartners = placeState.potentialPartnerCache.get(placeUid) || {};
+  const potentialPartners = Object.keys(localPotentialPartners).length
+    ? localPotentialPartners
+    : Object.keys(getCachedPotentialPartnerGroups(placeUid)).length
+      ? getCachedPotentialPartnerGroups(placeUid)
+      : {};
   const isHydrating = !cachedMatch && placeState.detailHydrationInFlight.has(placeUid);
 
   els.detailStatus.textContent = `${place.initiative_name} covers ${locations.length} location${locations.length === 1 ? '' : 's'} across ${states.length || 1} state context${states.length === 1 ? '' : 's'}.`;
@@ -2325,6 +2374,7 @@ function resetEditor() {
 function selectPlace(placeUid, options = {}) {
   placeState.selectedPlaceUid = placeUid;
   if (options.resetCalloutLayout) clearAutoCalloutPositions(placeUid);
+  hydratePlaceDetailCaches(placeUid);
   renderDetail(placeUid);
   if (!getStoredPartnerMatchCache(placeUid)) schedulePlaceDetailHydration(placeUid);
   fillEditor(placeUid);
