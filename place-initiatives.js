@@ -112,6 +112,7 @@ const els = {
   adminBadge: document.getElementById('place-admin-badge'),
   detailStatus: document.getElementById('place-detail-status'),
   saveStatus: document.getElementById('place-save-status'),
+  detailShell: document.getElementById('place-detail-shell'),
   editSelectedPlace: document.getElementById('edit-selected-place'),
   form: document.getElementById('place-editor-form'),
   placeId: document.getElementById('place-id'),
@@ -192,6 +193,7 @@ function setWorkspaceTab(tab) {
   }
   if (els.workspacePanelMap) els.workspacePanelMap.hidden = isEditor;
   if (els.workspacePanelEditor) els.workspacePanelEditor.hidden = !isEditor;
+  if (els.detailShell) els.detailShell.hidden = isEditor;
   if (!isEditor) {
     setTimeout(() => forceMapRepaint({ preserveIndiaView: !placeState.selectedPlaceUid }), 50);
   }
