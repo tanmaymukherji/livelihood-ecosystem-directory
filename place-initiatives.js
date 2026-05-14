@@ -941,7 +941,7 @@ function getVillageNeedPartnerGroups(placeUid) {
       return true;
     })
     .filter((entity) => thematicMatchesNeed(entity, needKeywords))
-    .slice(0, 9);
+    .slice(0, 120);
 
   const output = [];
   if (commonNeeds.length) {
@@ -1032,6 +1032,13 @@ function getEntityGeographyTokens(entity) {
   return Array.from(new Set(values.map((item) => item.trim()).filter(Boolean)));
 }
 
+function entityHasIndiaWideCoverage(entity) {
+  return getEntityGeographyTokens(entity).some((value) => {
+    const token = normalizeGeographyText(value);
+    return /\b(india|pan india|pan-india|india wide|india-wide|nationwide|all india)\b/.test(token);
+  });
+}
+
 function buildPlaceCoverageContext(locations) {
   const enriched = locations.map((item) => {
     const inferred = inferLocationHierarchyMatch(item);
@@ -1086,10 +1093,19 @@ function getEntityStateTokens(entity) {
   push(entity.location_label);
   push(entity.primary_address);
   asArray(entity.office_locations).forEach(push);
+  if (entity.type_specific_data && typeof entity.type_specific_data === 'object') {
+    const typeSpecific = entity.type_specific_data;
+    [
+      typeSpecific.geography_served,
+      typeSpecific.preferred_geography,
+      typeSpecific.service_locations,
+    ].flatMap((value) => flattenTypeSpecificValues(value)).forEach(push);
+  }
   return Array.from(new Set(values.flatMap((value) => extractStateMatchesFromText(value))));
 }
 
 function geographyMatchesPlaceState(entity, locations) {
+  if (entityHasIndiaWideCoverage(entity)) return true;
   const stateTokens = getEntityStateTokens(entity);
   if (!stateTokens.length) return false;
   const context = buildPlaceCoverageContext(locations);
@@ -2174,9 +2190,12 @@ function renderDetail(placeUid) {
   const aiMatch = cachedMatch
     ? { provider: cachedMatch.ai_provider || 'none', groups: getCachedNeedPartnerGroups(placeUid) }
     : placeState.aiNeedMatchCache.get(placeUid);
-  const needPartnerGroups = getCachedNeedPartnerGroups(placeUid).length
-    ? getCachedNeedPartnerGroups(placeUid)
-    : placeState.needPartnerCache.get(placeUid) || [];
+  const localNeedPartnerGroups = placeState.needPartnerCache.get(placeUid) || [];
+  const needPartnerGroups = localNeedPartnerGroups.length
+    ? localNeedPartnerGroups
+    : getCachedNeedPartnerGroups(placeUid).length
+      ? getCachedNeedPartnerGroups(placeUid)
+      : [];
   const localPotentialPartners = placeState.potentialPartnerCache.get(placeUid) || {};
   const potentialPartners = Object.keys(localPotentialPartners).length
     ? localPotentialPartners
