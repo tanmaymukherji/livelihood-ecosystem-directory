@@ -140,6 +140,7 @@ const els = {
   adminPassword: document.getElementById('place-admin-password'),
   matchSyncStatus: document.getElementById('place-match-sync-status'),
   callouts: document.getElementById('place-role-callouts'),
+  refreshPlaceSelection: document.getElementById('refresh-place-selection'),
   toggleRoleBoxes: document.getElementById('toggle-role-boxes'),
   spiderModal: document.getElementById('place-spider-modal'),
   spiderModalTitle: document.getElementById('place-spider-modal-title'),
@@ -319,6 +320,20 @@ function updateRoleBoxToggleLabel() {
   const hasPlace = Boolean(placeState.selectedPlaceUid);
   els.toggleRoleBoxes.textContent = placeState.roleBoxesVisible ? 'Hide Role Boxes' : 'Show Role Boxes';
   els.toggleRoleBoxes.disabled = !hasPlace;
+}
+
+function resetSelectedPlaceView() {
+  placeState.selectedPlaceUid = '';
+  placeState.roleBoxesVisible = false;
+  placeState.calloutPlaceUid = '';
+  placeState.roleDragState = null;
+  resetEditor();
+  setStatus(els.saveStatus, '');
+  renderDetail('');
+  renderMap();
+  renderRoleCallouts();
+  forceMapRepaint({ preserveIndiaView: true });
+  updateRoleBoxToggleLabel();
 }
 
 function clearAutoCalloutPositions(placeUid) {
@@ -2419,14 +2434,15 @@ function bindEvents() {
   document.getElementById('sync-all-place-matches').addEventListener('click', () => handleSyncPlacePartnerMatches('all'));
   document.getElementById('add-partner-row').addEventListener('click', () => addPartnerRow({}, { expanded: true }));
   document.getElementById('new-place').addEventListener('click', () => {
-    placeState.selectedPlaceUid = '';
-    resetEditor();
-    setStatus(els.saveStatus, '');
+    resetSelectedPlaceView();
   });
   document.getElementById('delete-place').addEventListener('click', handleDeletePlace);
   els.toggleLeadCard.addEventListener('click', () => {
     if (!els.leadCard) return;
     setLeadCardExpanded(!els.leadCard.classList.contains('is-expanded'));
+  });
+  els.refreshPlaceSelection?.addEventListener('click', () => {
+    resetSelectedPlaceView();
   });
   els.toggleRoleBoxes.addEventListener('click', () => {
     if (!placeState.selectedPlaceUid) return;
