@@ -112,6 +112,7 @@ const els = {
   adminBadge: document.getElementById('place-admin-badge'),
   detailStatus: document.getElementById('place-detail-status'),
   saveStatus: document.getElementById('place-save-status'),
+  editSelectedPlace: document.getElementById('edit-selected-place'),
   form: document.getElementById('place-editor-form'),
   placeId: document.getElementById('place-id'),
   placeUid: document.getElementById('place-uid'),
@@ -139,6 +140,10 @@ const els = {
   adminStatus: document.getElementById('place-admin-status'),
   adminPassword: document.getElementById('place-admin-password'),
   matchSyncStatus: document.getElementById('place-match-sync-status'),
+  workspaceTabMap: document.getElementById('place-workspace-tab-map'),
+  workspaceTabEditor: document.getElementById('place-workspace-tab-editor'),
+  workspacePanelMap: document.getElementById('place-workspace-panel-map'),
+  workspacePanelEditor: document.getElementById('place-workspace-panel-editor'),
   callouts: document.getElementById('place-role-callouts'),
   refreshPlaceSelection: document.getElementById('refresh-place-selection'),
   toggleRoleBoxes: document.getElementById('toggle-role-boxes'),
@@ -172,6 +177,29 @@ function setStatus(element, message, isError = false) {
   if (!element) return;
   element.textContent = message || '';
   element.classList.toggle('error', Boolean(isError));
+}
+
+function setWorkspaceTab(tab) {
+  const nextTab = tab === 'editor' && placeState.adminEnabled ? 'editor' : 'map';
+  const isEditor = nextTab === 'editor';
+  if (els.workspaceTabMap) {
+    els.workspaceTabMap.classList.toggle('is-active', !isEditor);
+    els.workspaceTabMap.setAttribute('aria-selected', String(!isEditor));
+  }
+  if (els.workspaceTabEditor) {
+    els.workspaceTabEditor.classList.toggle('is-active', isEditor);
+    els.workspaceTabEditor.setAttribute('aria-selected', String(isEditor));
+  }
+  if (els.workspacePanelMap) els.workspacePanelMap.hidden = isEditor;
+  if (els.workspacePanelEditor) els.workspacePanelEditor.hidden = !isEditor;
+  if (!isEditor) {
+    setTimeout(() => forceMapRepaint({ preserveIndiaView: !placeState.selectedPlaceUid }), 50);
+  }
+}
+
+function syncWorkspaceAdminState() {
+  if (els.workspaceTabEditor) els.workspaceTabEditor.hidden = !placeState.adminEnabled;
+  if (!placeState.adminEnabled && !els.workspacePanelEditor?.hidden) setWorkspaceTab('map');
 }
 
 function getStoredToken() {
@@ -1761,9 +1789,11 @@ function setEditorEnabled(enabled) {
   document.body.classList.toggle('place-admin-enabled', enabled);
   els.adminBadge.textContent = enabled ? 'Edit enabled' : 'Read only';
   els.adminBadge.classList.toggle('approved', enabled);
+  if (els.editSelectedPlace) els.editSelectedPlace.hidden = !enabled;
   els.editorMode.textContent = enabled
     ? 'Admin session is active. Add, edit, delete, and sync place initiatives below.'
     : 'View mode is active. Sign in at the bottom of the page to add or edit records.';
+  syncWorkspaceAdminState();
   els.form.querySelectorAll('input, textarea, select, button').forEach((element) => {
     if (element.id === 'print-place-view' || element.id === 'toggle-admin-sync') return;
     if (element.id === 'edit-selected-place') return;
@@ -2432,9 +2462,12 @@ function bindEvents() {
   document.getElementById('place-admin-logout').addEventListener('click', handleAdminLogout);
   document.getElementById('sync-selected-place-matches').addEventListener('click', () => handleSyncPlacePartnerMatches('selected'));
   document.getElementById('sync-all-place-matches').addEventListener('click', () => handleSyncPlacePartnerMatches('all'));
+  els.workspaceTabMap?.addEventListener('click', () => setWorkspaceTab('map'));
+  els.workspaceTabEditor?.addEventListener('click', () => setWorkspaceTab('editor'));
   document.getElementById('add-partner-row').addEventListener('click', () => addPartnerRow({}, { expanded: true }));
   document.getElementById('new-place').addEventListener('click', () => {
     resetSelectedPlaceView();
+    if (placeState.adminEnabled) setWorkspaceTab('editor');
   });
   document.getElementById('delete-place').addEventListener('click', handleDeletePlace);
   els.toggleLeadCard.addEventListener('click', () => {
@@ -2452,8 +2485,9 @@ function bindEvents() {
   });
   document.getElementById('edit-selected-place').addEventListener('click', () => {
     const placeUid = placeState.selectedPlaceUid;
-    if (!placeUid) return;
+    if (!placeUid || !placeState.adminEnabled) return;
     fillEditor(placeUid);
+    setWorkspaceTab('editor');
     document.querySelector('.place-editor-shell')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
   document.getElementById('print-place-view').addEventListener('click', async () => {
@@ -2636,6 +2670,8 @@ function bindEvents() {
 
 async function init() {
   bindEvents();
+  syncWorkspaceAdminState();
+  setWorkspaceTab('map');
   await Promise.allSettled([verifySession(), loadLocationDatasets()]);
   try {
     await initializePageData();

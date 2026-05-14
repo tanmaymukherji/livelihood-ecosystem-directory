@@ -23,8 +23,13 @@
     </header>
 
     <main class="place-page">
-      <section class="place-top-layout">
-        <div class="section place-map-shell">
+      <section class="place-workspace-shell">
+        <div class="vendor-tab-bar place-workspace-tabs" role="tablist" aria-label="Place initiative workspace">
+          <button class="vendor-tab-button is-active" id="place-workspace-tab-map" type="button" role="tab" aria-selected="true" aria-controls="place-workspace-panel-map" data-place-workspace-tab="map">Map View</button>
+          <button class="vendor-tab-button" id="place-workspace-tab-editor" type="button" role="tab" aria-selected="false" aria-controls="place-workspace-panel-editor" data-place-workspace-tab="editor" hidden>Place Editor</button>
+        </div>
+
+        <section class="section place-map-shell vendor-tab-panel" id="place-workspace-panel-map" role="tabpanel" aria-labelledby="place-workspace-tab-map">
           <div class="place-map-toolbar">
             <div>
               <h3>India Place Map</h3>
@@ -39,9 +44,9 @@
             <div id="place-map" class="vendor-map-canvas place-map-canvas"></div>
             <div id="place-role-callouts" class="place-role-callouts" aria-hidden="true"></div>
           </div>
-        </div>
+        </section>
 
-        <aside class="section place-editor-shell">
+        <aside class="section place-editor-shell vendor-tab-panel" id="place-workspace-panel-editor" role="tabpanel" aria-labelledby="place-workspace-tab-editor" hidden>
           <div class="place-editor-header">
             <div>
               <h3>Place Editor</h3>
@@ -152,7 +157,7 @@
             <p class="section-note" id="place-detail-status">Click a shaded place on the map to inspect its locations, organisations, and potential partners.</p>
           </div>
           <div class="btn-group">
-            <button class="btn btn-small" id="edit-selected-place" type="button">Open In Editor</button>
+            <button class="btn btn-small" id="edit-selected-place" type="button" hidden>Open In Editor</button>
           </div>
         </div>
         <div class="place-bottom-scroll">
