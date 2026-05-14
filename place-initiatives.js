@@ -270,6 +270,7 @@ function renderEntityNameLink(entityUid, label, className = '') {
 function getPlaceKindLabel(kind) {
   return ({
     village: 'Village',
+    panchayat: 'Gram Panchayat',
     gram_panchayat: 'Gram Panchayat',
     block: 'Block',
     district: 'District',
@@ -277,27 +278,94 @@ function getPlaceKindLabel(kind) {
   })[String(kind || '').trim()] || '';
 }
 
+function getCanonicalPlaceKind(value) {
+  const raw = normalizeText(value).replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim();
+  if (!raw) return '';
+  if (raw === 'village') return 'village';
+  if (raw === 'gram panchayat' || raw === 'panchayat') return 'gram_panchayat';
+  if (raw === 'block' || raw === 'taluk' || raw === 'tehsil') return 'block';
+  if (raw === 'district') return 'district';
+  if (raw === 'state') return 'state';
+  return raw;
+}
+
+function buildPlaceHierarchyProfile(source = {}, fallback = {}) {
+  const merged = { ...fallback, ...source };
+  const kind = getCanonicalPlaceKind(
+    merged.location_kind
+    || merged.place_kind
+    || merged.kind
+    || guessLocationKind(merged)
+  );
+  const profile = {
+    kind,
+    village_name: normalizeText(merged.village_name),
+    gram_panchayat_name: normalizeText(merged.gram_panchayat_name || merged.panchayat_name),
+    block_name: normalizeText(merged.block_name),
+    district_name: normalizeText(merged.district_name || merged.district),
+    state_name: normalizeText(merged.state_name || merged.state),
+    entity_name: normalizeText(merged.entity_name),
+    location_label: normalizeText(merged.location_label),
+  };
+  profile.primary_name = profile.village_name
+    || profile.gram_panchayat_name
+    || profile.block_name
+    || profile.district_name
+    || profile.state_name
+    || profile.entity_name
+    || profile.location_label;
+  return profile;
+}
+
+function getPlaceEntityProfile(entity) {
+  const typeSpecific = entity?.type_specific_data && typeof entity.type_specific_data === 'object'
+    ? entity.type_specific_data
+    : {};
+  return buildPlaceHierarchyProfile({
+    place_kind: typeSpecific.place_kind,
+    village_name: typeSpecific.village_name,
+    gram_panchayat_name: typeSpecific.gram_panchayat_name,
+    block_name: typeSpecific.block_name,
+    district_name: typeSpecific.district_name,
+    state_name: typeSpecific.state_name,
+    entity_name: entity?.entity_name,
+    location_label: entity?.location_label,
+    state: entity?.state,
+    district: entity?.district,
+  });
+}
+
+function getLocationProfile(location) {
+  return buildPlaceHierarchyProfile(location, inferLocationHierarchyMatch(location) || {});
+}
+
 function findMatchingPlaceEntityForLocation(location) {
-  const kind = guessLocationKind(location);
-  const kindLabel = getPlaceKindLabel(kind);
-  const candidateTokens = [
-    location?.location_name,
-    location?.village_name,
-    location?.gram_panchayat_name,
-    location?.block_name,
-    location?.district_name,
-    location?.state_name,
-    locationDisplayLabel(location),
-  ].map((value) => normalizeText(value)).filter(Boolean);
-  if (!candidateTokens.length) return null;
-  return placeState.entities.find((entity) => {
-    if (entity.entity_type_slug !== 'place') return false;
-    const entityName = String(entity.entity_name || '');
-    const entityLocation = String(entity.location_label || '');
-    const entityNeedle = normalizeText(`${entityName} ${entityLocation}`);
-    if (kindLabel && !entityNeedle.includes(normalizeText(kindLabel))) return false;
-    return candidateTokens.some((token) => entityNeedle.includes(token));
-  }) || null;
+  const locationProfile = getLocationProfile(location);
+  if (!locationProfile.primary_name) return null;
+
+  let bestMatch = null;
+  let bestScore = -1;
+  placeState.entities.forEach((entity) => {
+    if (entity.entity_type_slug !== 'place') return;
+    const entityProfile = getPlaceEntityProfile(entity);
+    if (!entityProfile.primary_name) return;
+    if (locationProfile.kind && entityProfile.kind && locationProfile.kind !== entityProfile.kind) return;
+    if (locationProfile.primary_name !== entityProfile.primary_name) return;
+
+    let score = 10;
+    if (locationProfile.kind && entityProfile.kind && locationProfile.kind === entityProfile.kind) score += 5;
+    if (locationProfile.state_name && entityProfile.state_name && locationProfile.state_name === entityProfile.state_name) score += 3;
+    if (locationProfile.district_name && entityProfile.district_name && locationProfile.district_name === entityProfile.district_name) score += 3;
+    if (locationProfile.block_name && entityProfile.block_name && locationProfile.block_name === entityProfile.block_name) score += 2;
+    if (locationProfile.gram_panchayat_name && entityProfile.gram_panchayat_name && locationProfile.gram_panchayat_name === entityProfile.gram_panchayat_name) score += 2;
+    if (locationProfile.village_name && entityProfile.village_name && locationProfile.village_name === entityProfile.village_name) score += 2;
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestMatch = entity;
+    }
+  });
+  return bestMatch;
 }
 
 function renderLocationDetailLink(location) {
