@@ -996,8 +996,6 @@ function schedulePlaceDetailHydration(placeUid) {
   window.setTimeout(async () => {
     try {
       hydratePlaceDetailCaches(placeUid);
-      await ensureAiNeedMatch(placeUid);
-      hydratePlaceDetailCaches(placeUid);
       if (placeState.selectedPlaceUid === placeUid) renderDetail(placeUid);
     } finally {
       placeState.detailHydrationInFlight.delete(placeUid);
@@ -1057,21 +1055,21 @@ function buildPlaceCoverageContext(locations) {
   };
 }
 
+function hasExactCoverageLabelMatch(token, context) {
+  if (!token) return false;
+  return context.labels.has(token)
+    || context.districts.has(token)
+    || context.blocks.has(token)
+    || context.villages.has(token);
+}
+
 function geographyMatchesPlace(entity, locations) {
-  const tokens = getEntityGeographyTokens(entity);
-  if (!tokens.length) return false;
   const context = buildPlaceCoverageContext(locations);
-  return tokens.some((value) => {
-    const token = normalizeGeographyText(value);
-    if (!token) return false;
-    if (/\b(india|pan india|pan-india|india wide|india-wide|nationwide|all india)\b/.test(token)) return true;
-    if (context.labels.has(token) || context.states.has(token) || context.districts.has(token) || context.blocks.has(token) || context.villages.has(token)) return true;
-    if ([...context.states].some((state) => token.includes(state))) return true;
-    if ([...context.districts].some((district) => token.includes(district))) return true;
-    if ([...context.blocks].some((block) => token.includes(block))) return true;
-    if ([...context.villages].some((village) => token.includes(village))) return true;
-    return false;
-  });
+  if (entityHasIndiaWideCoverage(entity)) return true;
+  const stateTokens = getEntityStateTokens(entity);
+  if (stateTokens.some((state) => context.states.has(state))) return true;
+  const tokens = getEntityGeographyTokens(entity).map((value) => normalizeGeographyText(value)).filter(Boolean);
+  return tokens.some((token) => hasExactCoverageLabelMatch(token, context));
 }
 
 function extractStateMatchesFromText(value) {
@@ -2181,25 +2179,12 @@ function renderDetail(placeUid) {
   const documents = getPlaceDocuments(placeUid);
   const spiderSnapshots = getPlaceSpiderSnapshots(placeUid);
   const spiderSnapshotGroups = groupPlaceSpiderSnapshots(placeUid);
-  const thematicNeeds = getPlaceTopThematicNeeds(placeUid);
   const currentNeedGroups = getCurrentNeedGroups(placeUid);
-  const cachedMatch = getStoredPartnerMatchCache(placeUid);
-  const aiMatch = cachedMatch
-    ? { provider: cachedMatch.ai_provider || 'none', groups: getCachedNeedPartnerGroups(placeUid) }
-    : placeState.aiNeedMatchCache.get(placeUid);
   const localNeedPartnerGroups = placeState.needPartnerCache.get(placeUid) || [];
-  const needPartnerGroups = localNeedPartnerGroups.length
-    ? localNeedPartnerGroups
-    : getCachedNeedPartnerGroups(placeUid).length
-      ? getCachedNeedPartnerGroups(placeUid)
-      : [];
+  const needPartnerGroups = localNeedPartnerGroups;
   const localPotentialPartners = placeState.potentialPartnerCache.get(placeUid) || {};
-  const potentialPartners = Object.keys(localPotentialPartners).length
-    ? localPotentialPartners
-    : Object.keys(getCachedPotentialPartnerGroups(placeUid)).length
-      ? getCachedPotentialPartnerGroups(placeUid)
-      : {};
-  const isHydrating = !cachedMatch && placeState.detailHydrationInFlight.has(placeUid);
+  const potentialPartners = localPotentialPartners;
+  const isHydrating = placeState.detailHydrationInFlight.has(placeUid);
 
   els.detailStatus.textContent = `${place.initiative_name} covers ${locations.length} location${locations.length === 1 ? '' : 's'} across ${states.length || 1} state context${states.length === 1 ? '' : 's'}.`;
   els.detailContent.innerHTML = `
@@ -2240,13 +2225,7 @@ function renderDetail(placeUid) {
       </article>
       <article class="place-detail-card place-detail-card-compact">
         <h4>Current Needs</h4>
-        ${aiMatch?.provider === 'gemini' || aiMatch?.provider === 'openai'
-          ? `<p class="section-note">AI-assisted contextual need grouping is active for this place.</p>`
-          : aiMatch?.provider === 'rules'
-            ? '<p class="section-note">Project-context semantic grouping is active for this place.</p>'
-          : aiMatch?.provider === 'none'
-            ? `<p class="section-note">${cachedMatch ? 'Precomputed matching is available for this place.' : 'Initial deterministic grouping is shown for this place.'}</p>`
-            : '<p class="section-note">Contextual AI review is loading. Initial grouping is shown until that completes.</p>'}
+        <p class="section-note">Deterministic geography and thematic matching is shown for this place.</p>
         ${currentNeedGroups.length
           ? `<div class="place-need-groups">${currentNeedGroups.map((group) => `<div class="place-need-group"><strong>${esc(group.label)}</strong>${group.thematic.length ? `<p><strong>Thematic Needs:</strong> ${esc(group.thematic.join(', '))}</p>` : ''}${group.thematicDate ? `<p class="section-note">Thematic update: ${esc(formatDateTime(group.thematicDate))}</p>` : ''}${group.spider.length ? `<p><strong>Spider Chart Needs:</strong> ${esc(group.spider.join(', '))}</p>` : ''}${group.spiderDate ? `<p class="section-note">Spider chart: ${esc(formatDateTime(group.spiderDate))}</p>` : ''}</div>`).join('')}</div>`
           : '<p class="section-note">No thematic or spider-chart need signals are available yet.</p>'}
