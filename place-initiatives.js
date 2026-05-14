@@ -238,6 +238,46 @@ function renderEntityNameLink(entityUid, label, className = '') {
   return `<a${className ? ` class="${esc(className)}"` : ''} href="${href}" target="_blank" rel="noreferrer">${text}</a>`;
 }
 
+function getPlaceKindLabel(kind) {
+  return ({
+    village: 'Village',
+    gram_panchayat: 'Gram Panchayat',
+    block: 'Block',
+    district: 'District',
+    state: 'State',
+  })[String(kind || '').trim()] || '';
+}
+
+function findMatchingPlaceEntityForLocation(location) {
+  const kind = guessLocationKind(location);
+  const kindLabel = getPlaceKindLabel(kind);
+  const candidateTokens = [
+    location?.location_name,
+    location?.village_name,
+    location?.gram_panchayat_name,
+    location?.block_name,
+    location?.district_name,
+    location?.state_name,
+    locationDisplayLabel(location),
+  ].map((value) => normalizeText(value)).filter(Boolean);
+  if (!candidateTokens.length) return null;
+  return placeState.entities.find((entity) => {
+    if (entity.entity_type_slug !== 'place') return false;
+    const entityName = String(entity.entity_name || '');
+    const entityLocation = String(entity.location_label || '');
+    const entityNeedle = normalizeText(`${entityName} ${entityLocation}`);
+    if (kindLabel && !entityNeedle.includes(normalizeText(kindLabel))) return false;
+    return candidateTokens.some((token) => entityNeedle.includes(token));
+  }) || null;
+}
+
+function renderLocationDetailLink(location) {
+  const label = locationDisplayLabel(location);
+  const match = findMatchingPlaceEntityForLocation(location);
+  if (!match?.entity_uid) return `<span class="innovation-chip">${esc(label)}</span>`;
+  return `<a class="innovation-chip innovation-chip-link" href="${esc(getEntityDetailHref(match.entity_uid))}" target="_blank" rel="noreferrer">${esc(label)}</a>`;
+}
+
 function getStateCenter(stateName) {
   const key = normalizeText(stateName)
     .replace(/\s*&\s*/g, ' and ')
@@ -607,10 +647,80 @@ function getSpiderChartNeedIdentifiers(placeUid) {
   return { labels, recordedAt: latestSnapshot.recorded_at || '' };
 }
 
-function getSpiderNeedLabels(snapshot) {
+function getSpiderNeedLabels(snapshot, options = {}) {
+  const includeScores = options.includeScores === true;
   return normalizePlaceMetricSet(snapshot?.metrics_json)
     .filter((metric) => metric.key === 'arresting_distress_migration' ? metric.normalized > 50 : metric.normalized < 50)
-    .map((metric) => metric.label);
+    .map((metric) => includeScores ? `${metric.label} (${Math.round(metric.normalized)} / 100)` : metric.label);
+}
+
+function getCurrentNeedGroups(placeUid) {
+  const groups = new Map();
+  getPlaceTopThematicNeeds(placeUid).records.forEach((record) => {
+    const label = String(record.place_name || record.place_uid || 'Place').trim();
+    const key = normalizeText(label);
+    if (!groups.has(key)) groups.set(key, { label, thematic: new Set(), spider: new Set(), thematicDates: [], spiderDates: [] });
+    asArray(record.thematic_needs).forEach((need) => {
+      const text = String(need || '').trim();
+      if (text) groups.get(key).thematic.add(text);
+    });
+    if (record.recorded_at) groups.get(key).thematicDates.push(record.recorded_at);
+  });
+  getPlaceSpiderSnapshots(placeUid).forEach((snapshot) => {
+    const label = String(snapshot.place_name || snapshot.place_uid || 'Place').trim();
+    const key = normalizeText(label);
+    if (!groups.has(key)) groups.set(key, { label, thematic: new Set(), spider: new Set(), thematicDates: [], spiderDates: [] });
+    getSpiderNeedLabels(snapshot, { includeScores: true }).forEach((need) => groups.get(key).spider.add(need));
+    if (snapshot.recorded_at) groups.get(key).spiderDates.push(snapshot.recorded_at);
+  });
+  return Array.from(groups.values()).map((group) => ({
+    label: group.label,
+    thematic: Array.from(group.thematic),
+    spider: Array.from(group.spider),
+    thematicDate: group.thematicDates.sort().slice(-1)[0] || '',
+    spiderDate: group.spiderDates.sort().slice(-1)[0] || '',
+  })).sort((left, right) => normalizeText(left.label).localeCompare(normalizeText(right.label)));
+}
+
+function renderNeedPartnerAccordion(groups) {
+  return `<div class="place-accordion-list">${groups.map((group) => `
+    <div class="place-need-group">
+      <strong>${esc(group.sourceName)}</strong>
+      <div class="place-accordion-list">
+        ${group.items.map((item) => `
+          <details class="place-accordion-card">
+            <summary>
+              <span>${esc(item.needLabel)}</span>
+              <small>${esc(String(item.entities.length))} partner${item.entities.length === 1 ? '' : 's'}</small>
+            </summary>
+            <div class="place-accordion-body">
+              <div class="place-inline-list">
+                ${item.entities.map((entity) => `<span class="innovation-chip innovation-chip-muted">${renderEntityNameLink(entity.entity_uid, entity.entity_name)} | ${esc(entity.entity_type_label || entity.entity_type_slug || 'Entity')}</span>`).join('')}
+              </div>
+            </div>
+          </details>
+        `).join('')}
+      </div>
+    </div>
+  `).join('')}</div>`;
+}
+
+function renderPotentialPartnerAccordion(groups) {
+  return Object.entries(groups).map(([group, entities]) => `
+    <article class="place-detail-card place-detail-card-compact">
+      <details class="place-accordion-card">
+        <summary>
+          <span>${esc(group)}</span>
+          <small>${esc(String(entities.length))} partner${entities.length === 1 ? '' : 's'}</small>
+        </summary>
+        <div class="place-accordion-body">
+          <div class="place-inline-list">
+            ${entities.slice(0, 24).map((entity) => `<span class="innovation-chip innovation-chip-muted">${renderEntityNameLink(entity.entity_uid, entity.entity_name)}</span>`).join('') || '<span class="section-note">No entities listed.</span>'}
+          </div>
+        </div>
+      </details>
+    </article>
+  `).join('');
 }
 
 function getRawVillageNeedGroups(placeUid) {
@@ -1880,6 +1990,7 @@ function renderDetail(placeUid) {
   const spiderSnapshots = getPlaceSpiderSnapshots(placeUid);
   const spiderSnapshotGroups = groupPlaceSpiderSnapshots(placeUid);
   const thematicNeeds = getPlaceTopThematicNeeds(placeUid);
+  const currentNeedGroups = getCurrentNeedGroups(placeUid);
   const cachedMatch = getStoredPartnerMatchCache(placeUid);
   const aiMatch = cachedMatch
     ? { provider: cachedMatch.ai_provider || 'none', groups: getCachedNeedPartnerGroups(placeUid) }
@@ -1899,7 +2010,7 @@ function renderDetail(placeUid) {
         <h4>Locations Covered</h4>
         <p><strong>${esc(place.initiative_name)}</strong></p>
         <p>${esc(states.join(', ') || place.states_covered?.join(', ') || 'India')}</p>
-        <div class="place-inline-list">${locations.map((location) => `<span class="innovation-chip">${esc(locationDisplayLabel(location))}</span>`).join('') || '<span class="section-note">No locations added.</span>'}</div>
+        <div class="place-inline-list">${locations.map((location) => renderLocationDetailLink(location)).join('') || '<span class="section-note">No locations added.</span>'}</div>
       </article>
       <article class="place-detail-card">
         <h4>Lead Organisation</h4>
@@ -1938,12 +2049,9 @@ function renderDetail(placeUid) {
           : aiMatch?.provider === 'none'
             ? `<p class="section-note">${cachedMatch ? 'Precomputed matching is available for this place.' : 'Initial deterministic grouping is shown for this place.'}</p>`
             : '<p class="section-note">Contextual AI review is loading. Initial grouping is shown until that completes.</p>'}
-        ${thematicNeeds.records.length
-          ? `<div class="place-need-groups">${dedupeBy(thematicNeeds.records, (item) => normalizeText(`${item.place_name}|${item.recorded_at}`)).map((record) => `<div class="place-need-group"><strong>${esc(record.place_name || place.initiative_name)}</strong><p>${esc(asArray(record.thematic_needs).join(', '))}</p><p class="section-note">Updated: ${esc(formatDateTime(record.recorded_at))}</p></div>`).join('')}</div>`
-          : '<p class="section-note">No thematic need updates have been recorded yet.</p>'}
-        ${spiderSnapshots.length
-          ? `<div class="place-need-groups">${spiderSnapshots.map((snapshot) => `<div class="place-need-group"><strong>${esc(snapshot.place_name || place.initiative_name)}</strong><p>${esc(normalizePlaceMetricSet(snapshot.metrics_json).filter((metric) => metric.key === 'arresting_distress_migration' ? metric.normalized > 50 : metric.normalized < 50).map((metric) => `${metric.label} (${Math.round(metric.normalized)} / 100)`).join(', '))}</p><p class="section-note">Spider chart: ${esc(formatDateTime(snapshot.recorded_at))}</p></div>`).join('')}</div>`
-          : '<p class="section-note">No spider chart need signals are available yet.</p>'}
+        ${currentNeedGroups.length
+          ? `<div class="place-need-groups">${currentNeedGroups.map((group) => `<div class="place-need-group"><strong>${esc(group.label)}</strong>${group.thematic.length ? `<p><strong>Thematic Needs:</strong> ${esc(group.thematic.join(', '))}</p>` : ''}${group.thematicDate ? `<p class="section-note">Thematic update: ${esc(formatDateTime(group.thematicDate))}</p>` : ''}${group.spider.length ? `<p><strong>Spider Chart Needs:</strong> ${esc(group.spider.join(', '))}</p>` : ''}${group.spiderDate ? `<p class="section-note">Spider chart: ${esc(formatDateTime(group.spiderDate))}</p>` : ''}</div>`).join('')}</div>`
+          : '<p class="section-note">No thematic or spider-chart need signals are available yet.</p>'}
         ${documents.length
           ? `<div class="vendor-inline-list">${documents.map((document) => `<a href="${esc(document.file_url || '#')}" target="_blank" rel="noreferrer">Document - ${esc(document.place_name || place.initiative_name)} - ${esc(formatCompactDate(document.recorded_at))}</a>`).join('')}</div>`
           : '<p class="section-note">No approved place documents are available for this Place yet.</p>'}
@@ -1951,7 +2059,7 @@ function renderDetail(placeUid) {
       <article class="place-detail-card place-detail-card-compact">
         <h4>Potential Partners by Need</h4>
         ${needPartnerGroups.length
-          ? `<div class="place-need-groups">${needPartnerGroups.map((group) => `<div class="place-need-group"><strong>${esc(group.sourceName)}</strong><div class="place-need-groups">${group.items.map((item) => `<div class="place-need-group"><strong>${esc(item.needLabel)}</strong><div class="place-inline-list">${item.entities.map((entity) => `<span class="innovation-chip innovation-chip-muted">${renderEntityNameLink(entity.entity_uid, entity.entity_name)} | ${esc(entity.entity_type_label || entity.entity_type_slug || 'Entity')}</span>`).join('')}</div></div>`).join('')}</div></div>`).join('')}</div>`
+          ? renderNeedPartnerAccordion(needPartnerGroups)
           : isHydrating
             ? '<p class="section-note">Loading matched partners for this place...</p>'
             : '<p class="section-note">No geography-matched partners were found against the current thematic needs.</p>'}
@@ -1970,7 +2078,7 @@ function renderDetail(placeUid) {
       <article class="place-detail-row-header">
         <h4>Potential Partners By State</h4>
       </article>
-      ${Object.entries(potentialPartners).map(([group, entities]) => `<article class="place-detail-card place-detail-card-compact"><h4>${esc(group)}</h4><div class="place-inline-list">${entities.slice(0, 8).map((entity) => `<span class="innovation-chip innovation-chip-muted">${renderEntityNameLink(entity.entity_uid, entity.entity_name)}</span>`).join('') || '<span class="section-note">No entities listed.</span>'}</div></article>`).join('') || `<article class="place-detail-card place-detail-card-compact"><p class="section-note">${isHydrating ? 'Loading geography-matched potential partners...' : 'No geography-matched potential partners were found for this Place.'}</p></article>`}
+      ${renderPotentialPartnerAccordion(potentialPartners) || `<article class="place-detail-card place-detail-card-compact"><p class="section-note">${isHydrating ? 'Loading geography-matched potential partners...' : 'No geography-matched potential partners were found for this Place.'}</p></article>`}
     </section>
   `;
 }

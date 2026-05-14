@@ -189,11 +189,23 @@ a{text-decoration:none}
 .place-progress-label{font-size:.78rem;font-weight:700;color:#fff;line-height:1.12}
 .place-progress-state{font-size:.72rem;color:#607384;text-align:center}
 .place-inline-list{display:flex;flex-wrap:wrap;gap:.45rem}
+.innovation-chip-link{cursor:pointer;transition:background .18s ease,color .18s ease,border-color .18s ease,transform .18s ease}
+.innovation-chip-link:hover{background:#d9ecfb;color:#123f61;transform:translateY(-1px)}
 .place-partner-detail{display:grid;gap:.2rem;padding:.65rem;border-radius:12px;background:#fff;border:1px solid #dfe4ea}
 .place-partner-detail small{color:#6a7785}
 .place-potential-card{min-width:420px}
 .place-potential-groups{display:grid;gap:.75rem}
 .place-potential-group{display:grid;gap:.5rem}
+.place-accordion-list{display:grid;gap:.7rem}
+.place-accordion-card{border:1px solid #dbe5ef;border-radius:14px;background:#fff;overflow:hidden}
+.place-accordion-card summary{display:flex;justify-content:space-between;align-items:center;gap:.85rem;cursor:pointer;list-style:none;padding:.85rem .95rem;font-weight:700;color:#22313f}
+.place-accordion-card summary::-webkit-details-marker{display:none}
+.place-accordion-card summary span{flex:1;min-width:0}
+.place-accordion-card summary small{flex:0 0 auto;color:#607384;font-size:.82rem;font-weight:700}
+.place-accordion-card summary::after{content:'Expand';flex:0 0 auto;color:#49627a;font-size:.76rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+.place-accordion-card[open] summary::after{content:'Collapse'}
+.place-accordion-body{padding:0 .95rem .95rem}
+.place-accordion-body .place-inline-list{padding-top:.1rem}
 .place-admin-panel{margin-top:.3rem;padding-top:.3rem}
 .place-admin-login{min-width:min(420px,100%)}
 .place-role-callouts{position:absolute;inset:0;pointer-events:none;overflow:hidden}
