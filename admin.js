@@ -130,6 +130,25 @@ function setStoredToken(token) {
   }
 }
 
+async function getMainAdminUser() {
+  const authApi = window.grameeeAuth;
+  if (!authApi?.hydrateAuthSession) {
+    return null;
+  }
+  const user = authApi.getStoredSummary?.() || await authApi.hydrateAuthSession().catch(() => null);
+  return user?.role === 'admin' ? user : null;
+}
+
+function toggleLegacyLoginForm(visible, message = '') {
+  const loginSection = document.querySelector('#loginForm')?.closest('.section');
+  if (loginSection) {
+    loginSection.hidden = !visible;
+  }
+  if (message) {
+    setStatus(sessionStatus, message, false);
+  }
+}
+
 function togglePanels(isSignedIn) {
   ['bulkUploadPanel', 'submissionQueuePanel', 'placeDocumentQueuePanel', 'placeSpiderQueuePanel', 'adminEditorPanel', 'contactRequestPanel'].forEach((id) => {
     document.getElementById(id).classList.toggle('active', Boolean(isSignedIn));
@@ -477,19 +496,28 @@ function rerenderDynamicFieldsForSelectedType() {
 }
 
 async function verifySession() {
+  const mainAdmin = await getMainAdminUser();
+  if (mainAdmin) {
+    togglePanels(true);
+    toggleLegacyLoginForm(false, 'GramEEE admin session is active.');
+    return true;
+  }
   const token = getStoredToken();
   if (!token) {
     togglePanels(false);
+    toggleLegacyLoginForm(true);
     return false;
   }
   try {
     const data = await EcosystemStore.adminRequest('verify', { token });
     if (!data?.valid) throw new Error('Invalid session');
     togglePanels(true);
+    toggleLegacyLoginForm(true, 'Legacy ecosystem admin session is active.');
     return true;
   } catch {
     setStoredToken('');
     togglePanels(false);
+    toggleLegacyLoginForm(true);
     submissionQueueMeta.textContent = 'Your admin session has expired. Please sign in again.';
     placeDocumentQueueMeta.textContent = 'Your admin session has expired. Please sign in again.';
     placeSpiderQueueMeta.textContent = 'Your admin session has expired. Please sign in again.';
@@ -501,8 +529,8 @@ async function verifySession() {
 
 async function loadAdminData() {
   const token = getStoredToken();
-  if (!token) return;
-  const data = await EcosystemStore.adminRequest('loadAdminData', { token });
+  const payload = token ? { token } : {};
+  const data = await EcosystemStore.adminRequest('loadAdminData', payload);
   state.entityTypes = Array.isArray(data.entityTypes) ? data.entityTypes : [];
   state.entities = Array.isArray(data.entities) ? data.entities : [];
   state.fieldDefinitions = Array.isArray(data.fieldDefinitions) ? data.fieldDefinitions : [];
@@ -524,6 +552,14 @@ async function loadAdminData() {
 }
 
 async function handleLogin(event) {
+  const mainAdmin = await getMainAdminUser();
+  if (mainAdmin) {
+    event?.preventDefault?.();
+    togglePanels(true);
+    toggleLegacyLoginForm(false, 'GramEEE admin session is active.');
+    await loadAdminData();
+    return;
+  }
   event.preventDefault();
   const password = String(document.getElementById('adminPassword').value || '').trim();
   if (!password) {
@@ -546,6 +582,12 @@ async function handleLogin(event) {
 }
 
 async function handleLogout() {
+  const mainAdmin = await getMainAdminUser();
+  if (mainAdmin) {
+    await window.grameeeAuth.logoutUser().catch(() => null);
+    window.location.reload();
+    return;
+  }
   const token = getStoredToken();
   try {
     if (token) await EcosystemStore.adminRequest('logout', { token });
@@ -1018,3 +1060,17 @@ placeAdminDocumentListEl?.addEventListener('click', (event) => {
     setStatus(sessionStatus, 'Sign in to access the admin tools.');
   }
 })();
+
+document.addEventListener('grameee:auth-updated', async (event) => {
+  const user = event.detail?.user || null;
+  if (user?.role === 'admin') {
+    togglePanels(true);
+    toggleLegacyLoginForm(false, 'GramEEE admin session is active.');
+    await loadAdminData().catch(() => null);
+    return;
+  }
+  if (!getStoredToken()) {
+    togglePanels(false);
+    toggleLegacyLoginForm(true, 'Sign in to access the admin tools.');
+  }
+});

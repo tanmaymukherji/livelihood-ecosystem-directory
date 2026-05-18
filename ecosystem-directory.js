@@ -12,6 +12,11 @@ const directoryState = {
   mapLoadPromise: null,
   markers: [],
   selectedEntityUid: null,
+  selectedLgdPlace: null,
+  lgdSuggestions: [],
+  lgdSearchToken: 0,
+  selectedPlacePoint: null,
+  selectedPlaceMarker: null,
 };
 
 const INDIA_CENTER = { lat: 22.9734, lng: 78.6569 };
@@ -20,6 +25,8 @@ const searchEls = {
   keyword: document.getElementById('search-keyword'),
   location: document.getElementById('search-location'),
 };
+const locationSuggestionsEl = document.getElementById('search-location-suggestions');
+const locationSelectedEl = document.getElementById('search-location-selected');
 const resultsEl = document.getElementById('entity-results');
 const mapListEl = document.getElementById('map-results-list');
 const statusEl = document.getElementById('directory-status');
@@ -49,6 +56,10 @@ const paginationEls = [
   document.getElementById('results-pagination-top'),
   document.getElementById('results-pagination-bottom'),
 ];
+const accessSummaryEl = document.getElementById('ecosystem-access-summary');
+const privateAppEl = document.getElementById('ecosystem-private-app');
+const adminWorkspaceEl = document.getElementById('ecosystem-admin-workspace');
+const adminFrameEl = document.getElementById('ecosystem-admin-frame');
 
 const {
   esc,
@@ -82,6 +93,170 @@ function normalizeText(value) {
 
 function tokenize(value) {
   return normalizeText(value).split(/[^a-z0-9]+/).filter(Boolean);
+}
+
+function normalizeLgdKind(value) {
+  const kind = normalizeText(value);
+  if (kind.includes('state')) return 'state';
+  if (kind.includes('district')) return 'district';
+  if (kind.includes('block')) return 'block';
+  if (kind.includes('panchayat')) return 'panchayat';
+  if (kind.includes('village')) return 'village';
+  return kind || 'place';
+}
+
+function getSelectedLgdKind() {
+  return normalizeLgdKind(directoryState.selectedLgdPlace?.location_kind);
+}
+
+function getLgdPlaceLabel(place) {
+  return String(place?.display_label || '').trim();
+}
+
+function setLocationSelectionText() {
+  if (!locationSelectedEl) return;
+  const place = directoryState.selectedLgdPlace;
+  if (!place) {
+    locationSelectedEl.textContent = 'Select a place from the LGD directory to refine the search and map.';
+    return;
+  }
+  const kindLabel = normalizeLgdKind(place.location_kind);
+  locationSelectedEl.textContent = `Selected ${kindLabel}: ${getLgdPlaceLabel(place)}`;
+}
+
+function hideLocationSuggestions() {
+  directoryState.lgdSuggestions = [];
+  if (!locationSuggestionsEl) return;
+  locationSuggestionsEl.hidden = true;
+  locationSuggestionsEl.innerHTML = '';
+}
+
+function renderLocationSuggestions(items) {
+  directoryState.lgdSuggestions = Array.isArray(items) ? items : [];
+  if (!locationSuggestionsEl) return;
+  if (!directoryState.lgdSuggestions.length) {
+    locationSuggestionsEl.hidden = true;
+    locationSuggestionsEl.innerHTML = '';
+    return;
+  }
+  locationSuggestionsEl.hidden = false;
+  locationSuggestionsEl.innerHTML = directoryState.lgdSuggestions.map((item) => `
+    <button class="place-suggestion-item" type="button" data-lgd-entry-uid="${esc(item.entry_uid || '')}">
+      <strong>${esc(item.display_label || '')}</strong>
+      <small>${esc(normalizeLgdKind(item.location_kind))}</small>
+    </button>
+  `).join('');
+}
+
+function setSelectedLgdPlace(place) {
+  directoryState.selectedLgdPlace = place || null;
+  directoryState.selectedPlacePoint = null;
+  if (searchEls.location) {
+    searchEls.location.value = place ? getLgdPlaceLabel(place) : '';
+  }
+  hideLocationSuggestions();
+  setLocationSelectionText();
+  persistSearchState();
+}
+
+function clearSelectedPlaceMarker() {
+  directoryState.selectedPlaceMarker?.remove?.();
+  directoryState.selectedPlaceMarker = null;
+}
+
+function haversineKm(pointA, pointB) {
+  const toRad = (value) => (Number(value) * Math.PI) / 180;
+  const earthRadiusKm = 6371;
+  const dLat = toRad(Number(pointB.lat) - Number(pointA.lat));
+  const dLng = toRad(Number(pointB.lng) - Number(pointA.lng));
+  const lat1 = toRad(pointA.lat);
+  const lat2 = toRad(pointB.lat);
+  const a = Math.sin(dLat / 2) ** 2
+    + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+  return 2 * earthRadiusKm * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function averagePoint(points) {
+  if (!points.length) return null;
+  return {
+    lat: points.reduce((sum, point) => sum + Number(point.lat || 0), 0) / points.length,
+    lng: points.reduce((sum, point) => sum + Number(point.lng || 0), 0) / points.length,
+  };
+}
+
+function buildLgdMatchTerms(place) {
+  return [
+    place?.village_name,
+    place?.gram_panchayat_name,
+    place?.block_name,
+    place?.district_name,
+    place?.state_name,
+    place?.display_label,
+  ].map(normalizeText).filter(Boolean);
+}
+
+function entityLocationHaystack(entity) {
+  const index = entity._searchIndex || (entity._searchIndex = buildSearchIndex(entity));
+  return index.location;
+}
+
+function entityMatchesSelectedPlace(entity, place) {
+  if (!place) return true;
+  const haystack = entityLocationHaystack(entity);
+  const kind = normalizeLgdKind(place.location_kind);
+  const stateText = normalizeText(place.state_name);
+  const districtText = normalizeText(place.district_name);
+  const blockText = normalizeText(place.block_name);
+  const panchayatText = normalizeText(place.gram_panchayat_name);
+  const villageText = normalizeText(place.village_name);
+
+  if (kind === 'state') {
+    return Boolean(stateText && haystack.includes(stateText));
+  }
+
+  if (kind === 'district') {
+    return Boolean(stateText && districtText && haystack.includes(stateText) && haystack.includes(districtText));
+  }
+
+  const specificTerms = [villageText, panchayatText, blockText].filter(Boolean);
+  const broadTerms = [districtText, stateText].filter(Boolean);
+  return [...specificTerms, ...broadTerms].every((term) => haystack.includes(term));
+}
+
+function filterEntitiesBySelectedPlace(entities) {
+  const place = directoryState.selectedLgdPlace;
+  if (!place) {
+    directoryState.selectedPlacePoint = null;
+    return entities;
+  }
+
+  const kind = normalizeLgdKind(place.location_kind);
+  const matched = entities.filter((entity) => entityMatchesSelectedPlace(entity, place));
+  if (!matched.length) {
+    directoryState.selectedPlacePoint = null;
+    return matched;
+  }
+
+  if (!['village', 'panchayat', 'block'].includes(kind)) {
+    directoryState.selectedPlacePoint = null;
+    return matched;
+  }
+
+  const coordinatePoints = matched
+    .filter((entity) => hasUsableCoordinate(entity.latitude, entity.longitude))
+    .map((entity) => ({ lat: Number(entity.latitude), lng: Number(entity.longitude) }));
+  const centroid = averagePoint(coordinatePoints);
+  directoryState.selectedPlacePoint = centroid;
+  if (!centroid) {
+    return matched;
+  }
+
+  return matched.filter((entity) => {
+    if (!hasUsableCoordinate(entity.latitude, entity.longitude)) {
+      return true;
+    }
+    return haversineKm(centroid, { lat: Number(entity.latitude), lng: Number(entity.longitude) }) <= 200;
+  });
 }
 
 function flattenTypeSpecificValues(value) {
@@ -247,6 +422,7 @@ function persistSearchState() {
       keyword: searchEls.keyword.value,
       location: searchEls.location.value,
       types: getSelectedTypeSlugs(),
+      selectedLgdPlace: directoryState.selectedLgdPlace,
     },
     currentPage: directoryState.currentPage,
     hasSearched: directoryState.hasSearched,
@@ -272,6 +448,7 @@ function applySearchSnapshot(snapshot) {
   if (!snapshot?.search) return;
   searchEls.keyword.value = String(snapshot.search.keyword || '');
   searchEls.location.value = String(snapshot.search.location || '');
+  directoryState.selectedLgdPlace = snapshot.search.selectedLgdPlace || null;
   const selected = new Set(Array.isArray(snapshot.search.types) ? snapshot.search.types : []);
   document.querySelectorAll('#entity-type-filters input[type="checkbox"]').forEach((input) => {
     input.checked = selected.has(input.value);
@@ -339,25 +516,31 @@ function getFilters() {
     keywordTokens: tokenize(keyword),
     locationTokens: tokenize(location),
     typeSlugs: getSelectedTypeSlugs(),
+    selectedLgdPlace: directoryState.selectedLgdPlace,
   };
 }
 
 function hasAnyFilter(filters) {
-  return Boolean(filters.keywordTokens.length || filters.locationTokens.length || filters.typeSlugs.length);
+  return Boolean(filters.keywordTokens.length || filters.locationTokens.length || filters.typeSlugs.length || filters.selectedLgdPlace);
 }
 
 function scoreEntity(entity, filters) {
   const index = entity._searchIndex || (entity._searchIndex = buildSearchIndex(entity));
   let score = 0;
   if (filters.typeSlugs.length && !filters.typeSlugs.includes(entity.entity_type_slug)) return null;
-  const locationScore = scoreAgainstTokens(index.location, filters.locationTokens, 12);
-  if (locationScore === null) return null;
-  score += locationScore;
+  if (filters.selectedLgdPlace) {
+    if (!entityMatchesSelectedPlace(entity, filters.selectedLgdPlace)) return null;
+    score += 26;
+  } else {
+    const locationScore = scoreAgainstTokens(index.location, filters.locationTokens, 12);
+    if (locationScore === null) return null;
+    score += locationScore;
+    if (filters.locationPhrase && index.location.includes(filters.locationPhrase)) score += 18;
+  }
   const keywordScore = scoreAgainstTokens(index.keyword, filters.keywordTokens, 10);
   if (keywordScore === null) return null;
   score += keywordScore;
   if (filters.keywordPhrase && index.keyword.includes(filters.keywordPhrase)) score += 30;
-  if (filters.locationPhrase && index.location.includes(filters.locationPhrase)) score += 18;
   if (entity.contact_email) score += 2;
   if (entity.contact_phone) score += 2;
   if (entity.latitude && entity.longitude) score += 4;
@@ -485,6 +668,7 @@ async function geocodeEntity(entity) {
 function clearMapMarkers() {
   directoryState.markers.forEach((marker) => marker?.remove?.());
   directoryState.markers = [];
+  clearSelectedPlaceMarker();
 }
 
 function enableMapInteractions(mapInstance) {
@@ -674,6 +858,24 @@ async function renderMapMarkers(entities) {
     return;
   }
 
+  if (directoryState.selectedPlacePoint && window.mappls?.Marker) {
+    directoryState.selectedPlaceMarker = new window.mappls.Marker({
+      map: directoryState.map,
+      position: directoryState.selectedPlacePoint,
+      width: 18,
+      height: 18,
+      fitbounds: false,
+      popupHtml: `<div class="vendor-map-popup"><strong>${esc(getLgdPlaceLabel(directoryState.selectedLgdPlace) || 'Selected place')}</strong></div>`,
+    });
+    const markerEl = directoryState.selectedPlaceMarker.getElement?.() || directoryState.selectedPlaceMarker?._element || null;
+    if (markerEl) {
+      markerEl.style.background = '#0f1720';
+      markerEl.style.border = '3px solid #ffffff';
+      markerEl.style.borderRadius = '999px';
+      markerEl.style.boxShadow = '0 0 0 7px rgba(15,23,32,.16),0 10px 22px rgba(15,23,32,.26)';
+    }
+  }
+
   const groupedPoints = groupMapPoints(points);
   groupedPoints.forEach((entries) => {
     const basePoint = entries.length === 1
@@ -688,7 +890,11 @@ async function renderMapMarkers(entities) {
       directoryState.markers.push(marker);
     });
   });
-  fitMapToPoints(points.map(({ point }) => point));
+  const fitPoints = points.map(({ point }) => point);
+  if (directoryState.selectedPlacePoint) {
+    fitPoints.push(directoryState.selectedPlacePoint);
+  }
+  fitMapToPoints(fitPoints);
 }
 
 function renderPagination(totalPages, totalMatches) {
@@ -761,6 +967,7 @@ function applyFilters() {
     directoryState.hasSearched = false;
     directoryState.filteredEntities = [];
     directoryState.currentPage = 1;
+    directoryState.selectedPlacePoint = null;
     statusEl.textContent = `Loaded ${directoryState.entities.length} approved entities across ${directoryState.entityTypes.length} types.`;
     renderResults();
     return;
@@ -770,8 +977,9 @@ function applyFilters() {
     .filter((entry) => entry.score !== null)
     .sort((left, right) => right.score - left.score || left.entity.entity_name.localeCompare(right.entity.entity_name))
     .map((entry) => entry.entity);
+  const placeAwareResults = filterEntitiesBySelectedPlace(scored);
   directoryState.hasSearched = true;
-  directoryState.filteredEntities = scored;
+  directoryState.filteredEntities = placeAwareResults;
   directoryState.currentPage = 1;
   persistSearchState();
   renderResults();
@@ -779,11 +987,12 @@ function applyFilters() {
 
 function clearFilters() {
   searchEls.keyword.value = '';
-  searchEls.location.value = '';
+  setSelectedLgdPlace(null);
   document.querySelectorAll('#entity-type-filters input[type="checkbox"]').forEach((input) => {
     input.checked = false;
   });
   directoryState.selectedEntityUid = null;
+  directoryState.selectedPlacePoint = null;
   try { window.sessionStorage.removeItem(SEARCH_STATE_KEY); } catch {}
   applyFilters();
 }
@@ -928,7 +1137,84 @@ async function handleSubmission(event) {
   }
 }
 
+async function runLgdAutocomplete(query) {
+  const raw = String(query || '').trim();
+  if (raw.length < 2) {
+    hideLocationSuggestions();
+    return;
+  }
+  const requestToken = Date.now();
+  directoryState.lgdSearchToken = requestToken;
+  try {
+    const items = await EcosystemStore.searchLgdGeography(raw, 10);
+    if (directoryState.lgdSearchToken !== requestToken) return;
+    renderLocationSuggestions(items);
+  } catch {
+    if (directoryState.lgdSearchToken !== requestToken) return;
+    hideLocationSuggestions();
+  }
+}
+
+function bindLgdAutocomplete() {
+  let debounceTimer = null;
+  searchEls.location?.addEventListener('input', () => {
+    directoryState.selectedLgdPlace = null;
+    directoryState.selectedPlacePoint = null;
+    setLocationSelectionText();
+    persistSearchState();
+    window.clearTimeout(debounceTimer);
+    debounceTimer = window.setTimeout(() => {
+      runLgdAutocomplete(searchEls.location.value);
+    }, 180);
+  });
+
+  searchEls.location?.addEventListener('blur', () => {
+    window.setTimeout(() => hideLocationSuggestions(), 180);
+  });
+
+  locationSuggestionsEl?.addEventListener('click', (event) => {
+    const target = event.target.closest('[data-lgd-entry-uid]');
+    if (!target) return;
+    const place = directoryState.lgdSuggestions.find((item) => String(item.entry_uid) === String(target.dataset.lgdEntryUid));
+    if (!place) return;
+    setSelectedLgdPlace(place);
+    applyFilters();
+  });
+}
+
+function bindEmbeddedAdminWorkspace() {
+  if (!adminWorkspaceEl || !adminFrameEl) return;
+  const buttons = Array.from(adminWorkspaceEl.querySelectorAll('[data-ecosystem-admin-target]'));
+  if (!buttons.length) return;
+  buttons.forEach((button) => {
+    button.addEventListener('click', () => {
+      buttons.forEach((item) => item.classList.toggle('is-active', item === button));
+      const target = button.dataset.ecosystemAdminTarget || './admin.html?embed=1#submissionQueuePanel';
+      if (adminFrameEl.getAttribute('src') !== target) {
+        adminFrameEl.setAttribute('src', target);
+      } else {
+        adminFrameEl.contentWindow?.location.replace(target);
+      }
+      adminWorkspaceEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  });
+}
+
+async function syncAccessState() {
+  const user = window.grameeeAuth?.getStoredSummary?.() || await window.grameeeAuth?.hydrateAuthSession?.().catch(() => null);
+  const isLoggedIn = Boolean(user);
+  const isAdmin = user?.role === 'admin';
+  if (accessSummaryEl) accessSummaryEl.hidden = isLoggedIn;
+  if (privateAppEl) privateAppEl.hidden = !isLoggedIn;
+  if (adminWorkspaceEl) adminWorkspaceEl.hidden = !isAdmin;
+  return user;
+}
+
 async function initializeDirectory() {
+  const user = await syncAccessState();
+  if (!user) {
+    return;
+  }
   statusEl.textContent = 'Loading approved directory records from Supabase...';
   try {
     const { entityTypes, entities, fieldDefinitions } = await EcosystemStore.loadDirectory();
@@ -941,6 +1227,7 @@ async function initializeDirectory() {
     const snapshot = restoreSearchState();
     if (snapshot?.hasSearched) {
       applySearchSnapshot(snapshot);
+      setLocationSelectionText();
       const filters = getFilters();
       directoryState.hasSearched = true;
       directoryState.filteredEntities = directoryState.entities
@@ -1001,4 +1288,25 @@ paginationEls.forEach((container) => container?.addEventListener('click', (event
 }));
 
 initializeSidebarTabs();
+bindLgdAutocomplete();
+bindEmbeddedAdminWorkspace();
+setLocationSelectionText();
+document.addEventListener('grameee:auth-updated', () => {
+  syncAccessState().then((user) => {
+    if (user && !directoryState.entities.length) {
+      initializeDirectory();
+    }
+    if (!user) {
+      directoryState.entities = [];
+      directoryState.filteredEntities = [];
+      directoryState.hasSearched = false;
+      directoryState.selectedEntityUid = null;
+      directoryState.selectedPlacePoint = null;
+      clearMapMarkers();
+      resultsEl.innerHTML = '';
+      resultsSummaryEl.textContent = '';
+      setCounts();
+    }
+  }).catch(() => null);
+});
 initializeDirectory();

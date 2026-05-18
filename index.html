@@ -5,12 +5,42 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="icon" href="data:," />
   <title>Livelihood Ecosystem Directory</title>
+  <link rel="stylesheet" href="./grameee-shared-shell.css?v=20260518a" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="./config.js?v=20260510a"></script>
+  <script>
+    window.grameeePageMenuConfig = {
+      menuItems: [
+        { label: 'Ecosystem Admin', href: '#ecosystem-admin-workspace', requiresAdmin: true, sameWindow: true }
+      ]
+    };
+  </script>
+  <script src="https://grameee.org/supabase-config.js" defer></script>
+  <script src="./grameee-shared-shell.js?v=20260518a" defer></script>
+  <script src="./grameee-auth.js?v=20260518a" defer></script>
   <link rel="stylesheet" href="./styles.css?v=20260510a" />
 </head>
 <body>
-  <div class="vendor-shell">
+  <div id="grameeeShellSlot"></div>
+  <div class="vendor-shell ecosystem-shell">
+    <section class="section ecosystem-access-summary" id="ecosystem-access-summary" hidden>
+      <div class="ecosystem-access-summary__content">
+        <p class="vendor-kicker ecosystem-access-kicker">Livelihood Ecosystem Directory</p>
+        <h1>Livelihood Ecosystem Discovery</h1>
+        <p class="section-note">
+          This repository maps mentors, incubators, institutions, trader networks, community stewards, and other ecosystem actors that help local enterprises and livelihoods grow.
+        </p>
+        <p class="section-note">
+          Log in through GramEEE to search the full directory, use the place-aware map, and access the connected ecosystem workflow.
+        </p>
+        <div class="btn-group">
+          <a class="btn" href="https://grameee.org/login.html">Login to Access the Directory</a>
+          <a class="btn btn-small" href="https://grameee.org/">Back to GramEEE</a>
+        </div>
+      </div>
+    </section>
+
+    <div id="ecosystem-private-app" hidden>
     <header class="vendor-hero">
       <div>
         <p class="vendor-kicker">Livelihood Ecosystem Directory</p>
@@ -47,6 +77,8 @@
               <div class="form-group">
                 <label for="search-location">Place</label>
                 <input id="search-location" type="search" placeholder="Village, district, city, state, or address" />
+                <div id="search-location-suggestions" class="place-suggestions" hidden></div>
+                <p class="section-note search-hint" id="search-location-selected">Select a place from the LGD directory to refine the search and map.</p>
               </div>
               <div class="form-group form-span-2">
                 <label>Entity Types</label>
@@ -210,8 +242,34 @@
     </main>
     <footer class="vendor-footer-links">
       <a href="./place-initiatives.html">Place Initiatives</a>
-      <a href="./admin.html">Admin</a>
     </footer>
+
+    <section class="section ecosystem-admin-workspace" id="ecosystem-admin-workspace" hidden>
+      <div class="admin-card-header">
+        <div>
+          <p class="vendor-kicker ecosystem-access-kicker">Ecosystem Admin</p>
+          <h3>Embedded Admin Workspace</h3>
+          <p class="section-note">Admin review and directory management stay inside this page when a GramEEE admin session is active.</p>
+        </div>
+      </div>
+      <div class="ecosystem-admin-tabs" role="tablist" aria-label="Ecosystem admin sections">
+        <button class="vendor-tab-button is-active" type="button" data-ecosystem-admin-target="./admin.html?embed=1#submissionQueuePanel">Approval Queue</button>
+        <button class="vendor-tab-button" type="button" data-ecosystem-admin-target="./admin.html?embed=1#adminEditorPanel">Directory Management</button>
+        <button class="vendor-tab-button" type="button" data-ecosystem-admin-target="./admin.html?embed=1#placeDocumentQueuePanel">Place Documents</button>
+        <button class="vendor-tab-button" type="button" data-ecosystem-admin-target="./admin.html?embed=1#bulkUploadPanel">Bulk Upload</button>
+      </div>
+      <div class="btn-group ecosystem-admin-actions">
+        <a class="btn btn-small" href="./admin.html">Open Full Admin</a>
+      </div>
+      <iframe
+        id="ecosystem-admin-frame"
+        class="ecosystem-admin-frame"
+        src="./admin.html?embed=1#submissionQueuePanel"
+        title="Livelihood Ecosystem admin workspace"
+        loading="lazy"
+      ></iframe>
+    </section>
+    </div>
   </div>
 
   <script src="./ecosystem-form-fields.js?v=20260510a"></script>

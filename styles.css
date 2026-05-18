@@ -2,7 +2,20 @@
 body{font-family:'Segoe UI',Tahoma,Verdana,sans-serif;background:linear-gradient(135deg,#f4f2eb 0%,#dceff2 100%);min-height:100vh;padding:24px;color:#22313f}
 a{text-decoration:none}
 .vendor-shell{max-width:1380px;margin:0 auto}
+.ecosystem-shell{display:grid;gap:1rem}
 .vendor-shell-narrow{max-width:1180px}
+.ecosystem-access-summary{max-width:980px;margin:0 auto}
+.ecosystem-access-summary__content{display:grid;gap:.85rem}
+.ecosystem-access-kicker{color:#1f4b6e}
+.search-hint{margin-top:.45rem}
+.ecosystem-admin-workspace{display:grid;gap:1rem}
+.ecosystem-admin-tabs{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:.6rem}
+.ecosystem-admin-actions{justify-content:flex-end}
+.ecosystem-admin-frame{width:100%;min-height:1120px;border:1px solid #d7e1e9;border-radius:18px;background:#fff}
+.ecosystem-admin-embed [data-grameee-shell-mounted]{display:none!important}
+.ecosystem-admin-embed body{padding:0;background:#fff}
+.ecosystem-admin-embed .admin-shell{max-width:none}
+.ecosystem-admin-embed .vendor-hero{display:none}
 .vendor-hero{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;background:linear-gradient(135deg,#1f4b6e,#2f7d73);color:#fff;border-radius:22px;padding:1.8rem 2rem;box-shadow:0 18px 36px rgba(17,44,67,.18);margin-bottom:1rem;flex-wrap:wrap}
 .vendor-kicker{text-transform:uppercase;letter-spacing:.08em;font-size:.78rem;opacity:.82;margin-bottom:.4rem}
 .vendor-subtitle{max-width:760px;line-height:1.6;opacity:.92}
