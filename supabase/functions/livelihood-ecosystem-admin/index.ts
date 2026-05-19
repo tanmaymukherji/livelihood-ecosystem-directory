@@ -772,49 +772,6 @@ async function validateSession(token: string) {
   return data;
 }
 
-async function verifyBearerUser(authHeader: string) {
-  const token = requireString(authHeader).replace(/^Bearer\s+/i, "");
-  if (!token) {
-    return null;
-  }
-
-  const supabase = getSupabaseAdmin();
-  const { data, error } = await supabase.auth.getUser(token);
-  if (error || !data?.user) {
-    return null;
-  }
-
-  if (data.user.user_metadata?.grameee_removed === true || data.user.app_metadata?.grameee_removed === true) {
-    return null;
-  }
-
-  return data.user;
-}
-
-async function validateAnyAdminSession(token: string, authHeader: string) {
-  const session = token ? await validateSession(token) : null;
-  if (session) {
-    return session;
-  }
-
-  const user = await verifyBearerUser(authHeader);
-  const role = requireString(user?.app_metadata?.grameee_role).toLowerCase();
-  if (role !== "admin") {
-    return null;
-  }
-
-  const username = requireString(user?.user_metadata?.username)
-    || requireString(user?.app_metadata?.username)
-    || requireString(user?.email)
-    || "admin";
-
-  return {
-    id: "grameee-main-session",
-    username,
-    expires_at: ""
-  };
-}
-
 async function verifyAdminPassword(username: string, password: string) {
   const supabase = getSupabaseAdmin();
   const { data, error } = await supabase.rpc("grameee_admin_password_matches", { p_username: username, p_password: password });
@@ -838,17 +795,13 @@ async function handleLogin(password: string) {
   return jsonResponse({ token, username: "admin", expires_at: expiresAt });
 }
 
-async function handleVerify(token: string, authHeader: string) {
-  const session = await validateAnyAdminSession(token, authHeader);
+async function handleVerify(token: string) {
+  const session = await validateSession(token);
   return jsonResponse({ valid: Boolean(session), username: session?.username ?? null, expires_at: session?.expires_at ?? null });
 }
 
-async function handleLogout(token: string, authHeader: string) {
+async function handleLogout(token: string) {
   const supabase = getSupabaseAdmin();
-  if (!token) {
-    const session = await validateAnyAdminSession(token, authHeader);
-    return jsonResponse({ ok: Boolean(session) });
-  }
   const tokenHash = await hashToken(token);
   await supabase.from("grameee_admin_sessions").delete().eq("token_hash", tokenHash);
   return jsonResponse({ ok: true });
@@ -1029,8 +982,8 @@ async function reconcileLinkedPlaceArtifacts() {
   }
 }
 
-async function handleLoadAdminData(token: string, authHeader: string) {
-  const session = await validateAnyAdminSession(token, authHeader);
+async function handleLoadAdminData(token: string) {
+  const session = await validateSession(token);
   if (!session) return errorResponse("Invalid admin session.", 401);
   await reconcileLinkedPlaceArtifacts();
   const [entityTypes, entities, fieldDefinitions, submissions, contactRequests, placeDocumentSubmissions, placeSpiderSubmissions, placeDocuments, placeSpiderSnapshots, placeThematicNeedSubmissions, placeThematicNeeds] = await Promise.all([
@@ -1202,9 +1155,9 @@ async function handleSubmitEntity(submission: Record<string, unknown>) {
   return jsonResponse({ ok: true, item: data });
 }
 
-async function handleApproveSubmission(token: string, authHeader: string, submissionId: string) {
+async function handleApproveSubmission(token: string, submissionId: string) {
   const supabase = getSupabaseAdmin();
-  const session = await validateAnyAdminSession(token, authHeader);
+  const session = await validateSession(token);
   if (!session) return errorResponse("Invalid admin session.", 401);
   const { data, error } = await supabase.from("ecosystem_entity_submissions").select("*").eq("id", submissionId).maybeSingle();
   if (error || !data) return errorResponse("Submission not found.", 404);
@@ -1242,9 +1195,9 @@ async function handleApproveSubmission(token: string, authHeader: string, submis
   return jsonResponse({ ok: true });
 }
 
-async function handleRejectSubmission(token: string, authHeader: string, submissionId: string) {
+async function handleRejectSubmission(token: string, submissionId: string) {
   const supabase = getSupabaseAdmin();
-  const session = await validateAnyAdminSession(token, authHeader);
+  const session = await validateSession(token);
   if (!session) return errorResponse("Invalid admin session.", 401);
   const { data } = await supabase.from("ecosystem_entity_submissions").select("entity_type_slug").eq("id", submissionId).maybeSingle();
   const { error } = await supabase.from("ecosystem_entity_submissions").update({
@@ -1281,9 +1234,9 @@ async function findEntityRow(entityUid: string) {
   return { table: getEntityTable(requireString(data.entity_type_slug)), typeSlug: requireString(data.entity_type_slug) };
 }
 
-async function handleUpdateEntity(token: string, authHeader: string, entityUid: string, updates: Record<string, unknown>) {
+async function handleUpdateEntity(token: string, entityUid: string, updates: Record<string, unknown>) {
   const supabase = getSupabaseAdmin();
-  const session = await validateAnyAdminSession(token, authHeader);
+  const session = await validateSession(token);
   if (!session) return errorResponse("Invalid admin session.", 401);
   if (!entityUid) return errorResponse("Missing entity id.", 400);
   const { table, typeSlug } = await findEntityRow(entityUid);
@@ -1314,9 +1267,9 @@ async function handleUpdateEntity(token: string, authHeader: string, entityUid: 
   return jsonResponse({ ok: true });
 }
 
-async function handleDeleteEntity(token: string, authHeader: string, entityUid: string) {
+async function handleDeleteEntity(token: string, entityUid: string) {
   const supabase = getSupabaseAdmin();
-  const session = await validateAnyAdminSession(token, authHeader);
+  const session = await validateSession(token);
   if (!session) return errorResponse("Invalid admin session.", 401);
   const { table } = await findEntityRow(entityUid);
   const { error } = await supabase.from(table).update({
@@ -1328,9 +1281,9 @@ async function handleDeleteEntity(token: string, authHeader: string, entityUid: 
   return jsonResponse({ ok: true });
 }
 
-async function handleBulkUploadEntities(token: string, authHeader: string, rows: EntityInput[]) {
+async function handleBulkUploadEntities(token: string, rows: EntityInput[]) {
   const supabase = getSupabaseAdmin();
-  const session = await validateAnyAdminSession(token, authHeader);
+  const session = await validateSession(token);
   if (!session) return errorResponse("Invalid admin session.", 401);
   if (!Array.isArray(rows) || !rows.length) return errorResponse("No upload rows were provided.", 400);
   let upsertedCount = 0;
@@ -1414,9 +1367,9 @@ async function handleSubmitPlaceSpider(submission: Record<string, unknown>) {
   return jsonResponse({ ok: true, item: data });
 }
 
-async function handleApprovePlaceSpider(token: string, authHeader: string, submissionId: string) {
+async function handleApprovePlaceSpider(token: string, submissionId: string) {
   const supabase = getSupabaseAdmin();
-  const session = await validateAnyAdminSession(token, authHeader);
+  const session = await validateSession(token);
   if (!session) return errorResponse("Invalid admin session.", 401);
   const { data, error } = await supabase.from("place_spider_chart_submissions").select("*").eq("id", submissionId).maybeSingle();
   if (error || !data) return errorResponse("Place spider chart submission not found.", 404);
@@ -1448,9 +1401,9 @@ async function handleApprovePlaceSpider(token: string, authHeader: string, submi
   return jsonResponse({ ok: true });
 }
 
-async function handleRejectPlaceSpider(token: string, authHeader: string, submissionId: string) {
+async function handleRejectPlaceSpider(token: string, submissionId: string) {
   const supabase = getSupabaseAdmin();
-  const session = await validateAnyAdminSession(token, authHeader);
+  const session = await validateSession(token);
   if (!session) return errorResponse("Invalid admin session.", 401);
   const { error } = await supabase.from("place_spider_chart_submissions").update({
     status: "rejected",
@@ -1461,9 +1414,9 @@ async function handleRejectPlaceSpider(token: string, authHeader: string, submis
   return jsonResponse({ ok: true });
 }
 
-async function handleUpdatePlaceSpiderSnapshot(token: string, authHeader: string, snapshotUid: string, updates: Record<string, unknown>) {
+async function handleUpdatePlaceSpiderSnapshot(token: string, snapshotUid: string, updates: Record<string, unknown>) {
   const supabase = getSupabaseAdmin();
-  const session = await validateAnyAdminSession(token, authHeader);
+  const session = await validateSession(token);
   if (!session) return errorResponse("Invalid admin session.", 401);
   if (!snapshotUid) return errorResponse("Missing spider chart id.", 400);
   const payload = {
@@ -1528,9 +1481,9 @@ async function handleSubmitPlaceDocument(submission: Record<string, unknown>) {
   return jsonResponse({ ok: true, item: data });
 }
 
-async function handleApprovePlaceDocument(token: string, authHeader: string, submissionId: string) {
+async function handleApprovePlaceDocument(token: string, submissionId: string) {
   const supabase = getSupabaseAdmin();
-  const session = await validateAnyAdminSession(token, authHeader);
+  const session = await validateSession(token);
   if (!session) return errorResponse("Invalid admin session.", 401);
   const { data, error } = await supabase.from("place_document_submissions").select("*").eq("id", submissionId).maybeSingle();
   if (error || !data) return errorResponse("Place document submission not found.", 404);
@@ -1580,9 +1533,9 @@ async function handleApprovePlaceDocument(token: string, authHeader: string, sub
   return jsonResponse({ ok: true });
 }
 
-async function handleRejectPlaceDocument(token: string, authHeader: string, submissionId: string) {
+async function handleRejectPlaceDocument(token: string, submissionId: string) {
   const supabase = getSupabaseAdmin();
-  const session = await validateAnyAdminSession(token, authHeader);
+  const session = await validateSession(token);
   if (!session) return errorResponse("Invalid admin session.", 401);
   const { error } = await supabase.from("place_document_submissions").update({
     status: "rejected",
@@ -1593,9 +1546,9 @@ async function handleRejectPlaceDocument(token: string, authHeader: string, subm
   return jsonResponse({ ok: true });
 }
 
-async function handleCreatePlaceDocumentRecord(token: string, authHeader: string, submission: Record<string, unknown>) {
+async function handleCreatePlaceDocumentRecord(token: string, submission: Record<string, unknown>) {
   const supabase = getSupabaseAdmin();
-  const session = await validateAnyAdminSession(token, authHeader);
+  const session = await validateSession(token);
   if (!session) return errorResponse("Invalid admin session.", 401);
   const placeUid = requireString(submission.place_uid);
   const placeName = requireString(submission.place_name);
@@ -1637,9 +1590,9 @@ async function handleCreatePlaceDocumentRecord(token: string, authHeader: string
   return jsonResponse({ ok: true, item: data });
 }
 
-async function handleDeletePlaceDocumentRecord(token: string, authHeader: string, documentUid: string) {
+async function handleDeletePlaceDocumentRecord(token: string, documentUid: string) {
   const supabase = getSupabaseAdmin();
-  const session = await validateAnyAdminSession(token, authHeader);
+  const session = await validateSession(token);
   if (!session) return errorResponse("Invalid admin session.", 401);
   if (!documentUid) return errorResponse("Missing document id.", 400);
   const { error } = await supabase.from("place_document_records").update({
@@ -1681,9 +1634,9 @@ async function handleSubmitPlaceThematicNeed(submission: Record<string, unknown>
   return jsonResponse({ ok: true, item: data });
 }
 
-async function handleCreatePlaceThematicNeedRecord(token: string, authHeader: string, submission: Record<string, unknown>) {
+async function handleCreatePlaceThematicNeedRecord(token: string, submission: Record<string, unknown>) {
   const supabase = getSupabaseAdmin();
-  const session = await validateAnyAdminSession(token, authHeader);
+  const session = await validateSession(token);
   if (!session) return errorResponse("Invalid admin session.", 401);
   const placeUid = requireString(submission.place_uid);
   const placeName = requireString(submission.place_name);
@@ -1723,9 +1676,9 @@ async function handleCreatePlaceThematicNeedRecord(token: string, authHeader: st
   return jsonResponse({ ok: true, item: data, cache_sync_warning: cacheSyncWarning || null });
 }
 
-async function handleUpdatePlaceThematicNeedRecord(token: string, authHeader: string, needUid: string, updates: Record<string, unknown>) {
+async function handleUpdatePlaceThematicNeedRecord(token: string, needUid: string, updates: Record<string, unknown>) {
   const supabase = getSupabaseAdmin();
-  const session = await validateAnyAdminSession(token, authHeader);
+  const session = await validateSession(token);
   if (!session) return errorResponse("Invalid admin session.", 401);
   if (!needUid) return errorResponse("Missing thematic need id.", 400);
   const thematicNeeds = toTextArray(updates.thematic_needs);
@@ -1754,9 +1707,9 @@ async function handleUpdatePlaceThematicNeedRecord(token: string, authHeader: st
   return jsonResponse({ ok: true, cache_sync_warning: cacheSyncWarning || null });
 }
 
-async function handleDeletePlaceThematicNeedRecord(token: string, authHeader: string, needUid: string) {
+async function handleDeletePlaceThematicNeedRecord(token: string, needUid: string) {
   const supabase = getSupabaseAdmin();
-  const session = await validateAnyAdminSession(token, authHeader);
+  const session = await validateSession(token);
   if (!session) return errorResponse("Invalid admin session.", 401);
   if (!needUid) return errorResponse("Missing thematic need id.", 400);
   const { data: deletedRow, error } = await supabase.from("place_thematic_need_records").update({
@@ -2091,9 +2044,9 @@ function buildPlaceSearchText(
   ].filter(Boolean).join(" ");
 }
 
-async function handleUpsertPlaceInitiative(token: string, authHeader: string, placeInput: Record<string, unknown>) {
+async function handleUpsertPlaceInitiative(token: string, placeInput: Record<string, unknown>) {
   const supabase = getSupabaseAdmin();
-  const session = await validateAnyAdminSession(token, authHeader);
+  const session = await validateSession(token);
   if (!session) return errorResponse("Invalid admin session.", 401);
 
   const initiativeName = requireString(placeInput.initiative_name);
@@ -2224,9 +2177,9 @@ async function handleUpsertPlaceInitiative(token: string, authHeader: string, pl
   return jsonResponse({ ok: true, place_uid: placeUid, cache_sync_warning: cacheSyncWarning || null });
 }
 
-async function handleDeletePlaceInitiative(token: string, authHeader: string, placeUid: string) {
+async function handleDeletePlaceInitiative(token: string, placeUid: string) {
   const supabase = getSupabaseAdmin();
-  const session = await validateAnyAdminSession(token, authHeader);
+  const session = await validateSession(token);
   if (!session) return errorResponse("Invalid admin session.", 401);
   if (!placeUid) return errorResponse("Missing place id.", 400);
   const { error } = await supabase.from("place_initiatives").update({
@@ -2610,9 +2563,9 @@ async function findRelatedPlaceInitiativeUidsForRecord(record: Record<string, un
     .filter(Boolean);
 }
 
-async function handleSyncPlacePartnerMatches(token: string, authHeader: string, placeUid: string, scopeInput: unknown) {
+async function handleSyncPlacePartnerMatches(token: string, placeUid: string, scopeInput: unknown) {
   const supabase = getSupabaseAdmin();
-  const session = await validateAnyAdminSession(token, authHeader);
+  const session = await validateSession(token);
   if (!session) return errorResponse("Invalid admin session.", 401);
   const scope = requireString(scopeInput) || (placeUid ? "selected" : "all");
   const sharedEntities = await fetchAllRows("ecosystem_directory_entities", "entity_name");
@@ -2694,7 +2647,6 @@ Deno.serve(async (request) => {
   }
 
   const action = requireString(body.action);
-  const authHeader = request.headers.get("authorization") ?? "";
   const token = requireString(body.token);
   const password = requireString(body.password);
   const submissionId = requireString(body.submissionId);
@@ -2720,23 +2672,23 @@ Deno.serve(async (request) => {
       case "login":
         return await handleLogin(password);
       case "verify":
-        return await handleVerify(token, authHeader);
+        return await handleVerify(token);
       case "logout":
-        return await handleLogout(token, authHeader);
+        return await handleLogout(token);
       case "loadAdminData":
-        return await handleLoadAdminData(token, authHeader);
+        return await handleLoadAdminData(token);
       case "submitEntity":
         return await handleSubmitEntity(submission);
       case "approveSubmission":
-        return await handleApproveSubmission(token, authHeader, submissionId);
+        return await handleApproveSubmission(token, submissionId);
       case "rejectSubmission":
-        return await handleRejectSubmission(token, authHeader, submissionId);
+        return await handleRejectSubmission(token, submissionId);
       case "updateEntity":
-        return await handleUpdateEntity(token, authHeader, entityUid, updates);
+        return await handleUpdateEntity(token, entityUid, updates);
       case "deleteEntity":
-        return await handleDeleteEntity(token, authHeader, entityUid);
+        return await handleDeleteEntity(token, entityUid);
       case "bulkUploadEntities":
-        return await handleBulkUploadEntities(token, authHeader, rows);
+        return await handleBulkUploadEntities(token, rows);
       case "submitContactRequest":
         return await handleSubmitContactRequest(contactRequest);
       case "submitPlaceSpider":
@@ -2744,33 +2696,33 @@ Deno.serve(async (request) => {
       case "submitPlaceThematicNeed":
         return await handleSubmitPlaceThematicNeed(submission);
       case "approvePlaceSpider":
-        return await handleApprovePlaceSpider(token, authHeader, placeSubmissionId);
+        return await handleApprovePlaceSpider(token, placeSubmissionId);
       case "rejectPlaceSpider":
-        return await handleRejectPlaceSpider(token, authHeader, placeSubmissionId);
+        return await handleRejectPlaceSpider(token, placeSubmissionId);
       case "updatePlaceSpiderSnapshot":
-        return await handleUpdatePlaceSpiderSnapshot(token, authHeader, placeUid || submissionId || body.snapshotUid || "", updates);
+        return await handleUpdatePlaceSpiderSnapshot(token, placeUid || submissionId || body.snapshotUid || "", updates);
       case "submitPlaceDocument":
         return await handleSubmitPlaceDocument(submission);
       case "approvePlaceDocument":
-        return await handleApprovePlaceDocument(token, authHeader, placeSubmissionId);
+        return await handleApprovePlaceDocument(token, placeSubmissionId);
       case "rejectPlaceDocument":
-        return await handleRejectPlaceDocument(token, authHeader, placeSubmissionId);
+        return await handleRejectPlaceDocument(token, placeSubmissionId);
       case "createPlaceDocumentRecord":
-        return await handleCreatePlaceDocumentRecord(token, authHeader, submission);
+        return await handleCreatePlaceDocumentRecord(token, submission);
       case "deletePlaceDocumentRecord":
-        return await handleDeletePlaceDocumentRecord(token, authHeader, body.documentUid ? String(body.documentUid) : "");
+        return await handleDeletePlaceDocumentRecord(token, body.documentUid ? String(body.documentUid) : "");
       case "createPlaceThematicNeedRecord":
-        return await handleCreatePlaceThematicNeedRecord(token, authHeader, submission);
+        return await handleCreatePlaceThematicNeedRecord(token, submission);
       case "updatePlaceThematicNeedRecord":
-        return await handleUpdatePlaceThematicNeedRecord(token, authHeader, body.needUid ? String(body.needUid) : "", updates);
+        return await handleUpdatePlaceThematicNeedRecord(token, body.needUid ? String(body.needUid) : "", updates);
       case "deletePlaceThematicNeedRecord":
-        return await handleDeletePlaceThematicNeedRecord(token, authHeader, body.needUid ? String(body.needUid) : "");
+        return await handleDeletePlaceThematicNeedRecord(token, body.needUid ? String(body.needUid) : "");
       case "syncPlacePartnerMatches":
-        return await handleSyncPlacePartnerMatches(token, authHeader, placeUid, body.scope);
+        return await handleSyncPlacePartnerMatches(token, placeUid, body.scope);
       case "upsertPlaceInitiative":
-        return await handleUpsertPlaceInitiative(token, authHeader, place);
+        return await handleUpsertPlaceInitiative(token, place);
       case "deletePlaceInitiative":
-        return await handleDeletePlaceInitiative(token, authHeader, placeUid);
+        return await handleDeletePlaceInitiative(token, placeUid);
       case "matchPlaceNeeds":
         return await handleMatchPlaceNeeds(body.context && typeof body.context === "object" && !Array.isArray(body.context) ? body.context as Record<string, unknown> : {});
       default:

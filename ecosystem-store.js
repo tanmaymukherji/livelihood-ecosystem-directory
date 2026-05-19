@@ -92,15 +92,12 @@ window.EcosystemStore = (() => {
 
   async function adminRequest(action, payload = {}) {
     const config = window.APP_CONFIG || {};
-    const accessToken = typeof window.grameeeAuth?.getAccessToken === 'function'
-      ? await window.grameeeAuth.getAccessToken().catch(() => '')
-      : '';
     const response = await fetch(ADMIN_API_URL(), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         apikey: String(config.SUPABASE_ANON_KEY || ''),
-        Authorization: `Bearer ${String(accessToken || config.SUPABASE_ANON_KEY || '')}`,
+        Authorization: `Bearer ${String(config.SUPABASE_ANON_KEY || '')}`,
       },
       body: JSON.stringify({ action, ...payload }),
     });
