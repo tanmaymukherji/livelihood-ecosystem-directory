@@ -517,6 +517,194 @@ function renderPlaceThematicNeeds(entity, placeThematicNeeds, isAdmin = false) {
   `;
 }
 
+function renderAdminInput(value, dataName, dataValue, type = 'text', extra = '') {
+  return `<input type="${esc(type)}" value="${esc(value ?? '')}" data-${esc(dataName)}="${esc(dataValue)}" ${extra} />`;
+}
+
+function renderPlaceVillageScorecard(entity, placeVillageProfiles = [], placeVillageEconomicItems = [], placeVillageSubscores = [], adminSession = { valid: false, token: '' }) {
+  const placeUid = entity?.entity_uid;
+  if (!placeUid) return '';
+  const isAdmin = Boolean(adminSession?.valid);
+  const typeSpecific = entity.type_specific_data && typeof entity.type_specific_data === 'object' ? entity.type_specific_data : {};
+  const profile = asArray(placeVillageProfiles).find((item) => item.place_uid === placeUid) || null;
+  const economicItems = asArray(placeVillageEconomicItems).filter((item) => item.place_uid === placeUid);
+  const subscores = asArray(placeVillageSubscores).filter((item) => item.place_uid === placeUid);
+  const displayHouseholds = profile?.households || typeSpecific.households;
+  const displayPopulation = profile?.population || typeSpecific.population;
+
+  if (!isAdmin && !profile && !displayHouseholds && !displayPopulation && !economicItems.length && !subscores.length) {
+    return '';
+  }
+
+  let html = `
+    <section class="section place-scorecard-section">
+      <h3>Village Scorecard</h3>
+      <div class="place-card-grid">
+        <article class="keyval-card"><strong>Households</strong><p class="field-value">${displayHouseholds ? esc(String(displayHouseholds)) : '&mdash;'}</p></article>
+        <article class="keyval-card"><strong>Population</strong><p class="field-value">${displayPopulation ? esc(String(displayPopulation)) : '&mdash;'}</p></article>
+        ${profile ? `<article class="keyval-card"><strong>Total Import</strong><p class="field-value">Rs ${esc(Number(profile.total_import || 0).toLocaleString('en-IN'))}</p></article>` : ''}
+        ${profile ? `<article class="keyval-card"><strong>Total Export</strong><p class="field-value">Rs ${esc(Number(profile.total_export || 0).toLocaleString('en-IN'))}</p></article>` : ''}
+        ${profile ? `<article class="keyval-card"><strong>Avg Score</strong><p class="field-value">${esc(String(profile.avg_score || ''))}</p></article>` : ''}
+        ${profile ? `<article class="keyval-card"><strong>Avg Subscore</strong><p class="field-value">${esc(String(profile.avg_subscore || ''))}</p></article>` : ''}
+      </div>
+    </section>
+  `;
+
+  if (isAdmin) {
+    html += `
+      <section class="section place-scorecard-section">
+        <details class="section-collapsible" open>
+          <summary><h3>Edit Village Profile</h3></summary>
+          <div class="section-collapsible-body">
+            <p class="section-note">Admin edits update the village scorecard data for this Place entity.</p>
+            <div class="admin-form compact-admin-form" data-village-profile-editor="${esc(placeUid)}">
+              <div class="form-group"><label>Households</label>${renderAdminInput(profile?.households ?? displayHouseholds ?? '', 'village-profile-field', 'households', 'number', 'step="1"')}</div>
+              <div class="form-group"><label>Population</label>${renderAdminInput(profile?.population ?? displayPopulation ?? '', 'village-profile-field', 'population', 'number', 'step="1"')}</div>
+              <div class="form-group"><label>Total Import (Rs)</label>${renderAdminInput(profile?.total_import ?? '', 'village-profile-field', 'total_import', 'number', 'step="0.1"')}</div>
+              <div class="form-group"><label>Total Export (Rs)</label>${renderAdminInput(profile?.total_export ?? '', 'village-profile-field', 'total_export', 'number', 'step="0.1"')}</div>
+              <div class="form-group"><label>Total Opportunity Cost (Rs)</label>${renderAdminInput(profile?.total_opportunity_cost ?? '', 'village-profile-field', 'total_opportunity_cost', 'number', 'step="0.1"')}</div>
+              <div class="form-group"><label>Avg Score</label>${renderAdminInput(profile?.avg_score ?? '', 'village-profile-field', 'avg_score', 'number', 'step="0.01"')}</div>
+              <div class="form-group"><label>Avg Subscore</label>${renderAdminInput(profile?.avg_subscore ?? '', 'village-profile-field', 'avg_subscore', 'number', 'step="0.01"')}</div>
+            </div>
+            <div class="btn-group">
+              <button class="btn btn-success btn-small" type="button" id="save-village-profile">Save Village Profile</button>
+            </div>
+            <p class="admin-status" id="village-profile-status"></p>
+          </div>
+        </details>
+      </section>
+    `;
+  }
+
+  if (economicItems.length || isAdmin) {
+    const allItems = economicItems.slice().sort((a, b) =>
+      Math.max(Number(b.export_amount || 0), Number(b.import_amount || 0), Number(b.opportunity_cost || 0)) -
+      Math.max(Number(a.export_amount || 0), Number(a.import_amount || 0), Number(a.opportunity_cost || 0))
+    );
+    html += `
+      <section class="section place-scorecard-section">
+        <h3>Import / Export / Opportunity</h3>
+        <div class="place-data-table-wrap">
+          <table class="place-data-table" data-village-econ-table>
+            <thead>
+              <tr>
+                <th>Item</th>
+                ${isAdmin ? '<th>Households</th>' : ''}
+                <th>Export (Rs)</th>
+                <th>Import (Rs)</th>
+                <th>Opportunity (Rs)</th>
+                <th>Net (Rs)</th>
+                ${isAdmin ? '<th>Action</th>' : ''}
+              </tr>
+            </thead>
+            <tbody>
+              ${allItems.map((item) => {
+                const exportAmount = Number(item.export_amount || 0);
+                const importAmount = Number(item.import_amount || 0);
+                const opportunityAmount = Number(item.opportunity_cost || 0);
+                const netAmount = exportAmount - importAmount;
+                return `
+                  <tr data-econ-row="${esc(String(item.id || 'existing'))}">
+                    ${isAdmin ? `
+                      <td>${renderAdminInput(item.item_name || '', 'econ-field', 'item_name')}</td>
+                      <td>${renderAdminInput(item.households || '', 'econ-field', 'households', 'number', 'step="1"')}</td>
+                      <td>${renderAdminInput(exportAmount || '', 'econ-field', 'export_amount', 'number', 'step="0.1"')}</td>
+                      <td>${renderAdminInput(importAmount || '', 'econ-field', 'import_amount', 'number', 'step="0.1"')}</td>
+                      <td>${renderAdminInput(opportunityAmount || '', 'econ-field', 'opportunity_cost', 'number', 'step="0.1"')}</td>
+                      <td class="${netAmount >= 0 ? 'amount-positive' : 'amount-negative'}">${netAmount >= 0 ? '+' : '-'}${esc(Math.abs(netAmount).toLocaleString('en-IN'))}</td>
+                      <td><button class="btn btn-danger btn-small" type="button" data-delete-econ-item>Delete</button></td>
+                    ` : `
+                      <td>${esc(item.item_name || '')}</td>
+                      <td class="amount-positive">${exportAmount ? esc(exportAmount.toLocaleString('en-IN')) : '&mdash;'}</td>
+                      <td class="amount-negative">${importAmount ? esc(importAmount.toLocaleString('en-IN')) : '&mdash;'}</td>
+                      <td>${opportunityAmount ? esc(opportunityAmount.toLocaleString('en-IN')) : '&mdash;'}</td>
+                      <td class="${netAmount >= 0 ? 'amount-positive' : 'amount-negative'}">${netAmount >= 0 ? '+' : '-'}${esc(Math.abs(netAmount).toLocaleString('en-IN'))}</td>
+                    `}
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+        ${isAdmin ? `
+          <div class="btn-group village-admin-actions">
+            <button class="btn btn-success btn-small" type="button" id="save-econ-items">Save Changes</button>
+            <button class="btn btn-small" type="button" id="add-econ-row">+ Add Row</button>
+            <button class="btn btn-small" type="button" id="upload-econ-csv">Upload Import/Export/Opportunity</button>
+          </div>
+          <p class="section-note">CSV format: Item Name, Export, Import, Opportunity. One item per line.</p>
+          <p class="admin-status" id="econ-save-status"></p>
+        ` : ''}
+      </section>
+    `;
+  }
+
+  const indicatorKeys = [...new Set(subscores.map((item) => item.indicator_key).filter(Boolean))];
+  if (isAdmin) {
+    html += `
+      <section class="section place-scorecard-section">
+        <details class="section-collapsible" open>
+          <summary><h3>Sub Scores</h3></summary>
+          <div class="section-collapsible-body">
+            <div class="place-data-table-wrap">
+              <table class="place-data-table place-subscore-table" data-village-subscore-table>
+                <thead>
+                  <tr>
+                    <th>Component</th>
+                    <th>Indicator Key</th>
+                    <th>Indicator Label</th>
+                    <th>Parameter</th>
+                    <th>Sub Indicator</th>
+                    <th>Measure</th>
+                    <th>Sub Score</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${subscores.map((item) => `
+                    <tr data-subscore-row="${esc(String(item.id || 'existing'))}">
+                      <td>${renderAdminInput(item.component || '', 'subscore-field', 'component')}</td>
+                      <td>${renderAdminInput(item.indicator_key || '', 'subscore-field', 'indicator_key')}</td>
+                      <td>${renderAdminInput(item.indicator_label || '', 'subscore-field', 'indicator_label')}</td>
+                      <td>${renderAdminInput(item.parameter || '', 'subscore-field', 'parameter')}</td>
+                      <td>${renderAdminInput(item.sub_indicator || '', 'subscore-field', 'sub_indicator')}</td>
+                      <td>${renderAdminInput(item.measure ?? '', 'subscore-field', 'measure', 'number', 'step="0.01"')}</td>
+                      <td>${renderAdminInput(item.sub_score ?? '', 'subscore-field', 'sub_score', 'number', 'step="0.01"')}</td>
+                      <td><button class="btn btn-danger btn-small" type="button" data-delete-subscore-item>Delete</button></td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+            <div class="btn-group village-admin-actions">
+              <button class="btn btn-success btn-small" type="button" id="save-subscore-items">Save Sub Scores</button>
+              <button class="btn btn-small" type="button" id="add-subscore-row">+ Add Sub Score</button>
+            </div>
+            <p class="admin-status" id="subscore-save-status"></p>
+          </div>
+        </details>
+      </section>
+    `;
+  } else {
+    indicatorKeys.forEach((key) => {
+      const items = subscores.filter((item) => item.indicator_key === key).slice(0, 12);
+      html += `
+        <section class="section place-scorecard-section">
+          <h3>${esc(key)}</h3>
+          <div class="place-chip-list">
+            ${items.map((item) => {
+              const label = item.sub_indicator || item.parameter || item.indicator_label || item.indicator_key;
+              return `<span class="detail-chip"><strong>${esc(label)}</strong><small>${esc(String(item.sub_score ?? item.measure ?? ''))}</small></span>`;
+            }).join('')}
+          </div>
+        </section>
+      `;
+    });
+  }
+
+  return html;
+}
+
 function renderPlaceMetricEditorRows() {
   return PLACE_SPIDER_METRICS.map((metric) => `
     <div class="place-metric-row">
@@ -918,6 +1106,170 @@ async function deleteAdminPlaceNeedRecord(needUid, adminToken) {
   }
 }
 
+function setVillageAdminStatus(id, message, isError = false) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = message;
+  el.classList.toggle('error', Boolean(isError));
+}
+
+function readNumberInput(root, selector) {
+  const value = root.querySelector(selector)?.value;
+  if (value === undefined || value === null || value === '') return null;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
+async function saveAdminVillageProfile(entity, adminToken) {
+  const editor = document.querySelector('[data-village-profile-editor]');
+  if (!editor) return;
+  const profile = { place_uid: entity.entity_uid };
+  editor.querySelectorAll('[data-village-profile-field]').forEach((input) => {
+    const field = input.dataset.villageProfileField;
+    if (!field) return;
+    const value = input.value;
+    profile[field] = value === '' ? null : Number(value);
+  });
+  setVillageAdminStatus('village-profile-status', 'Saving village profile...');
+  try {
+    await EcosystemStore.adminRequest('upsertVillageProfile', {
+      token: adminToken,
+      profile,
+    });
+    setVillageAdminStatus('village-profile-status', 'Village profile saved.');
+  } catch (error) {
+    setVillageAdminStatus('village-profile-status', error.message || 'Village profile save failed.', true);
+  }
+}
+
+function collectAdminEconomicItems() {
+  const table = document.querySelector('[data-village-econ-table]');
+  if (!table) return [];
+  return Array.from(table.querySelectorAll('[data-econ-row]'))
+    .map((row) => {
+      const itemName = row.querySelector('[data-econ-field="item_name"]')?.value?.trim();
+      if (!itemName) return null;
+      return {
+        item_name: itemName,
+        households: readNumberInput(row, '[data-econ-field="households"]'),
+        export_amount: readNumberInput(row, '[data-econ-field="export_amount"]') || 0,
+        import_amount: readNumberInput(row, '[data-econ-field="import_amount"]') || 0,
+        opportunity_cost: readNumberInput(row, '[data-econ-field="opportunity_cost"]') || 0,
+      };
+    })
+    .filter(Boolean);
+}
+
+async function saveAdminEconomicItems(placeUid, adminToken) {
+  const items = collectAdminEconomicItems();
+  setVillageAdminStatus('econ-save-status', 'Saving economic items...');
+  try {
+    await EcosystemStore.adminRequest('upsertVillageEconomicItems', {
+      token: adminToken,
+      place_uid: placeUid,
+      items,
+    });
+    setVillageAdminStatus('econ-save-status', 'Economic items saved.');
+  } catch (error) {
+    setVillageAdminStatus('econ-save-status', error.message || 'Economic item save failed.', true);
+  }
+}
+
+function addAdminEconRow(values = {}) {
+  const tbody = document.querySelector('[data-village-econ-table] tbody');
+  if (!tbody) return;
+  const exportAmount = Number(values.export_amount || 0);
+  const importAmount = Number(values.import_amount || 0);
+  const netAmount = exportAmount - importAmount;
+  const tr = document.createElement('tr');
+  tr.dataset.econRow = 'new';
+  tr.innerHTML = `
+    <td>${renderAdminInput(values.item_name || '', 'econ-field', 'item_name')}</td>
+    <td>${renderAdminInput(values.households || '', 'econ-field', 'households', 'number', 'step="1"')}</td>
+    <td>${renderAdminInput(exportAmount || '', 'econ-field', 'export_amount', 'number', 'step="0.1"')}</td>
+    <td>${renderAdminInput(importAmount || '', 'econ-field', 'import_amount', 'number', 'step="0.1"')}</td>
+    <td>${renderAdminInput(values.opportunity_cost || '', 'econ-field', 'opportunity_cost', 'number', 'step="0.1"')}</td>
+    <td class="${netAmount >= 0 ? 'amount-positive' : 'amount-negative'}">${netAmount >= 0 ? '+' : '-'}${esc(Math.abs(netAmount).toLocaleString('en-IN'))}</td>
+    <td><button class="btn btn-danger btn-small" type="button" data-delete-econ-item>Delete</button></td>
+  `;
+  tbody.appendChild(tr);
+  tr.querySelector('[data-delete-econ-item]')?.addEventListener('click', () => tr.remove());
+}
+
+function uploadAdminEconCsv() {
+  const text = window.prompt('Paste economic data (CSV):\nFormat: Item Name, Export, Import, Opportunity\nOne item per line.', 'Rice (Paddy), 2790000, 0, 900000\nWheat, 500000, 200000, 0');
+  if (!text) return;
+  text.split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .forEach((line) => {
+      const [itemName, exportAmount, importAmount, opportunityCost] = line.split(',').map((part) => part.trim());
+      if (!itemName) return;
+      addAdminEconRow({
+        item_name: itemName,
+        export_amount: Number(exportAmount || 0),
+        import_amount: Number(importAmount || 0),
+        opportunity_cost: Number(opportunityCost || 0),
+      });
+    });
+}
+
+function collectAdminSubscores() {
+  const table = document.querySelector('[data-village-subscore-table]');
+  if (!table) return [];
+  return Array.from(table.querySelectorAll('[data-subscore-row]'))
+    .map((row) => {
+      const indicatorKey = row.querySelector('[data-subscore-field="indicator_key"]')?.value?.trim();
+      const subIndicator = row.querySelector('[data-subscore-field="sub_indicator"]')?.value?.trim();
+      const parameter = row.querySelector('[data-subscore-field="parameter"]')?.value?.trim();
+      if (!indicatorKey && !subIndicator && !parameter) return null;
+      return {
+        component: row.querySelector('[data-subscore-field="component"]')?.value?.trim() || '',
+        indicator_key: indicatorKey || row.querySelector('[data-subscore-field="indicator_label"]')?.value?.trim() || 'General',
+        indicator_label: row.querySelector('[data-subscore-field="indicator_label"]')?.value?.trim() || indicatorKey || '',
+        parameter: parameter || subIndicator || '',
+        sub_indicator: subIndicator || parameter || '',
+        measure: readNumberInput(row, '[data-subscore-field="measure"]'),
+        sub_score: readNumberInput(row, '[data-subscore-field="sub_score"]'),
+      };
+    })
+    .filter(Boolean);
+}
+
+async function saveAdminSubscores(placeUid, adminToken) {
+  const items = collectAdminSubscores();
+  setVillageAdminStatus('subscore-save-status', 'Saving sub scores...');
+  try {
+    await EcosystemStore.adminRequest('upsertVillageSubscores', {
+      token: adminToken,
+      place_uid: placeUid,
+      items,
+    });
+    setVillageAdminStatus('subscore-save-status', 'Sub scores saved.');
+  } catch (error) {
+    setVillageAdminStatus('subscore-save-status', error.message || 'Sub score save failed.', true);
+  }
+}
+
+function addAdminSubscoreRow(values = {}) {
+  const tbody = document.querySelector('[data-village-subscore-table] tbody');
+  if (!tbody) return;
+  const tr = document.createElement('tr');
+  tr.dataset.subscoreRow = 'new';
+  tr.innerHTML = `
+    <td>${renderAdminInput(values.component || '', 'subscore-field', 'component')}</td>
+    <td>${renderAdminInput(values.indicator_key || '', 'subscore-field', 'indicator_key')}</td>
+    <td>${renderAdminInput(values.indicator_label || '', 'subscore-field', 'indicator_label')}</td>
+    <td>${renderAdminInput(values.parameter || '', 'subscore-field', 'parameter')}</td>
+    <td>${renderAdminInput(values.sub_indicator || '', 'subscore-field', 'sub_indicator')}</td>
+    <td>${renderAdminInput(values.measure ?? '', 'subscore-field', 'measure', 'number', 'step="0.01"')}</td>
+    <td>${renderAdminInput(values.sub_score ?? '', 'subscore-field', 'sub_score', 'number', 'step="0.01"')}</td>
+    <td><button class="btn btn-danger btn-small" type="button" data-delete-subscore-item>Delete</button></td>
+  `;
+  tbody.appendChild(tr);
+  tr.querySelector('[data-delete-subscore-item]')?.addEventListener('click', () => tr.remove());
+}
+
 function openPlaceSpiderModal(entity, snapshot) {
   const modal = document.getElementById('place-spider-modal');
   const body = document.getElementById('place-spider-modal-body');
@@ -960,7 +1312,17 @@ async function initEntityDetail() {
 
   try {
     const adminSession = await verifyAdminSession();
-    const { entityTypes, entities, fieldDefinitions, placeDocuments, placeSpiderSnapshots, placeThematicNeeds } = await EcosystemStore.loadDirectory();
+    const {
+      entityTypes,
+      entities,
+      fieldDefinitions,
+      placeDocuments,
+      placeSpiderSnapshots,
+      placeThematicNeeds,
+      placeVillageProfiles,
+      placeVillageEconomicItems,
+      placeVillageSubscores,
+    } = await EcosystemStore.loadDirectory();
     const entity = entities.find((item) => item.entity_uid === entityUid);
     if (!entity) {
       root.innerHTML = '<section class="section"><p>Entity not found in the approved directory.</p></section>';
@@ -1020,6 +1382,7 @@ async function initEntityDetail() {
       ${isPlace ? renderPlaceDocuments(entity, placeDocuments, adminSession.valid) : ''}
       ${isPlace ? renderPlaceSpiderHistory(entity, placeSpiderSnapshots, adminSession.valid) : ''}
       ${isPlace ? renderPlaceThematicNeeds(entity, placeThematicNeeds, adminSession.valid) : ''}
+      ${isPlace ? renderPlaceVillageScorecard(entity, placeVillageProfiles, placeVillageEconomicItems, placeVillageSubscores, adminSession) : ''}
       ${isPlace ? renderPlaceSubmissionSections(entity) : ''}
       <section class="section">
         <details class="section-collapsible">
@@ -1065,6 +1428,18 @@ async function initEntityDetail() {
         document.getElementById('admin-place-document-upload-button')?.addEventListener('click', () => uploadAdminPlaceDocument(entity, adminSession.token));
         const recordedAtEl = document.getElementById('admin-place-document-recorded-at');
         if (recordedAtEl && !recordedAtEl.value) recordedAtEl.value = new Date().toISOString().slice(0, 16);
+        document.getElementById('save-village-profile')?.addEventListener('click', () => saveAdminVillageProfile(entity, adminSession.token));
+        document.getElementById('save-econ-items')?.addEventListener('click', () => saveAdminEconomicItems(entity.entity_uid, adminSession.token));
+        document.getElementById('add-econ-row')?.addEventListener('click', () => addAdminEconRow());
+        document.getElementById('upload-econ-csv')?.addEventListener('click', () => uploadAdminEconCsv());
+        document.querySelectorAll('[data-delete-econ-item]').forEach((button) => {
+          button.addEventListener('click', () => button.closest('[data-econ-row]')?.remove());
+        });
+        document.getElementById('save-subscore-items')?.addEventListener('click', () => saveAdminSubscores(entity.entity_uid, adminSession.token));
+        document.getElementById('add-subscore-row')?.addEventListener('click', () => addAdminSubscoreRow());
+        document.querySelectorAll('[data-delete-subscore-item]').forEach((button) => {
+          button.addEventListener('click', () => button.closest('[data-subscore-row]')?.remove());
+        });
       }
       document.getElementById('place-document-form')?.addEventListener('submit', (event) => submitPlaceDocument(event, entity));
       document.getElementById('place-spider-form')?.addEventListener('submit', (event) => submitPlaceSpider(event, entity));

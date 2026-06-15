@@ -760,16 +760,33 @@ function generateToken() {
 }
 
 async function validateSession(token: string) {
+  if (!token) return null;
   const supabase = getSupabaseAdmin();
   const tokenHash = await hashToken(token);
   const { data, error } = await supabase.from("grameee_admin_sessions").select("id, username, expires_at").eq("token_hash", tokenHash).maybeSingle();
-  if (error || !data) return null;
-  if (new Date(data.expires_at).getTime() <= Date.now()) {
-    await supabase.from("grameee_admin_sessions").delete().eq("id", data.id);
-    return null;
+  if (!error && data) {
+    if (new Date(data.expires_at).getTime() <= Date.now()) {
+      await supabase.from("grameee_admin_sessions").delete().eq("id", data.id);
+      return null;
+    }
+    await supabase.from("grameee_admin_sessions").update({ last_used_at: new Date().toISOString() }).eq("id", data.id);
+    return data;
   }
-  await supabase.from("grameee_admin_sessions").update({ last_used_at: new Date().toISOString() }).eq("id", data.id);
-  return data;
+
+  const { data: userData, error: userError } = await supabase.auth.getUser(token);
+  if (userError || !userData?.user) return null;
+  if (userData.user.user_metadata?.grameee_removed === true || userData.user.app_metadata?.grameee_removed === true) return null;
+  const role = requireString(userData.user.app_metadata?.grameee_role).toLowerCase();
+  if (role !== "admin") return null;
+  const username = requireString(userData.user.user_metadata?.username)
+    || requireString(userData.user.app_metadata?.username)
+    || requireString(userData.user.email)
+    || "admin";
+  return {
+    id: "grameee-main-session",
+    username,
+    expires_at: "",
+  };
 }
 
 async function verifyAdminPassword(username: string, password: string) {
@@ -1730,6 +1747,84 @@ async function handleDeletePlaceThematicNeedRecord(token: string, needUid: strin
   return jsonResponse({ ok: true, cache_sync_warning: cacheSyncWarning || null });
 }
 
+async function handleUpsertVillageProfile(token: string, profileInput: Record<string, unknown>) {
+  const supabase = getSupabaseAdmin();
+  const session = await validateSession(token);
+  if (!session) return errorResponse("Invalid admin session.", 401);
+  const placeUid = requireString(profileInput.place_uid);
+  if (!placeUid) return errorResponse("Missing place uid.", 400);
+  const profile = {
+    place_uid: placeUid,
+    households: toNullableNumber(profileInput.households),
+    total_import: toNullableNumber(profileInput.total_import),
+    total_export: toNullableNumber(profileInput.total_export),
+    total_opportunity_cost: toNullableNumber(profileInput.total_opportunity_cost),
+    avg_score: toNullableNumber(profileInput.avg_score),
+    avg_subscore: toNullableNumber(profileInput.avg_subscore),
+    source_file: requireString(profileInput.source_file) || "ecosystem_admin_editor",
+    recorded_at: new Date().toISOString(),
+  };
+  const { error } = await supabase.from("place_village_profile_public").upsert(profile, { onConflict: "place_uid" });
+  if (error) return errorResponse(`Village profile save failed: ${error.message}`, 500);
+  return jsonResponse({ ok: true });
+}
+
+async function handleUpsertVillageEconomicItems(token: string, placeUidInput: string, itemsInput: unknown) {
+  const supabase = getSupabaseAdmin();
+  const session = await validateSession(token);
+  if (!session) return errorResponse("Invalid admin session.", 401);
+  const placeUid = requireString(placeUidInput);
+  if (!placeUid) return errorResponse("Missing place uid.", 400);
+  const items = toRecordArray(itemsInput)
+    .map((item) => ({
+      place_uid: placeUid,
+      item_name: requireString(item.item_name),
+      households: toNullableNumber(item.households),
+      import_amount: toNullableNumber(item.import_amount) ?? 0,
+      export_amount: toNullableNumber(item.export_amount) ?? 0,
+      opportunity_cost: toNullableNumber(item.opportunity_cost) ?? 0,
+      source_sheet: requireString(item.source_sheet) || "ecosystem_admin_editor",
+    }))
+    .filter((item) => item.item_name);
+  const { error: deleteError } = await supabase.from("place_village_economic_items_public").delete().eq("place_uid", placeUid);
+  if (deleteError) return errorResponse(`Economic item clear failed: ${deleteError.message}`, 500);
+  if (!items.length) return jsonResponse({ ok: true, count: 0 });
+  const { error: insertError } = await supabase.from("place_village_economic_items_public").insert(items);
+  if (insertError) return errorResponse(`Economic item save failed: ${insertError.message}`, 500);
+  return jsonResponse({ ok: true, count: items.length });
+}
+
+async function handleUpsertVillageSubscores(token: string, placeUidInput: string, itemsInput: unknown) {
+  const supabase = getSupabaseAdmin();
+  const session = await validateSession(token);
+  if (!session) return errorResponse("Invalid admin session.", 401);
+  const placeUid = requireString(placeUidInput);
+  if (!placeUid) return errorResponse("Missing place uid.", 400);
+  const items = toRecordArray(itemsInput)
+    .map((item) => {
+      const indicatorKey = requireString(item.indicator_key) || requireString(item.indicator_label) || "General";
+      const parameter = requireString(item.parameter) || requireString(item.sub_indicator);
+      const subIndicator = requireString(item.sub_indicator) || parameter;
+      return {
+        place_uid: placeUid,
+        indicator_key: indicatorKey,
+        indicator_label: requireString(item.indicator_label) || indicatorKey,
+        parameter,
+        measure: toNullableNumber(item.measure),
+        sub_indicator: subIndicator,
+        sub_score: toNullableNumber(item.sub_score),
+        component: requireString(item.component),
+      };
+    })
+    .filter((item) => item.indicator_key || item.parameter || item.sub_indicator);
+  const { error: deleteError } = await supabase.from("place_village_subscores_public").delete().eq("place_uid", placeUid);
+  if (deleteError) return errorResponse(`Sub score clear failed: ${deleteError.message}`, 500);
+  if (!items.length) return jsonResponse({ ok: true, count: 0 });
+  const { error: insertError } = await supabase.from("place_village_subscores_public").insert(items);
+  if (insertError) return errorResponse(`Sub score save failed: ${insertError.message}`, 500);
+  return jsonResponse({ ok: true, count: items.length });
+}
+
 async function approveLinkedPlaceSpiderSubmissions(
   parentSubmissionId: string,
   placeUid: string,
@@ -2647,7 +2742,8 @@ Deno.serve(async (request) => {
   }
 
   const action = requireString(body.action);
-  const token = requireString(body.token);
+  const authHeader = request.headers.get("authorization") ?? "";
+  const token = requireString(body.token) || requireString(authHeader).replace(/^Bearer\s+/i, "");
   const password = requireString(body.password);
   const submissionId = requireString(body.submissionId);
   const placeSubmissionId = requireString(body.placeSubmissionId);
@@ -2665,6 +2761,10 @@ Deno.serve(async (request) => {
   const place = body.place && typeof body.place === "object" && !Array.isArray(body.place)
     ? body.place as Record<string, unknown>
     : {};
+  const profile = body.profile && typeof body.profile === "object" && !Array.isArray(body.profile)
+    ? body.profile as Record<string, unknown>
+    : {};
+  const villageItems = Array.isArray(body.items) ? body.items : [];
   const rows = Array.isArray(body.rows) ? body.rows as EntityInput[] : [];
 
   try {
@@ -2717,6 +2817,12 @@ Deno.serve(async (request) => {
         return await handleUpdatePlaceThematicNeedRecord(token, body.needUid ? String(body.needUid) : "", updates);
       case "deletePlaceThematicNeedRecord":
         return await handleDeletePlaceThematicNeedRecord(token, body.needUid ? String(body.needUid) : "");
+      case "upsertVillageProfile":
+        return await handleUpsertVillageProfile(token, profile);
+      case "upsertVillageEconomicItems":
+        return await handleUpsertVillageEconomicItems(token, body.place_uid ? String(body.place_uid) : "", villageItems);
+      case "upsertVillageSubscores":
+        return await handleUpsertVillageSubscores(token, body.place_uid ? String(body.place_uid) : "", villageItems);
       case "syncPlacePartnerMatches":
         return await handleSyncPlacePartnerMatches(token, placeUid, body.scope);
       case "upsertPlaceInitiative":
