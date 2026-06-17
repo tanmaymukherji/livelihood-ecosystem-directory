@@ -106,7 +106,7 @@ function setStoredToken(token) {
 }
 
 function adminRequest(action, payload = {}) {
-  return adminRequest(action, { ...payload, token: getStoredToken() });
+  return EcosystemStore.adminRequest(action, { ...payload, token: getStoredToken() });
 }
 
 function setStatus(element, message, isError = false) {
