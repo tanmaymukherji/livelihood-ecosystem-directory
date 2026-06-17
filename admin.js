@@ -1,5 +1,3 @@
-const loginStatus = document.getElementById('loginStatus');
-const sessionStatus = document.getElementById('sessionStatus');
 const bulkUploadStatus = document.getElementById('bulkUploadStatus');
 const adminSearchMeta = document.getElementById('adminSearchMeta');
 const adminEditStatus = document.getElementById('adminEditStatus');
@@ -12,6 +10,7 @@ const contactRequestList = document.getElementById('contactRequestList');
 const placeDocumentQueue = document.getElementById('placeDocumentQueue');
 const placeSpiderQueue = document.getElementById('placeSpiderQueue');
 const adminSearchResults = document.getElementById('adminSearchResults');
+const adminSearchPagination = document.getElementById('adminSearchPagination');
 const adminEditorEmpty = document.getElementById('adminEditorEmpty');
 const adminEditorFields = document.getElementById('adminEditorFields');
 const editDynamicFieldsEl = document.getElementById('edit-dynamic-fields');
@@ -21,7 +20,6 @@ const placeAdminNeedsStatusEl = document.getElementById('placeAdminNeedsStatus')
 const placeAdminSpiderListEl = document.getElementById('placeAdminSpiderList');
 const placeAdminDocumentListEl = document.getElementById('placeAdminDocumentList');
 const placeAdminDocumentStatusEl = document.getElementById('placeAdminDocumentStatus');
-const ADMIN_SESSION_KEY = 'livelihood-ecosystem-admin-session';
 
 const {
   esc,
@@ -47,6 +45,8 @@ const state = {
   placeSpiderSnapshots: [],
   placeThematicNeeds: [],
   selectedEntityUid: '',
+  currentPage: 1,
+  pageSize: 10,
 };
 
 const PLACE_SPIDER_METRICS = [
@@ -88,6 +88,27 @@ const editEls = {
   adminNotes: document.getElementById('editAdminNotes'),
 };
 
+const ADMIN_SESSION_KEY = 'livelihood-ecosystem-admin-session';
+let sharedAdminAccessToken = '';
+
+function getStoredToken() {
+  return sharedAdminAccessToken || window.sessionStorage.getItem(ADMIN_SESSION_KEY) || window.localStorage.getItem(ADMIN_SESSION_KEY) || '';
+}
+
+function setStoredToken(token) {
+  if (token) {
+    window.sessionStorage.setItem(ADMIN_SESSION_KEY, token);
+    window.localStorage.setItem(ADMIN_SESSION_KEY, token);
+  } else {
+    window.sessionStorage.removeItem(ADMIN_SESSION_KEY);
+    window.localStorage.removeItem(ADMIN_SESSION_KEY);
+  }
+}
+
+function adminRequest(action, payload = {}) {
+  return adminRequest(action, { ...payload, token: getStoredToken() });
+}
+
 function setStatus(element, message, isError = false) {
   if (!element) return;
   element.textContent = message || '';
@@ -116,32 +137,56 @@ function parseLineList(value) {
   return String(value || '').split(/\r?\n/).map((item) => item.trim()).filter(Boolean);
 }
 
-function getStoredToken() {
-  return window.sessionStorage.getItem(ADMIN_SESSION_KEY) || window.localStorage.getItem(ADMIN_SESSION_KEY) || '';
+function wait(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function setStoredToken(token) {
-  if (token) {
-    window.sessionStorage.setItem(ADMIN_SESSION_KEY, token);
-    window.localStorage.setItem(ADMIN_SESSION_KEY, token);
-  } else {
-    window.sessionStorage.removeItem(ADMIN_SESSION_KEY);
-    window.localStorage.removeItem(ADMIN_SESSION_KEY);
+async function waitForSharedAuth(maxWaitMs = 4500) {
+  const startedAt = Date.now();
+  while (Date.now() - startedAt < maxWaitMs) {
+    if (window.grameeeAuth && typeof window.grameeeAuth.getAccessToken === 'function') return window.grameeeAuth;
+    await wait(100);
   }
+  return window.grameeeAuth || null;
 }
 
-function togglePanels(isSignedIn) {
-  ['bulkUploadPanel', 'submissionQueuePanel', 'placeDocumentQueuePanel', 'placeSpiderQueuePanel', 'adminEditorPanel', 'contactRequestPanel'].forEach((id) => {
-    document.getElementById(id).classList.toggle('active', Boolean(isSignedIn));
-  });
+async function refreshSharedAdminSession() {
+  const auth = await waitForSharedAuth();
+  if (!auth) return '';
+  let user = null;
+  try {
+    user = auth.getStoredSummary?.() || null;
+    if (!user && typeof auth.hydrateAuthSession === 'function') {
+      user = await auth.hydrateAuthSession();
+    }
+  } catch {}
+  let token = '';
+  try {
+    token = await auth.getAccessToken();
+    if (!token && typeof auth.hydrateAuthSession === 'function') {
+      await auth.hydrateAuthSession();
+      token = await auth.getAccessToken();
+    }
+  } catch {}
+  sharedAdminAccessToken = token || '';
+  if (token) setStoredToken(token);
+  return sharedAdminAccessToken;
 }
 
 function populateTypeOptions() {
-  const selectEls = [document.getElementById('adminEntityTypeFilter'), editEls.entityType];
+  const selectEls = [
+    document.getElementById('adminEntityTypeFilter'),
+    editEls.entityType,
+    document.getElementById('bulkUploadEntityType'),
+  ];
   selectEls.forEach((selectEl, index) => {
     if (!selectEl) return;
     const previous = selectEl.value;
-    selectEl.innerHTML = index === 0 ? '<option value="">All entity types</option>' : '';
+    if (index === 1) {
+      selectEl.innerHTML = '';
+    } else {
+      selectEl.innerHTML = '<option value="">All entity types</option>';
+    }
     state.entityTypes.forEach((type) => {
       const option = document.createElement('option');
       option.value = type.type_slug;
@@ -181,6 +226,7 @@ function filterEntities() {
     .filter((entity) => !typeFilter || entity.entity_type_slug === typeFilter)
     .filter((entity) => !query || buildSearchText(entity).includes(query))
     .sort((left, right) => String(left.entity_name || '').localeCompare(String(right.entity_name || '')));
+  state.currentPage = 1;
 }
 
 function renderSubmissions() {
@@ -269,21 +315,65 @@ function renderPlaceSpiderSubmissions() {
   });
 }
 
+function renderSearchPagination() {
+  if (!adminSearchPagination) return;
+  adminSearchPagination.innerHTML = '';
+  const totalPages = Math.max(1, Math.ceil(state.filteredEntities.length / state.pageSize));
+  if (state.filteredEntities.length <= state.pageSize) return;
+
+  adminSearchPagination.insertAdjacentHTML('beforeend', `<div class="vendor-page-summary">${state.filteredEntities.length} results</div>`);
+
+  const prevDisabled = state.currentPage === 1 ? 'disabled' : '';
+  adminSearchPagination.insertAdjacentHTML('beforeend', `<button class="btn btn-small btn-pagination" data-search-page="prev" ${prevDisabled}>Prev</button>`);
+
+  for (let i = 1; i <= totalPages; i++) {
+    const active = i === state.currentPage ? 'active' : '';
+    adminSearchPagination.insertAdjacentHTML('beforeend', `<button class="btn btn-small btn-pagination ${active}" data-search-page="${i}">${i}</button>`);
+  }
+
+  const nextDisabled = state.currentPage === totalPages ? 'disabled' : '';
+  adminSearchPagination.insertAdjacentHTML('beforeend', `<button class="btn btn-small btn-pagination" data-search-page="next" ${nextDisabled}>Next</button>`);
+}
+
+function handleSearchPageClick(event) {
+  const target = event.target.closest('[data-search-page]');
+  if (!target) return;
+  const page = target.dataset.searchPage;
+  const totalPages = Math.max(1, Math.ceil(state.filteredEntities.length / state.pageSize));
+  if (page === 'prev' && state.currentPage > 1) {
+    state.currentPage -= 1;
+  } else if (page === 'next' && state.currentPage < totalPages) {
+    state.currentPage += 1;
+  } else if (page !== 'prev' && page !== 'next') {
+    state.currentPage = Number(page);
+  }
+  renderEntityResults();
+}
+
 function renderEntityResults() {
   adminSearchResults.innerHTML = '';
   if (!state.filteredEntities.length) {
     adminSearchResults.innerHTML = '<article class="admin-card"><p>No records matched this filter.</p></article>';
     adminSearchMeta.textContent = 'No matching approved records.';
+    renderSearchPagination();
     return;
   }
-  adminSearchMeta.textContent = `${state.filteredEntities.length} approved record${state.filteredEntities.length === 1 ? '' : 's'} found`;
-  state.filteredEntities.forEach((entity) => {
+
+  const totalPages = Math.max(1, Math.ceil(state.filteredEntities.length / state.pageSize));
+  const start = (state.currentPage - 1) * state.pageSize;
+  const pageEntities = state.filteredEntities.slice(start, start + state.pageSize);
+
+  adminSearchMeta.textContent = `${state.filteredEntities.length} approved record${state.filteredEntities.length === 1 ? '' : 's'} found (page ${state.currentPage} of ${totalPages})`;
+
+  pageEntities.forEach((entity) => {
     const card = document.createElement('article');
     card.className = `admin-card admin-search-card${entity.entity_uid === state.selectedEntityUid ? ' active' : ''}`;
     card.innerHTML = `<div class="admin-card-header"><h4>${esc(entity.entity_name)}</h4><span class="admin-badge">${esc(entity.entity_type_label || entity.entity_type_slug)}</span></div><p><strong>Location:</strong> ${esc(entity.location_label || entity.primary_address || 'Not listed')}</p><p><strong>Contact:</strong> ${esc(entity.contact_email || 'No email')} | ${esc(entity.contact_phone || 'No phone')}</p><small>${esc(entity.summary || entity.description || 'No summary')}</small>`;
     card.addEventListener('click', () => selectEntity(entity.entity_uid));
     adminSearchResults.appendChild(card);
   });
+
+  renderSearchPagination();
 }
 
 function renderPlaceSpiderMetricRows(snapshot) {
@@ -476,33 +566,9 @@ function rerenderDynamicFieldsForSelectedType() {
   renderPlaceAdminCollections(selectedEntity);
 }
 
-async function verifySession() {
-  const token = getStoredToken();
-  if (!token) {
-    togglePanels(false);
-    return false;
-  }
-  try {
-    const data = await EcosystemStore.adminRequest('verify', { token });
-    if (!data?.valid) throw new Error('Invalid session');
-    togglePanels(true);
-    return true;
-  } catch {
-    setStoredToken('');
-    togglePanels(false);
-    submissionQueueMeta.textContent = 'Your admin session has expired. Please sign in again.';
-    placeDocumentQueueMeta.textContent = 'Your admin session has expired. Please sign in again.';
-    placeSpiderQueueMeta.textContent = 'Your admin session has expired. Please sign in again.';
-    adminSearchMeta.textContent = 'Your admin session has expired. Please sign in again.';
-    contactRequestMeta.textContent = 'Your admin session has expired. Please sign in again.';
-    return false;
-  }
-}
-
 async function loadAdminData() {
-  const token = getStoredToken();
-  if (!token) return;
-  const data = await EcosystemStore.adminRequest('loadAdminData', { token });
+  await refreshSharedAdminSession();
+  const data = await adminRequest('loadAdminData', {});
   state.entityTypes = Array.isArray(data.entityTypes) ? data.entityTypes : [];
   state.entities = Array.isArray(data.entities) ? data.entities : [];
   state.fieldDefinitions = Array.isArray(data.fieldDefinitions) ? data.fieldDefinitions : [];
@@ -521,49 +587,6 @@ async function loadAdminData() {
   renderEntityResults();
   renderContactRequests();
   if (state.selectedEntityUid) selectEntity(state.selectedEntityUid);
-}
-
-async function handleLogin(event) {
-  event.preventDefault();
-  const password = String(document.getElementById('adminPassword').value || '').trim();
-  if (!password) {
-    setStatus(loginStatus, 'Enter the admin password.', true);
-    return;
-  }
-  setStatus(loginStatus, 'Signing in...');
-  try {
-    const data = await EcosystemStore.adminRequest('login', { password });
-    if (!data?.token) throw new Error('Admin login failed.');
-    setStoredToken(data.token);
-    document.getElementById('adminPassword').value = '';
-    togglePanels(true);
-    setStatus(loginStatus, 'Signed in.');
-    setStatus(sessionStatus, 'Admin session is active.');
-    await loadAdminData();
-  } catch (error) {
-    setStatus(loginStatus, error.message || 'Admin login failed.', true);
-  }
-}
-
-async function handleLogout() {
-  const token = getStoredToken();
-  try {
-    if (token) await EcosystemStore.adminRequest('logout', { token });
-  } catch {}
-  setStoredToken('');
-  togglePanels(false);
-  state.entities = [];
-  state.filteredEntities = [];
-  state.submissions = [];
-  state.contactRequests = [];
-  state.selectedEntityUid = '';
-  submissionQueue.innerHTML = '';
-  adminSearchResults.innerHTML = '';
-  contactRequestList.innerHTML = '';
-  setEditorVisibility(false);
-  if (placeAdminToolsEl) placeAdminToolsEl.hidden = true;
-  setStatus(loginStatus, '');
-  setStatus(sessionStatus, 'Signed out.');
 }
 
 function parseCsv(text) {
@@ -610,9 +633,8 @@ function parseJsonSafe(value, fallback) {
 }
 
 async function runBulkUpload() {
-  const token = getStoredToken();
   const file = document.getElementById('bulkUploadFile').files?.[0];
-  if (!token || !file) {
+  if (!file) {
     setStatus(bulkUploadStatus, 'Choose a CSV file first.', true);
     return;
   }
@@ -644,7 +666,7 @@ async function runBulkUpload() {
       created_by_email: String(row.created_by_email || '').trim(),
       type_specific_data: parseJsonSafe(row.type_specific_data_json, {}),
     }));
-    const data = await EcosystemStore.adminRequest('bulkUploadEntities', { token, rows });
+    const data = await adminRequest('bulkUploadEntities', { rows });
     setStatus(bulkUploadStatus, `Bulk upload completed: ${data.upsertedCount || 0} record(s).`);
     await loadAdminData();
   } catch (error) {
@@ -652,69 +674,151 @@ async function runBulkUpload() {
   }
 }
 
+function escCsv(value) {
+  const s = String(value ?? '');
+  if (s.includes(',') || s.includes('"') || s.includes('\n') || s.includes('\r')) {
+    return '"' + s.replace(/"/g, '""') + '"';
+  }
+  return s;
+}
+
+function buildCsvExampleRow(typeSlug, typeFields) {
+  const examples = {
+    mentor: { entity_type_slug: 'mentor', entity_name: 'Example Mentor', summary: 'Supports rural entrepreneurs', location_label: 'Raipur, Chhattisgarh', district: 'Raipur', state: 'Chhattisgarh', contact_email: 'mentor@example.org', contact_phone: '+91-9000000000', website_url: 'https://example.org', social_media_json: '{"linkedin":"https://linkedin.com/in/example"}', tags: 'mentoring,advisory', keywords: 'livelihoods,incubation', latitude: '21.2514', longitude: '81.6296', domain_expertise: 'Market access, Enterprise strategy', mentoring_modes: 'In person|Phone|Video call', languages_spoken: 'Hindi, English', years_experience: '10', geography_served: 'Chhattisgarh' },
+    community_steward: { entity_type_slug: 'community_steward', entity_name: 'Example Steward', summary: 'Community mobiliser supporting SHGs', location_label: 'Sukma, Chhattisgarh', district: 'Sukma', state: 'Chhattisgarh', contact_email: 'steward@example.org', contact_phone: '+91-9111111111', tags: 'mobilisation,training', community_focus: 'Women SHGs, youth', geography_served: 'Sukma district', languages_spoken: 'Hindi, Gondi', support_areas: 'Mobilisation, training' },
+    volunteer: { entity_type_slug: 'volunteer', entity_name: 'Example Volunteer', summary: 'Available for field data collection', location_label: 'Bhopal, Madhya Pradesh', district: 'Bhopal', state: 'Madhya Pradesh', contact_email: 'volunteer@example.org', tags: 'field work, data collection', skills: 'Data collection, Survey design', cause_areas: 'Education, livelihoods', availability_type: 'Flexible', preferred_geography: 'Madhya Pradesh' },
+    intern: { entity_type_slug: 'intern', entity_name: 'Example Intern', summary: 'Looking for a 3-month field internship', location_label: 'Pune, Maharashtra', district: 'Pune', state: 'Maharashtra', contact_email: 'intern@example.org', tags: 'internship, rural development', field_of_study: 'Rural development, Commerce', current_institution: 'TISS Mumbai', education_level: 'Postgraduate', skills: 'Research, Field surveys', availability_period: 'June-August 2026', preferred_domains: 'Livelihoods', stipend_expectation: 'Rs 10,000/month' },
+    incubation_centre: { entity_type_slug: 'incubation_centre', entity_name: 'Example Incubation Centre', summary: 'Supports early-stage rural enterprises', location_label: 'Bengaluru, Karnataka', district: 'Bengaluru Urban', state: 'Karnataka', contact_email: 'info@exampleinc.org', website_url: 'https://exampleinc.org', tags: 'incubation,startup support', thematic_areas: 'Agriculture, Climate, Health', startup_stages_supported: 'Idea stage|Validation|Early traction', geography_served: 'Karnataka, Pan-India', support_services: 'Mentoring, Labs, Market access' },
+    accelerator: { entity_type_slug: 'accelerator', entity_name: 'Example Accelerator', summary: 'Runs cohort and field support programmes', location_label: 'Mumbai, Maharashtra', district: 'Mumbai', state: 'Maharashtra', contact_email: 'team@exampleacc.org', website_url: 'https://exampleacc.org', tags: 'acceleration,investor-readiness', thematic_areas: 'Climate, Agriculture, Fintech', startup_stages_supported: 'Validation|Early traction|Scaling', geography_served: 'Nationwide, Virtual', support_services: 'Cohort program, Mentorship' },
+    institute: { entity_type_slug: 'institute', entity_name: 'Example Institute', summary: 'Research and training institute for rural livelihoods', location_label: 'Anand, Gujarat', district: 'Anand', state: 'Gujarat', contact_email: 'contact@exampleinst.org', website_url: 'https://exampleinst.org', tags: 'research,training', thematic_areas: 'Agriculture, Rural livelihoods, Design', departments_or_centres: 'Agribusiness centre, Extension wing', geography_served: 'Gujarat, National', partnership_types: 'Research, Training, Field pilots' },
+    trader_association: { entity_type_slug: 'trader_association', entity_name: 'Example Trader Association', summary: 'Collective of local commodity traders', location_label: 'Raipur, Chhattisgarh', district: 'Raipur', state: 'Chhattisgarh', contact_email: 'info@exampleta.org', tags: 'trade,commodities', commodities_or_sectors: 'Pulses, Textiles, Forest produce', geography_served: 'Raipur market area', member_base: '150+ traders', registration_status: 'Registered' },
+    cso: { entity_type_slug: 'cso', entity_name: 'Example CSO', summary: 'Grassroots organisation working on women empowerment', location_label: 'Jharsuguda, Odisha', district: 'Jharsuguda', state: 'Odisha', contact_email: 'info@examplecso.org', website_url: 'https://examplecso.org', tags: 'women empowerment,livelihoods', areas_of_work: 'Women empowerment, Skilling, WASH', beneficiary_groups: 'Women, Farmers, Youth', geography_served: 'Western Odisha', registration_status: 'Trust', programs: 'SHG formation, Livelihood training, WASH awareness' },
+    csr_philanthropy: { entity_type_slug: 'csr_philanthropy', entity_name: 'Example CSR Funder', summary: 'CSR funding for climate and livelihoods', location_label: 'New Delhi, Delhi', district: 'New Delhi', state: 'Delhi', contact_email: 'csr@examplefunder.org', website_url: 'https://examplefunder.org', tags: 'CSR,funding', focus_areas: 'Livelihoods, Climate resilience, Women enterprise', geography_served: 'Aspirational districts, Nationwide', support_instruments: 'CSR grant|Technical assistance|Capacity building', typical_support_size: 'Rs 10 lakh-Rs 50 lakh' },
+    environmental_expert: { entity_type_slug: 'environmental_expert', entity_name: 'Example Environmental Expert', summary: 'Climate adaptation and water stewardship specialist', location_label: 'Dehradun, Uttarakhand', district: 'Dehradun', state: 'Uttarakhand', contact_email: 'expert@example.org', tags: 'climate,water,waste', domain_expertise: 'Climate adaptation, Water stewardship, Waste management', sector_experience: 'Agriculture, Forestry, Energy', service_offerings: 'Assessment/audit|Training/capacity building|Advisory/strategy', years_experience: '12', geography_served: 'Uttarakhand, Himalayan region', languages_spoken: 'Hindi, English' },
+    story_teller: { entity_type_slug: 'story_teller', entity_name: 'Example Storyteller', summary: 'Community journalist covering rural livelihoods', location_label: 'Kalahandi, Odisha', district: 'Kalahandi', state: 'Odisha', contact_email: 'storyteller@example.org', tags: 'storytelling,media', storytelling_modes: 'Written|Video|Social Media', youtube_url: 'https://youtube.com/@example', languages: 'Odia, Hindi, English', geography_served: 'Western Odisha', reach: '15k followers, Local WhatsApp groups' },
+    place: { entity_type_slug: 'place', entity_name: 'Example Village | Village', summary: 'A sample village in Chhattisgarh', location_label: 'Example Village | Village', district: 'Raipur', state: 'Chhattisgarh', tags: 'village,model', place_kind: 'Village', village_name: 'Example Village', gram_panchayat_name: 'Example GP', block_name: 'Example Block', district_name: 'Raipur', state_name: 'Chhattisgarh' },
+  };
+  return examples[typeSlug] || { entity_type_slug: typeSlug, entity_name: 'Example ' + (typeSlug || 'Entity'), summary: 'Description of this entity', location_label: 'Example location', district: 'District', state: 'State', contact_email: 'email@example.org' };
+}
+
+function downloadCsvTemplate() {
+  const typeSlug = document.getElementById('bulkUploadEntityType').value;
+  const type = state.entityTypes.find((t) => t.type_slug === typeSlug);
+  const filename = typeSlug ? `bulk-upload-template-${typeSlug}.csv` : 'bulk-upload-template.csv';
+
+  const baseColumns = [
+    'entity_type_slug', 'entity_name', 'summary', 'description',
+    'location_label', 'primary_address', 'district', 'state', 'country',
+    'contact_email', 'contact_phone', 'website_url',
+    'social_media_json', 'office_locations_json', 'tags', 'keywords',
+    'latitude', 'longitude', 'source_label', 'source_url',
+    'created_by_name', 'created_by_email',
+  ];
+
+  const typeFields = typeSlug
+    ? state.fieldDefinitions
+        .filter((f) => f.type_slug === typeSlug)
+        .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
+    : [];
+
+  const typeColumnKeys = typeFields.map((f) => f.field_key);
+  const allColumns = [...baseColumns, ...typeColumnKeys, 'type_specific_data_json'];
+
+  const exampleRow = typeSlug ? buildCsvExampleRow(typeSlug, typeFields) : {
+    entity_type_slug: 'mentor',
+    entity_name: 'Example Mentor',
+    summary: 'Supports rural entrepreneurs',
+    location_label: 'Raipur, Chhattisgarh',
+    district: 'Raipur',
+    state: 'Chhattisgarh',
+    contact_email: 'mentor@example.org',
+    contact_phone: '+91-9000000000',
+    tags: 'mentoring, advisory',
+    keywords: 'livelihoods, incubation',
+    latitude: '21.2514',
+    longitude: '81.6296',
+    type_specific_data_json: '{}',
+  };
+
+  const headerRow = allColumns.map(escCsv).join(',');
+  const valueRow = allColumns.map((col) => escCsv(exampleRow[col] ?? '')).join(',');
+
+  const csv = '\uFEFF' + headerRow + '\n' + valueRow + '\n';
+
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 async function approveSubmission(submissionId) {
-  setStatus(sessionStatus, 'Approving submission...');
+  setStatus(bulkUploadStatus, 'Approving submission...');
   try {
-    await EcosystemStore.adminRequest('approveSubmission', { token: getStoredToken(), submissionId });
-    setStatus(sessionStatus, 'Submission approved.');
+    await adminRequest('approveSubmission', { submissionId });
+    setStatus(bulkUploadStatus, 'Submission approved.');
     await loadAdminData();
   } catch (error) {
-    setStatus(sessionStatus, error.message || 'Approval failed.', true);
+    setStatus(bulkUploadStatus, error.message || 'Approval failed.', true);
   }
 }
 
 async function rejectSubmission(submissionId) {
-  setStatus(sessionStatus, 'Rejecting submission...');
+  setStatus(bulkUploadStatus, 'Rejecting submission...');
   try {
-    await EcosystemStore.adminRequest('rejectSubmission', { token: getStoredToken(), submissionId });
-    setStatus(sessionStatus, 'Submission rejected.');
+    await adminRequest('rejectSubmission', { submissionId });
+    setStatus(bulkUploadStatus, 'Submission rejected.');
     await loadAdminData();
   } catch (error) {
-    setStatus(sessionStatus, error.message || 'Rejection failed.', true);
+    setStatus(bulkUploadStatus, error.message || 'Rejection failed.', true);
   }
 }
 
 async function approvePlaceDocument(placeSubmissionId) {
-  setStatus(sessionStatus, 'Approving place document...');
+  setStatus(bulkUploadStatus, 'Approving place document...');
   try {
-    await EcosystemStore.adminRequest('approvePlaceDocument', { token: getStoredToken(), placeSubmissionId });
-    setStatus(sessionStatus, 'Place document approved.');
+    await adminRequest('approvePlaceDocument', { placeSubmissionId });
+    setStatus(bulkUploadStatus, 'Place document approved.');
     await loadAdminData();
   } catch (error) {
-    setStatus(sessionStatus, error.message || 'Place document approval failed.', true);
+    setStatus(bulkUploadStatus, error.message || 'Place document approval failed.', true);
   }
 }
 
 async function rejectPlaceDocument(placeSubmissionId) {
-  setStatus(sessionStatus, 'Rejecting place document...');
+  setStatus(bulkUploadStatus, 'Rejecting place document...');
   try {
-    await EcosystemStore.adminRequest('rejectPlaceDocument', { token: getStoredToken(), placeSubmissionId });
-    setStatus(sessionStatus, 'Place document rejected.');
+    await adminRequest('rejectPlaceDocument', { placeSubmissionId });
+    setStatus(bulkUploadStatus, 'Place document rejected.');
     await loadAdminData();
   } catch (error) {
-    setStatus(sessionStatus, error.message || 'Place document rejection failed.', true);
+    setStatus(bulkUploadStatus, error.message || 'Place document rejection failed.', true);
   }
 }
 
 async function approvePlaceSpider(placeSubmissionId) {
-  setStatus(sessionStatus, 'Approving place spider chart...');
+  setStatus(bulkUploadStatus, 'Approving place spider chart...');
   try {
-    await EcosystemStore.adminRequest('approvePlaceSpider', { token: getStoredToken(), placeSubmissionId });
-    setStatus(sessionStatus, 'Place spider chart approved.');
+    await adminRequest('approvePlaceSpider', { placeSubmissionId });
+    setStatus(bulkUploadStatus, 'Place spider chart approved.');
     await loadAdminData();
   } catch (error) {
-    setStatus(sessionStatus, error.message || 'Place spider chart approval failed.', true);
+    setStatus(bulkUploadStatus, error.message || 'Place spider chart approval failed.', true);
   }
 }
 
 async function rejectPlaceSpider(placeSubmissionId) {
-  setStatus(sessionStatus, 'Rejecting place spider chart...');
+  setStatus(bulkUploadStatus, 'Rejecting place spider chart...');
   try {
-    await EcosystemStore.adminRequest('rejectPlaceSpider', { token: getStoredToken(), placeSubmissionId });
-    setStatus(sessionStatus, 'Place spider chart rejected.');
+    await adminRequest('rejectPlaceSpider', { placeSubmissionId });
+    setStatus(bulkUploadStatus, 'Place spider chart rejected.');
     await loadAdminData();
   } catch (error) {
-    setStatus(sessionStatus, error.message || 'Place spider chart rejection failed.', true);
+    setStatus(bulkUploadStatus, error.message || 'Place spider chart rejection failed.', true);
   }
 }
 
@@ -727,8 +831,7 @@ async function saveEntity(event) {
   }
   setStatus(adminEditStatus, 'Saving changes...');
   try {
-    await EcosystemStore.adminRequest('updateEntity', {
-      token: getStoredToken(),
+    await adminRequest('updateEntity', {
       entityUid,
       updates: {
         entity_type_slug: editEls.entityType.value,
@@ -774,10 +877,9 @@ function collectAdminSpiderMetrics(card) {
 async function savePlaceSpiderSnapshot(snapshotUid, triggerButton) {
   const card = triggerButton.closest('.place-spider-admin-card');
   if (!card) return;
-  setStatus(sessionStatus, 'Saving spider chart...');
+  setStatus(bulkUploadStatus, 'Saving spider chart...');
   try {
-    await EcosystemStore.adminRequest('updatePlaceSpiderSnapshot', {
-      token: getStoredToken(),
+    await adminRequest('updatePlaceSpiderSnapshot', {
       snapshotUid,
       updates: {
         title: card.querySelector('[data-admin-place-spider-title]')?.value || '',
@@ -786,20 +888,19 @@ async function savePlaceSpiderSnapshot(snapshotUid, triggerButton) {
         metrics_json: collectAdminSpiderMetrics(card),
       },
     });
-    setStatus(sessionStatus, 'Spider chart updated.');
+    setStatus(bulkUploadStatus, 'Spider chart updated.');
     await loadAdminData();
   } catch (error) {
-    setStatus(sessionStatus, error.message || 'Spider chart update failed.', true);
+    setStatus(bulkUploadStatus, error.message || 'Spider chart update failed.', true);
   }
 }
 
 async function savePlaceNeedRecord(needUid, triggerButton) {
   const card = triggerButton.closest('.admin-card');
   if (!card) return;
-  setStatus(sessionStatus, 'Saving thematic need update...');
+  setStatus(bulkUploadStatus, 'Saving thematic need update...');
   try {
-    await EcosystemStore.adminRequest('updatePlaceThematicNeedRecord', {
-      token: getStoredToken(),
+    await adminRequest('updatePlaceThematicNeedRecord', {
       needUid,
       updates: {
         thematic_needs: parseLineList(card.querySelector('[data-admin-place-needs-thematics]')?.value),
@@ -808,24 +909,21 @@ async function savePlaceNeedRecord(needUid, triggerButton) {
         details: card.querySelector('[data-admin-place-needs-details]')?.value || '',
       },
     });
-    setStatus(sessionStatus, 'Thematic need update saved.');
+    setStatus(bulkUploadStatus, 'Thematic need update saved.');
     await loadAdminData();
   } catch (error) {
-    setStatus(sessionStatus, error.message || 'Thematic need update failed.', true);
+    setStatus(bulkUploadStatus, error.message || 'Thematic need update failed.', true);
   }
 }
 
 async function deletePlaceNeedRecord(needUid) {
-  setStatus(sessionStatus, 'Deleting thematic need update...');
+  setStatus(bulkUploadStatus, 'Deleting thematic need update...');
   try {
-    await EcosystemStore.adminRequest('deletePlaceThematicNeedRecord', {
-      token: getStoredToken(),
-      needUid,
-    });
-    setStatus(sessionStatus, 'Thematic need update deleted.');
+    await adminRequest('deletePlaceThematicNeedRecord', { needUid });
+    setStatus(bulkUploadStatus, 'Thematic need update deleted.');
     await loadAdminData();
   } catch (error) {
-    setStatus(sessionStatus, error.message || 'Thematic need delete failed.', true);
+    setStatus(bulkUploadStatus, error.message || 'Thematic need delete failed.', true);
   }
 }
 
@@ -848,8 +946,7 @@ async function createPlaceNeedRecord() {
   }
   setStatus(placeAdminNeedsStatusEl, 'Saving thematic need update...');
   try {
-    await EcosystemStore.adminRequest('createPlaceThematicNeedRecord', {
-      token: getStoredToken(),
+    await adminRequest('createPlaceThematicNeedRecord', {
       submission: {
         place_uid: entity.entity_uid,
         place_name: entity.entity_name,
@@ -869,16 +966,13 @@ async function createPlaceNeedRecord() {
 }
 
 async function deletePlaceDocumentRecord(documentUid) {
-  setStatus(sessionStatus, 'Deleting document...');
+  setStatus(bulkUploadStatus, 'Deleting document...');
   try {
-    await EcosystemStore.adminRequest('deletePlaceDocumentRecord', {
-      token: getStoredToken(),
-      documentUid,
-    });
-    setStatus(sessionStatus, 'Document deleted.');
+    await adminRequest('deletePlaceDocumentRecord', { documentUid });
+    setStatus(bulkUploadStatus, 'Document deleted.');
     await loadAdminData();
   } catch (error) {
-    setStatus(sessionStatus, error.message || 'Document delete failed.', true);
+    setStatus(bulkUploadStatus, error.message || 'Document delete failed.', true);
   }
 }
 
@@ -901,8 +995,7 @@ async function uploadApprovedPlaceDocument() {
   setStatus(placeAdminDocumentStatusEl, 'Uploading approved document...');
   try {
     const fileContentBase64 = await readFileAsBase64(file);
-    await EcosystemStore.adminRequest('createPlaceDocumentRecord', {
-      token: getStoredToken(),
+    await adminRequest('createPlaceDocumentRecord', {
       submission: {
         place_uid: entity.entity_uid,
         place_name: entity.entity_name,
@@ -936,7 +1029,7 @@ async function deleteEntity() {
   }
   setStatus(adminEditStatus, 'Deleting record...');
   try {
-    await EcosystemStore.adminRequest('deleteEntity', { token: getStoredToken(), entityUid });
+    await adminRequest('deleteEntity', { entityUid });
     state.selectedEntityUid = '';
     setStatus(adminEditStatus, 'Record deleted.');
     setEditorVisibility(false);
@@ -946,8 +1039,7 @@ async function deleteEntity() {
   }
 }
 
-document.getElementById('loginForm').addEventListener('submit', handleLogin);
-document.getElementById('logoutButton').addEventListener('click', handleLogout);
+document.getElementById('downloadCsvTemplate').addEventListener('click', downloadCsvTemplate);
 document.getElementById('runBulkUpload').addEventListener('click', runBulkUpload);
 document.getElementById('adminSearchInput').addEventListener('input', () => {
   filterEntities();
@@ -957,6 +1049,7 @@ document.getElementById('adminEntityTypeFilter').addEventListener('change', () =
   filterEntities();
   renderEntityResults();
 });
+adminSearchPagination?.addEventListener('click', handleSearchPageClick);
 editEls.entityType.addEventListener('change', rerenderDynamicFieldsForSelectedType);
 document.getElementById('adminEditForm').addEventListener('submit', saveEntity);
 document.getElementById('deleteEntityButton').addEventListener('click', deleteEntity);
@@ -1010,11 +1103,10 @@ placeAdminDocumentListEl?.addEventListener('click', (event) => {
 });
 
 (async function initAdmin() {
-  const valid = await verifySession();
-  if (valid) {
-    setStatus(sessionStatus, 'Admin session is active.');
+  await refreshSharedAdminSession();
+  try {
     await loadAdminData();
-  } else {
-    setStatus(sessionStatus, 'Sign in to access the admin tools.');
+  } catch (error) {
+    setStatus(bulkUploadStatus, error.message || 'Could not load admin data.', true);
   }
 })();

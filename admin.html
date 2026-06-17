@@ -5,11 +5,41 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="icon" href="data:," />
   <title>Livelihood Ecosystem Admin</title>
+  <link rel="stylesheet" href="https://grameee.org/shared-shell.css?v=20260518b" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="./config.js?v=20260505e"></script>
-  <link rel="stylesheet" href="./styles.css?v=20260505e" />
+  <script src="./config.js?v=20260617a"></script>
+  <script src="https://grameee.org/supabase-config.js" defer></script>
+  <script src="https://grameee.org/shared-shell.js?v=20260518b" defer></script>
+  <script src="https://grameee.org/auth.js?v=20260522k" defer></script>
+  <script>
+    if (window.location.search.includes('embed=1')) {
+      document.documentElement.classList.add('ecosystem-admin-embed');
+    }
+  </script>
+  <link rel="stylesheet" href="./styles.css?v=20260617b" />
+  <style>
+    .admin-search-list-column {
+      display: grid;
+      gap: .75rem;
+      align-content: start;
+      max-height: 70vh;
+      overflow-y: auto;
+    }
+    .admin-search-list-column .admin-card-list {
+      grid-template-columns: 1fr;
+    }
+    .search-pagination {
+      margin-top: .25rem;
+      position: sticky;
+      bottom: 0;
+      background: #fff;
+      padding: .5rem 0;
+      border-top: 1px solid #dfe4ea;
+    }
+  </style>
 </head>
 <body>
+  <div id="grameeeShellSlot"></div>
   <div class="admin-shell">
     <header class="vendor-hero">
       <div>
@@ -23,27 +53,18 @@
     </header>
 
     <main class="admin-grid">
-      <section class="section">
-        <h3>Admin Login</h3>
-        <form class="admin-form" id="loginForm">
-          <div class="form-group">
-            <label for="adminPassword">Admin Password</label>
-            <input id="adminPassword" type="password" placeholder="Enter admin password" required />
-          </div>
-          <div class="btn-group">
-            <button class="btn" type="submit">Sign In</button>
-            <button class="btn btn-danger btn-small" type="button" id="logoutButton">Sign Out</button>
-          </div>
-          <p class="admin-status" id="loginStatus"></p>
-          <p class="admin-status" id="sessionStatus"></p>
-        </form>
-      </section>
 
-      <section class="section session-panel" id="bulkUploadPanel">
+      <section class="section session-panel active" id="bulkUploadPanel">
         <h3>Bulk Upload</h3>
         <p class="section-note">Upload a CSV using the supplied template. Bulk uploads from admin go live immediately and are logged in an import batch.</p>
+        <div class="form-group">
+          <label for="bulkUploadEntityType">Entity Type</label>
+          <select id="bulkUploadEntityType">
+            <option value="">All types (generic template)</option>
+          </select>
+        </div>
         <div class="btn-group">
-          <a class="btn btn-small" href="./data/bulk-upload-template.csv">Download CSV Template</a>
+          <button class="btn btn-small" type="button" id="downloadCsvTemplate">Download CSV Template</button>
         </div>
         <div class="form-group">
           <label for="bulkUploadFile">CSV File</label>
@@ -53,25 +74,25 @@
         <p class="admin-status" id="bulkUploadStatus"></p>
       </section>
 
-      <section class="section queue-panel" id="submissionQueuePanel">
+      <section class="section queue-panel active" id="submissionQueuePanel">
         <h3>Pending Submission Queue</h3>
-        <p class="admin-helper" id="submissionQueueMeta">Sign in as admin to review pending submissions.</p>
+        <p class="admin-helper" id="submissionQueueMeta">Loading pending submissions...</p>
         <div id="submissionQueue" class="admin-card-list"></div>
       </section>
 
-      <section class="section queue-panel" id="placeDocumentQueuePanel">
+      <section class="section queue-panel active" id="placeDocumentQueuePanel">
         <h3>Pending Place Documents</h3>
-        <p class="admin-helper" id="placeDocumentQueueMeta">Sign in as admin to review pending place document uploads.</p>
+        <p class="admin-helper" id="placeDocumentQueueMeta">Loading pending place documents...</p>
         <div id="placeDocumentQueue" class="admin-card-list"></div>
       </section>
 
-      <section class="section queue-panel" id="placeSpiderQueuePanel">
+      <section class="section queue-panel active" id="placeSpiderQueuePanel">
         <h3>Pending Place Spider Charts</h3>
-        <p class="admin-helper" id="placeSpiderQueueMeta">Sign in as admin to review pending place spider chart submissions.</p>
+        <p class="admin-helper" id="placeSpiderQueueMeta">Loading pending place spider chart submissions...</p>
         <div id="placeSpiderQueue" class="admin-card-list"></div>
       </section>
 
-      <section class="section queue-panel" id="adminEditorPanel">
+      <section class="section queue-panel active" id="adminEditorPanel">
         <h3>Search and Edit Approved Records</h3>
         <p class="section-note">Filter existing records by entity type and keyword, then edit or delete the selected record.</p>
         <div class="admin-editor-toolbar">
@@ -84,9 +105,12 @@
             <input id="adminSearchInput" type="search" placeholder="Search by name, type, place, tags, contact, website, or summary" />
           </div>
         </div>
-        <p class="admin-helper" id="adminSearchMeta">Sign in as admin to search and edit records.</p>
+        <p class="admin-helper" id="adminSearchMeta">Loading records...</p>
         <div class="admin-editor-layout">
-          <div class="admin-card-list" id="adminSearchResults"></div>
+          <div class="admin-search-list-column">
+            <div class="admin-card-list" id="adminSearchResults"></div>
+            <div id="adminSearchPagination" class="vendor-pagination search-pagination"></div>
+          </div>
           <form class="admin-form admin-editor-form" id="adminEditForm">
             <input id="editEntityUid" type="hidden" />
             <div class="admin-editor-empty" id="adminEditorEmpty">Select a record to edit it.</div>
@@ -161,15 +185,15 @@
         </div>
       </section>
 
-      <section class="section queue-panel" id="contactRequestPanel">
+      <section class="section queue-panel active" id="contactRequestPanel">
         <h3>Edit/Delete Requests Sent to Admin</h3>
-        <p class="admin-helper" id="contactRequestMeta">Sign in as admin to review requests sent to tanmay@greenruraleconomy.in.</p>
+        <p class="admin-helper" id="contactRequestMeta">Loading requests...</p>
         <div id="contactRequestList" class="admin-card-list"></div>
       </section>
     </main>
   </div>
-  <script src="./ecosystem-form-fields.js?v=20260505e"></script>
-  <script src="./ecosystem-store.js?v=20260505e"></script>
-  <script src="./admin.js?v=20260505e"></script>
+  <script src="./ecosystem-form-fields.js?v=20260617a"></script>
+  <script src="./ecosystem-store.js?v=20260617a"></script>
+  <script src="./admin.js?v=20260617b"></script>
 </body>
 </html>
