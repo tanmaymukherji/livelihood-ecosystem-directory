@@ -22,19 +22,11 @@
       display: grid;
       gap: .75rem;
       align-content: start;
-      max-height: 70vh;
+      max-height: 75vh;
       overflow-y: auto;
     }
     .admin-search-list-column .admin-card-list {
       grid-template-columns: 1fr;
-    }
-    .search-pagination {
-      margin-top: .25rem;
-      position: sticky;
-      bottom: 0;
-      background: #fff;
-      padding: .5rem 0;
-      border-top: 1px solid #dfe4ea;
     }
   </style>
 </head>
@@ -109,7 +101,6 @@
         <div class="admin-editor-layout">
           <div class="admin-search-list-column">
             <div class="admin-card-list" id="adminSearchResults"></div>
-            <div id="adminSearchPagination" class="vendor-pagination search-pagination"></div>
           </div>
           <form class="admin-form admin-editor-form" id="adminEditForm">
             <input id="editEntityUid" type="hidden" />

@@ -10,7 +10,7 @@ const contactRequestList = document.getElementById('contactRequestList');
 const placeDocumentQueue = document.getElementById('placeDocumentQueue');
 const placeSpiderQueue = document.getElementById('placeSpiderQueue');
 const adminSearchResults = document.getElementById('adminSearchResults');
-const adminSearchPagination = document.getElementById('adminSearchPagination');
+
 const adminEditorEmpty = document.getElementById('adminEditorEmpty');
 const adminEditorFields = document.getElementById('adminEditorFields');
 const editDynamicFieldsEl = document.getElementById('edit-dynamic-fields');
@@ -45,8 +45,6 @@ const state = {
   placeSpiderSnapshots: [],
   placeThematicNeeds: [],
   selectedEntityUid: '',
-  currentPage: 1,
-  pageSize: 10,
 };
 
 const PLACE_SPIDER_METRICS = [
@@ -226,7 +224,6 @@ function filterEntities() {
     .filter((entity) => !typeFilter || entity.entity_type_slug === typeFilter)
     .filter((entity) => !query || buildSearchText(entity).includes(query))
     .sort((left, right) => String(left.entity_name || '').localeCompare(String(right.entity_name || '')));
-  state.currentPage = 1;
 }
 
 function renderSubmissions() {
@@ -315,65 +312,23 @@ function renderPlaceSpiderSubmissions() {
   });
 }
 
-function renderSearchPagination() {
-  if (!adminSearchPagination) return;
-  adminSearchPagination.innerHTML = '';
-  const totalPages = Math.max(1, Math.ceil(state.filteredEntities.length / state.pageSize));
-  if (state.filteredEntities.length <= state.pageSize) return;
-
-  adminSearchPagination.insertAdjacentHTML('beforeend', `<div class="vendor-page-summary">${state.filteredEntities.length} results</div>`);
-
-  const prevDisabled = state.currentPage === 1 ? 'disabled' : '';
-  adminSearchPagination.insertAdjacentHTML('beforeend', `<button class="btn btn-small btn-pagination" data-search-page="prev" ${prevDisabled}>Prev</button>`);
-
-  for (let i = 1; i <= totalPages; i++) {
-    const active = i === state.currentPage ? 'active' : '';
-    adminSearchPagination.insertAdjacentHTML('beforeend', `<button class="btn btn-small btn-pagination ${active}" data-search-page="${i}">${i}</button>`);
-  }
-
-  const nextDisabled = state.currentPage === totalPages ? 'disabled' : '';
-  adminSearchPagination.insertAdjacentHTML('beforeend', `<button class="btn btn-small btn-pagination" data-search-page="next" ${nextDisabled}>Next</button>`);
-}
-
-function handleSearchPageClick(event) {
-  const target = event.target.closest('[data-search-page]');
-  if (!target) return;
-  const page = target.dataset.searchPage;
-  const totalPages = Math.max(1, Math.ceil(state.filteredEntities.length / state.pageSize));
-  if (page === 'prev' && state.currentPage > 1) {
-    state.currentPage -= 1;
-  } else if (page === 'next' && state.currentPage < totalPages) {
-    state.currentPage += 1;
-  } else if (page !== 'prev' && page !== 'next') {
-    state.currentPage = Number(page);
-  }
-  renderEntityResults();
-}
-
 function renderEntityResults() {
   adminSearchResults.innerHTML = '';
   if (!state.filteredEntities.length) {
     adminSearchResults.innerHTML = '<article class="admin-card"><p>No records matched this filter.</p></article>';
     adminSearchMeta.textContent = 'No matching approved records.';
-    renderSearchPagination();
     return;
   }
 
-  const totalPages = Math.max(1, Math.ceil(state.filteredEntities.length / state.pageSize));
-  const start = (state.currentPage - 1) * state.pageSize;
-  const pageEntities = state.filteredEntities.slice(start, start + state.pageSize);
+  adminSearchMeta.textContent = `${state.filteredEntities.length} approved record${state.filteredEntities.length === 1 ? '' : 's'} found`;
 
-  adminSearchMeta.textContent = `${state.filteredEntities.length} approved record${state.filteredEntities.length === 1 ? '' : 's'} found (page ${state.currentPage} of ${totalPages})`;
-
-  pageEntities.forEach((entity) => {
+  state.filteredEntities.forEach((entity) => {
     const card = document.createElement('article');
     card.className = `admin-card admin-search-card${entity.entity_uid === state.selectedEntityUid ? ' active' : ''}`;
     card.innerHTML = `<div class="admin-card-header"><h4>${esc(entity.entity_name)}</h4><span class="admin-badge">${esc(entity.entity_type_label || entity.entity_type_slug)}</span></div><p><strong>Location:</strong> ${esc(entity.location_label || entity.primary_address || 'Not listed')}</p><p><strong>Contact:</strong> ${esc(entity.contact_email || 'No email')} | ${esc(entity.contact_phone || 'No phone')}</p><small>${esc(entity.summary || entity.description || 'No summary')}</small>`;
     card.addEventListener('click', () => selectEntity(entity.entity_uid));
     adminSearchResults.appendChild(card);
   });
-
-  renderSearchPagination();
 }
 
 function renderPlaceSpiderMetricRows(snapshot) {
@@ -1049,7 +1004,6 @@ document.getElementById('adminEntityTypeFilter').addEventListener('change', () =
   filterEntities();
   renderEntityResults();
 });
-adminSearchPagination?.addEventListener('click', handleSearchPageClick);
 editEls.entityType.addEventListener('change', rerenderDynamicFieldsForSelectedType);
 document.getElementById('adminEditForm').addEventListener('submit', saveEntity);
 document.getElementById('deleteEntityButton').addEventListener('click', deleteEntity);
