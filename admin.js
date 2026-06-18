@@ -596,31 +596,60 @@ async function runBulkUpload() {
   setStatus(bulkUploadStatus, 'Reading CSV...');
   try {
     const text = await file.text();
-    const rows = parseCsv(text).map((row) => ({
-      entity_type_slug: String(row.entity_type_slug || '').trim(),
-      entity_name: String(row.entity_name || '').trim(),
-      summary: String(row.summary || '').trim(),
-      description: String(row.description || '').trim(),
-      location_label: String(row.location_label || '').trim(),
-      primary_address: String(row.primary_address || '').trim(),
-      district: String(row.district || '').trim(),
-      state: String(row.state || '').trim(),
-      country: String(row.country || 'India').trim(),
-      contact_email: String(row.contact_email || '').trim(),
-      contact_phone: String(row.contact_phone || '').trim(),
-      website_url: String(row.website_url || '').trim(),
-      social_media: parseJsonSafe(row.social_media_json, {}),
-      office_locations: parseJsonSafe(row.office_locations_json, []),
-      tags: parseTagList(row.tags),
-      keywords: parseTagList(row.keywords),
-      latitude: row.latitude ? Number(row.latitude) : null,
-      longitude: row.longitude ? Number(row.longitude) : null,
-      source_label: String(row.source_label || 'Bulk upload').trim(),
-      source_url: String(row.source_url || '').trim(),
-      created_by_name: String(row.created_by_name || 'Admin bulk upload').trim(),
-      created_by_email: String(row.created_by_email || '').trim(),
-      type_specific_data: parseJsonSafe(row.type_specific_data_json, {}),
-    }));
+    const parsed = parseCsv(text);
+
+    const typeFieldKeys = {};
+    state.fieldDefinitions.forEach((f) => {
+      if (!typeFieldKeys[f.type_slug]) typeFieldKeys[f.type_slug] = [];
+      typeFieldKeys[f.type_slug].push(f);
+    });
+
+    const rows = parsed.map((row) => {
+      const typeSlug = String(row.entity_type_slug || '').trim();
+      const fields = typeFieldKeys[typeSlug] || [];
+
+      const typeValues = {};
+      fields.forEach((f) => {
+        const raw = row[f.field_key];
+        if (raw === undefined || raw === null || String(raw).trim() === '') return;
+        if (f.input_type === 'tags' || f.input_type === 'multiselect') {
+          typeValues[f.field_key] = String(raw).split('|').map((v) => v.trim()).filter(Boolean);
+        } else if (f.input_type === 'number') {
+          typeValues[f.field_key] = Number(raw);
+        } else {
+          typeValues[f.field_key] = String(raw).trim();
+        }
+      });
+
+      const existingJson = parseJsonSafe(row.type_specific_data_json, {});
+      const mergedTypeData = { ...existingJson, ...typeValues };
+
+      return {
+        entity_type_slug: typeSlug,
+        entity_name: String(row.entity_name || '').trim(),
+        summary: String(row.summary || '').trim(),
+        description: String(row.description || '').trim(),
+        location_label: String(row.location_label || '').trim(),
+        primary_address: String(row.primary_address || '').trim(),
+        district: String(row.district || '').trim(),
+        state: String(row.state || '').trim(),
+        country: String(row.country || 'India').trim(),
+        contact_email: String(row.contact_email || '').trim(),
+        contact_phone: String(row.contact_phone || '').trim(),
+        website_url: String(row.website_url || '').trim(),
+        social_media: parseJsonSafe(row.social_media_json, {}),
+        office_locations: parseJsonSafe(row.office_locations_json, []),
+        tags: parseTagList(row.tags),
+        keywords: parseTagList(row.keywords),
+        latitude: row.latitude ? Number(row.latitude) : null,
+        longitude: row.longitude ? Number(row.longitude) : null,
+        source_label: String(row.source_label || 'Bulk upload').trim(),
+        source_url: String(row.source_url || '').trim(),
+        created_by_name: String(row.created_by_name || 'Admin bulk upload').trim(),
+        created_by_email: String(row.created_by_email || '').trim(),
+        type_specific_data: mergedTypeData,
+      };
+    });
     const data = await adminRequest('bulkUploadEntities', { rows });
     setStatus(bulkUploadStatus, `Bulk upload completed: ${data.upsertedCount || 0} record(s).`);
     await loadAdminData();
@@ -639,17 +668,17 @@ function escCsv(value) {
 
 function buildCsvExampleRow(typeSlug, typeFields) {
   const examples = {
-    mentor: { entity_type_slug: 'mentor', entity_name: 'Example Mentor', summary: 'Supports rural entrepreneurs', location_label: 'Raipur, Chhattisgarh', district: 'Raipur', state: 'Chhattisgarh', contact_email: 'mentor@example.org', contact_phone: '+91-9000000000', website_url: 'https://example.org', social_media_json: '{"linkedin":"https://linkedin.com/in/example"}', tags: 'mentoring,advisory', keywords: 'livelihoods,incubation', latitude: '21.2514', longitude: '81.6296', domain_expertise: 'Market access, Enterprise strategy', mentoring_modes: 'In person|Phone|Video call', languages_spoken: 'Hindi, English', years_experience: '10', geography_served: 'Chhattisgarh' },
-    community_steward: { entity_type_slug: 'community_steward', entity_name: 'Example Steward', summary: 'Community mobiliser supporting SHGs', location_label: 'Sukma, Chhattisgarh', district: 'Sukma', state: 'Chhattisgarh', contact_email: 'steward@example.org', contact_phone: '+91-9111111111', tags: 'mobilisation,training', community_focus: 'Women SHGs, youth', geography_served: 'Sukma district', languages_spoken: 'Hindi, Gondi', support_areas: 'Mobilisation, training' },
-    volunteer: { entity_type_slug: 'volunteer', entity_name: 'Example Volunteer', summary: 'Available for field data collection', location_label: 'Bhopal, Madhya Pradesh', district: 'Bhopal', state: 'Madhya Pradesh', contact_email: 'volunteer@example.org', tags: 'field work, data collection', skills: 'Data collection, Survey design', cause_areas: 'Education, livelihoods', availability_type: 'Flexible', preferred_geography: 'Madhya Pradesh' },
-    intern: { entity_type_slug: 'intern', entity_name: 'Example Intern', summary: 'Looking for a 3-month field internship', location_label: 'Pune, Maharashtra', district: 'Pune', state: 'Maharashtra', contact_email: 'intern@example.org', tags: 'internship, rural development', field_of_study: 'Rural development, Commerce', current_institution: 'TISS Mumbai', education_level: 'Postgraduate', skills: 'Research, Field surveys', availability_period: 'June-August 2026', preferred_domains: 'Livelihoods', stipend_expectation: 'Rs 10,000/month' },
-    incubation_centre: { entity_type_slug: 'incubation_centre', entity_name: 'Example Incubation Centre', summary: 'Supports early-stage rural enterprises', location_label: 'Bengaluru, Karnataka', district: 'Bengaluru Urban', state: 'Karnataka', contact_email: 'info@exampleinc.org', website_url: 'https://exampleinc.org', tags: 'incubation,startup support', thematic_areas: 'Agriculture, Climate, Health', startup_stages_supported: 'Idea stage|Validation|Early traction', geography_served: 'Karnataka, Pan-India', support_services: 'Mentoring, Labs, Market access' },
-    accelerator: { entity_type_slug: 'accelerator', entity_name: 'Example Accelerator', summary: 'Runs cohort and field support programmes', location_label: 'Mumbai, Maharashtra', district: 'Mumbai', state: 'Maharashtra', contact_email: 'team@exampleacc.org', website_url: 'https://exampleacc.org', tags: 'acceleration,investor-readiness', thematic_areas: 'Climate, Agriculture, Fintech', startup_stages_supported: 'Validation|Early traction|Scaling', geography_served: 'Nationwide, Virtual', support_services: 'Cohort program, Mentorship' },
-    institute: { entity_type_slug: 'institute', entity_name: 'Example Institute', summary: 'Research and training institute for rural livelihoods', location_label: 'Anand, Gujarat', district: 'Anand', state: 'Gujarat', contact_email: 'contact@exampleinst.org', website_url: 'https://exampleinst.org', tags: 'research,training', thematic_areas: 'Agriculture, Rural livelihoods, Design', departments_or_centres: 'Agribusiness centre, Extension wing', geography_served: 'Gujarat, National', partnership_types: 'Research, Training, Field pilots' },
-    trader_association: { entity_type_slug: 'trader_association', entity_name: 'Example Trader Association', summary: 'Collective of local commodity traders', location_label: 'Raipur, Chhattisgarh', district: 'Raipur', state: 'Chhattisgarh', contact_email: 'info@exampleta.org', tags: 'trade,commodities', commodities_or_sectors: 'Pulses, Textiles, Forest produce', geography_served: 'Raipur market area', member_base: '150+ traders', registration_status: 'Registered' },
-    cso: { entity_type_slug: 'cso', entity_name: 'Example CSO', summary: 'Grassroots organisation working on women empowerment', location_label: 'Jharsuguda, Odisha', district: 'Jharsuguda', state: 'Odisha', contact_email: 'info@examplecso.org', website_url: 'https://examplecso.org', tags: 'women empowerment,livelihoods', areas_of_work: 'Women empowerment, Skilling, WASH', beneficiary_groups: 'Women, Farmers, Youth', geography_served: 'Western Odisha', registration_status: 'Trust', programs: 'SHG formation, Livelihood training, WASH awareness' },
-    csr_philanthropy: { entity_type_slug: 'csr_philanthropy', entity_name: 'Example CSR Funder', summary: 'CSR funding for climate and livelihoods', location_label: 'New Delhi, Delhi', district: 'New Delhi', state: 'Delhi', contact_email: 'csr@examplefunder.org', website_url: 'https://examplefunder.org', tags: 'CSR,funding', focus_areas: 'Livelihoods, Climate resilience, Women enterprise', geography_served: 'Aspirational districts, Nationwide', support_instruments: 'CSR grant|Technical assistance|Capacity building', typical_support_size: 'Rs 10 lakh-Rs 50 lakh' },
-    environmental_expert: { entity_type_slug: 'environmental_expert', entity_name: 'Example Environmental Expert', summary: 'Climate adaptation and water stewardship specialist', location_label: 'Dehradun, Uttarakhand', district: 'Dehradun', state: 'Uttarakhand', contact_email: 'expert@example.org', tags: 'climate,water,waste', domain_expertise: 'Climate adaptation, Water stewardship, Waste management', sector_experience: 'Agriculture, Forestry, Energy', service_offerings: 'Assessment/audit|Training/capacity building|Advisory/strategy', years_experience: '12', geography_served: 'Uttarakhand, Himalayan region', languages_spoken: 'Hindi, English' },
+    mentor: { entity_type_slug: 'mentor', entity_name: 'Example Mentor', summary: 'Supports rural entrepreneurs', location_label: 'Raipur, Chhattisgarh', district: 'Raipur', state: 'Chhattisgarh', contact_email: 'mentor@example.org', contact_phone: '+91-9000000000', website_url: 'https://example.org', social_media_json: '{"linkedin":"https://linkedin.com/in/example"}', tags: 'mentoring,advisory', keywords: 'livelihoods,incubation', latitude: '21.2514', longitude: '81.6296', domain_expertise: 'Market access|Enterprise strategy', mentoring_modes: 'In person|Phone|Video call', languages_spoken: 'Hindi|English', years_experience: '10', geography_served: 'Chhattisgarh' },
+    community_steward: { entity_type_slug: 'community_steward', entity_name: 'Example Steward', summary: 'Community mobiliser supporting SHGs', location_label: 'Sukma, Chhattisgarh', district: 'Sukma', state: 'Chhattisgarh', contact_email: 'steward@example.org', contact_phone: '+91-9111111111', tags: 'mobilisation,training', community_focus: 'Women SHGs|youth', geography_served: 'Sukma district', languages_spoken: 'Hindi|Gondi', support_areas: 'Mobilisation|training' },
+    volunteer: { entity_type_slug: 'volunteer', entity_name: 'Example Volunteer', summary: 'Available for field data collection', location_label: 'Bhopal, Madhya Pradesh', district: 'Bhopal', state: 'Madhya Pradesh', contact_email: 'volunteer@example.org', tags: 'field work, data collection', skills: 'Data collection|Survey design', cause_areas: 'Education|livelihoods', availability_type: 'Flexible', preferred_geography: 'Madhya Pradesh' },
+    intern: { entity_type_slug: 'intern', entity_name: 'Example Intern', summary: 'Looking for a 3-month field internship', location_label: 'Pune, Maharashtra', district: 'Pune', state: 'Maharashtra', contact_email: 'intern@example.org', tags: 'internship, rural development', field_of_study: 'Rural development|Commerce', current_institution: 'TISS Mumbai', education_level: 'Postgraduate', skills: 'Research|Field surveys', availability_period: 'June-August 2026', preferred_domains: 'Livelihoods', stipend_expectation: 'Rs 10,000/month' },
+    incubation_centre: { entity_type_slug: 'incubation_centre', entity_name: 'Example Incubation Centre', summary: 'Supports early-stage rural enterprises', location_label: 'Bengaluru, Karnataka', district: 'Bengaluru Urban', state: 'Karnataka', contact_email: 'info@exampleinc.org', website_url: 'https://exampleinc.org', tags: 'incubation,startup support', thematic_areas: 'Agriculture|Climate|Health', startup_stages_supported: 'Idea stage|Validation|Early traction', geography_served: 'Karnataka|Pan-India', support_services: 'Mentoring|Labs|Market access' },
+    accelerator: { entity_type_slug: 'accelerator', entity_name: 'Example Accelerator', summary: 'Runs cohort and field support programmes', location_label: 'Mumbai, Maharashtra', district: 'Mumbai', state: 'Maharashtra', contact_email: 'team@exampleacc.org', website_url: 'https://exampleacc.org', tags: 'acceleration,investor-readiness', thematic_areas: 'Climate|Agriculture|Fintech', startup_stages_supported: 'Validation|Early traction|Scaling', geography_served: 'Nationwide|Virtual', support_services: 'Cohort program|Mentorship' },
+    institute: { entity_type_slug: 'institute', entity_name: 'Example Institute', summary: 'Research and training institute for rural livelihoods', location_label: 'Anand, Gujarat', district: 'Anand', state: 'Gujarat', contact_email: 'contact@exampleinst.org', website_url: 'https://exampleinst.org', tags: 'research,training', thematic_areas: 'Agriculture|Rural livelihoods|Design', departments_or_centres: 'Agribusiness centre|Extension wing', geography_served: 'Gujarat|National', partnership_types: 'Research|Training|Field pilots' },
+    trader_association: { entity_type_slug: 'trader_association', entity_name: 'Example Trader Association', summary: 'Collective of local commodity traders', location_label: 'Raipur, Chhattisgarh', district: 'Raipur', state: 'Chhattisgarh', contact_email: 'info@exampleta.org', tags: 'trade,commodities', commodities_or_sectors: 'Pulses|Textiles|Forest produce', geography_served: 'Raipur market area', member_base: '150+ traders', registration_status: 'Registered' },
+    cso: { entity_type_slug: 'cso', entity_name: 'Example CSO', summary: 'Grassroots organisation working on women empowerment', location_label: 'Jharsuguda, Odisha', district: 'Jharsuguda', state: 'Odisha', contact_email: 'info@examplecso.org', website_url: 'https://examplecso.org', tags: 'women empowerment,livelihoods', areas_of_work: 'Women empowerment|Skilling|WASH', beneficiary_groups: 'Women|Farmers|Youth', geography_served: 'Western Odisha', registration_status: 'Trust', programs: 'SHG formation|Livelihood training|WASH awareness' },
+    csr_philanthropy: { entity_type_slug: 'csr_philanthropy', entity_name: 'Example CSR Funder', summary: 'CSR funding for climate and livelihoods', location_label: 'New Delhi, Delhi', district: 'New Delhi', state: 'Delhi', contact_email: 'csr@examplefunder.org', website_url: 'https://examplefunder.org', tags: 'CSR,funding', focus_areas: 'Livelihoods|Climate resilience|Women enterprise', geography_served: 'Aspirational districts|Nationwide', support_instruments: 'CSR grant|Technical assistance|Capacity building', typical_support_size: 'Rs 10 lakh-Rs 50 lakh' },
+    environmental_expert: { entity_type_slug: 'environmental_expert', entity_name: 'Example Environmental Expert', summary: 'Climate adaptation and water stewardship specialist', location_label: 'Dehradun, Uttarakhand', district: 'Dehradun', state: 'Uttarakhand', contact_email: 'expert@example.org', tags: 'climate,water,waste', domain_expertise: 'Climate adaptation|Water stewardship|Waste management', sector_experience: 'Agriculture|Forestry|Energy', service_offerings: 'Assessment/audit|Training/capacity building|Advisory/strategy', years_experience: '12', geography_served: 'Uttarakhand|Himalayan region', languages_spoken: 'Hindi|English' },
     story_teller: { entity_type_slug: 'story_teller', entity_name: 'Example Storyteller', summary: 'Community journalist covering rural livelihoods', location_label: 'Kalahandi, Odisha', district: 'Kalahandi', state: 'Odisha', contact_email: 'storyteller@example.org', tags: 'storytelling,media', storytelling_modes: 'Written|Video|Social Media', youtube_url: 'https://youtube.com/@example', languages: 'Odia, Hindi, English', geography_served: 'Western Odisha', reach: '15k followers, Local WhatsApp groups' },
     place: { entity_type_slug: 'place', entity_name: 'Example Village | Village', summary: 'A sample village in Chhattisgarh', location_label: 'Example Village | Village', district: 'Raipur', state: 'Chhattisgarh', tags: 'village,model', place_kind: 'Village', village_name: 'Example Village', gram_panchayat_name: 'Example GP', block_name: 'Example Block', district_name: 'Raipur', state_name: 'Chhattisgarh' },
   };
