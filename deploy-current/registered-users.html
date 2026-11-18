@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GramEEE Registered Users</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:wght@400;700&amp;family=Manrope:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css?v=20261117a">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="index.html">
+      <span>
+        <strong>GramEEE</strong>
+        <small>Gram Eco Entrepreneur Ecosystem</small>
+      </span>
+    </a>
+    <nav class="site-nav" aria-label="Registered users navigation">
+      <a href="index.html#about">About</a>
+      <a href="tools.html">Tools</a>
+      <a class="auth-only-link" data-privilege="ecosystem" href="https://ecosystem.grameee.org" hidden>Eco System</a>
+      <a class="auth-only-link" data-privilege="askGre" href="https://askgre.grameee.org" hidden>Ask GRE</a>
+      <a class="auth-only-link" data-privilege="offerSolutions" href="https://solution.grameee.org" hidden>Offer Solutions</a>
+      <a class="auth-only-link" data-privilege="askHelp" href="https://help.grameee.org" hidden>Ask Help</a>
+      <a class="auth-only-link" data-privilege="needsMap" href="https://needs.grameee.org" hidden>Needs Map</a>
+      <a class="auth-only-link" href="https://place.grameee.org" hidden>Place</a>
+      <a class="auth-only-link" data-privilege="gre" href="https://gre.grameee.org" hidden>GRE</a>
+      <a data-auth-link href="login.html">Login</a>
+    </nav>
+  </header>
+
+  <main class="auth-page-main" id="top" style="width:min(1100px,calc(100vw - 40px));">
+    <section class="panel auth-card">
+      <p class="eyebrow">Admin</p>
+      <h1>Registered GramEEE Users</h1>
+      <p>
+        Review registered users, update profile details, change their global or organisation role, or remove a user record while preserving contribution history.
+      </p>
+      <div class="download-actions">
+        <button class="button secondary" id="refreshUsersButton" type="button">Refresh Users</button>
+      </div>
+      <div class="registered-users-search">
+        <label class="registered-users-search-label" for="registeredUsersSearch">Search users</label>
+        <input
+          id="registeredUsersSearch"
+          class="registered-users-search-input"
+          type="search"
+          placeholder="Search by username or email"
+          autocomplete="off"
+        >
+      </div>
+      <p class="download-status" id="registeredUsersStatus" aria-live="polite"></p>
+      <div class="registered-users-list" id="registeredUsersList"></div>
+    </section>
+  </main>
+
+  <div class="floating-actions" aria-label="Page actions">
+    <a class="floating-button" href="#top">Page Top</a>
+  </div>
+
+  <div class="download-modal" id="loginModal" hidden>
+    <div class="download-modal-backdrop" data-close-login-modal></div>
+    <div class="download-modal-dialog auth-dialog panel" role="dialog" aria-modal="true" aria-labelledby="loginModalTitle">
+      <button class="modal-close" type="button" aria-label="Close login" data-close-login-modal>&times;</button>
+      <p class="eyebrow">GramEEE Login</p>
+      <h2 id="loginModalTitle">Access the GramEEE network</h2>
+      <p class="download-intro">
+        Log in with your username or email address to access the GramEEE page group and connected tools.
+      </p>
+      <form class="download-form" id="loginModalForm">
+        <input id="loginId" name="loginId" type="text" placeholder="Username or email" required>
+        <input id="loginPassword" name="loginPassword" type="password" placeholder="Password" required>
+        <input id="loginSubmitMode" type="hidden" value="login">
+        <div class="login-modal-actions">
+          <button class="button primary" type="submit">Login</button>
+        </div>
+        <div class="modal-links">
+          <a href="new-account.html">New Account</a>
+          <a href="forgot-password.html">Forgot Password</a>
+          <a href="change-password.html">Change Password</a>
+        </div>
+        <p class="download-status" id="loginModalStatus" aria-live="polite"></p>
+      </form>
+    </div>
+  </div>
+
+  <script src="supabase-config.js"></script>
+  <div class="download-modal" id="userActionModal" hidden>
+    <div class="download-modal-backdrop" data-close-user-action-modal></div>
+    <div class="download-modal-dialog auth-dialog panel user-action-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="userActionModalTitle">
+      <button class="modal-close" type="button" aria-label="Close user action dialog" data-close-user-action-modal>&times;</button>
+      <p class="eyebrow" id="userActionModalEyebrow">Registered Users</p>
+      <h2 id="userActionModalTitle">Confirm action</h2>
+      <p class="download-intro" id="userActionModalBody"></p>
+      <div class="download-actions user-action-modal-actions" id="userActionModalActions">
+        <button class="button secondary" type="button" data-close-user-action-modal>Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="auth.js?v=20260713a"></script>
+  <script src="registered-users.js?v=20261117a"></script>
+</body>
+</html>
